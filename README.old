@@ -8,6 +8,7 @@ Implementation contributors
 	Christos Antonopoulos, cda@cs.wm.edu
 	Dimitrios Nikolopoulos, dsn@cs.vt.edu
 
+	Wentao Cai, wcai6@cs.rochester.edu
 ---
 Copyright & License
 ---
@@ -39,3 +40,5 @@ Notes
 	  show that these two features will significantly impact performance on
 	  some applications.
 
+Note from Wentao:
+The allocator is modified so that it is C11 complaint. Also, in order to avoid ABA problem, I use RTM instead of a tag so there are sufficient bits for pointers. RTM requires CPU newer than Haskell, suppose we are on Intel x86-64.
