@@ -19,10 +19,19 @@
 
 static void
 malloc_free_loop(int iters) {
+	int **p=malloc(iters*sizeof(int*));
+	int ret = 1;
 	for (int i = 0; i < iters; i++) {
-		void *p = malloc(1);
-		free(p);
+		p[i] = malloc(sizeof(int));
+		*p[i] = i;
+		ret=*p[i]+1;
+		if (i%100000==0) printf("%p: %d\n",p[i],*p[i]);
 	}
+	for(int i=0;i<iters;i++){
+		free(p[i]);
+	}
+	printf("final: %d\n", ret);
+	free(p);
 }
 
 // static void
