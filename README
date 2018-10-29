@@ -1,0 +1,41 @@
+This library is an implementation of Maged Michael's algorithms as presented in
+his 2004 PLDI paper, "Scalable Lock-Free Dynamic Memory Allocation".
+
+---
+Implementation contributors
+---
+	Scott Schneider, scschnei@cs.vt.edu
+	Christos Antonopoulos, cda@cs.wm.edu
+	Dimitrios Nikolopoulos, dsn@cs.vt.edu
+
+---
+Copyright & License
+---
+Copyright (C) 2007  Scott Schneider, Christos Antonopoulos 
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+The full license can be found at:
+http://www.gnu.org/copyleft/lesser.html
+
+---
+Notes
+---
+	- We have tried to faithfully implement Michael's allocator as he 
+	  described it in his PLDI 2004 paper. However, our implementation has 
+	  no page manager and performs no superblock caching. Our experiments 
+	  show that these two features will significantly impact performance on
+	  some applications.
+
