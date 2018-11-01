@@ -20,29 +20,18 @@
 #include <stdatomic.h>
 #include <immintrin.h> // RTM support (TSX)
 
-/* Note 10/22.
- * Descriptor has field Next for next available empty desc to allocate, and another
- * field queue_elem_t for linking partially used desc in size_class.
- *
- * What to do is:
- * 1. Ensure desc_alloc_list has no ABA, by checking the ptr
- *    we read which cannot be changed by any DescAlloc or DescRetire until we finish 
- *    writing. It can be done by hazard pointer and reserve the ptr in hp[0].
- *    Since original implementation doesn't give desc back once allocated, no 
- *    need to consider DescFree stuff (doesn't exist).
- * 2. Ensure the queue linking partially used desc in sc has no ABA, by checking
- *    the ptr we read which cannot be changed by any dequeue or enqueue until we finish
- *    writing. It can be done by hp and reserve ptr in hp[1].
-*/
-
-
 /*
- * lock-free fifo queue implementation with rcu tracker
+ * This implementation uses RTM to avoid ABA-problem in Partial queue and free desc
+ * linked list.
+ * The heaps are per-threaded, but according to the header of each allocated block, we
+ * are able to put them back to the list of their corresponding heap.
  */
+
+
 const unsigned int RETRY_MAX = 1024;
 
 static void lf_fifo_queue_init(lf_fifo_queue_t *queue);
-static int lf_fifo_enqueue(lf_fifo_queue_t *queue, void *element);
+static void lf_fifo_enqueue(lf_fifo_queue_t *queue, void *element);
 static void *lf_fifo_dequeue(lf_fifo_queue_t *queue);
 
 inline void lf_fifo_queue_init(lf_fifo_queue_t *queue)
@@ -74,7 +63,7 @@ inline void *lf_fifo_dequeue(lf_fifo_queue_t *queue)
 
 	uint64_t head;
 	uint64_t next;
-	unsigned int status;
+	unsigned int status = 0;
 	unsigned int retry = 0;
 	void* ret = NULL;
 
@@ -83,8 +72,7 @@ inline void *lf_fifo_dequeue(lf_fifo_queue_t *queue)
 		if ((status = _xbegin ()) == _XBEGIN_STARTED) {
 			head = queue->top;
 			if(head == 0){
-				_xabort (1);
-				break;
+				_xabort (1);//_XABORT_EXPLICIT bit in status will be set
 			}
 			next = (uint64_t)(((struct queue_elem_t *)head)->next);
 			queue->top = next;
@@ -94,18 +82,23 @@ inline void *lf_fifo_dequeue(lf_fifo_queue_t *queue)
 			FLUSHFENCE;
 			break;
 		} else {
-			if(retry++ < RETRY_MAX){
+			if(status & _XABORT_EXPLICIT) {
+				//explicitly aborted due to empty head
+				ret=NULL;
+				break;
+			}
+			else if(retry++ < RETRY_MAX){
 				continue;
 			} else{
-				ret = NULL;
-				break;
+				fprintf(stderr, "Warning: RTM retries too many times!\n");
+				continue;
 			}
 		}
 	}
 	return ret;
 }
 
-inline int lf_fifo_enqueue(lf_fifo_queue_t *queue, void *element)
+inline void lf_fifo_enqueue(lf_fifo_queue_t *queue, void *element)
 {
 	/* tag version of ABA-free enqueue
 	top_aba_t old_top;
@@ -124,9 +117,8 @@ inline int lf_fifo_enqueue(lf_fifo_queue_t *queue, void *element)
 	}
 	*/
 	uint64_t old_top;
-	unsigned int status;
+	unsigned int status = 0;
 	unsigned int retry = 0;
-	int ret = 1;
 	while(1){
 		FLUSHFENCE;//TODO: double check the correctness
 		if ((status = _xbegin ()) == _XBEGIN_STARTED) {
@@ -141,12 +133,12 @@ inline int lf_fifo_enqueue(lf_fifo_queue_t *queue, void *element)
 			if(retry++ < RETRY_MAX){
 				continue;
 			} else{
-				ret = 0;
-				break;
+				fprintf(stderr, "Warning: RTM retries too many times!\n");
+				continue;
 			}
 		}
 	}
-	return ret;
+	return;
 }
 
 
@@ -434,9 +426,8 @@ static descriptor* DescAlloc() {
 			if(retry++ < RETRY_MAX){
 				continue;
 			} else{
-				munmap((void*)new_sb, DESCSBSIZE);
-				desc = NULL;
-				break;//something goes wrong!
+				fprintf(stderr, "Warning: RTM retries too many times!\n");
+				continue;
 			}
 		}
 	}
