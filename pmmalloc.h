@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __MMALLOC_H__
-#define __MMALLOC_H__
+#ifndef __PMMALLOC_H__
+#define __PMMALLOC_H__
 
 #include <stdlib.h>
 #include <signal.h>

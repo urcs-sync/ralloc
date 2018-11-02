@@ -19,7 +19,7 @@
 
 extern "C" {
 
-#include "mmalloc.h"
+#include "pmmalloc.h"
 
 }
 

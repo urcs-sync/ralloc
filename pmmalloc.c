@@ -16,7 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "mmalloc.h"
+#include "pmmalloc.h"
 #include <stdatomic.h>
 #include <immintrin.h> // RTM support (TSX)
 
