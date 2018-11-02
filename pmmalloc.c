@@ -491,6 +491,8 @@ static void RemoveEmptyDesc(procheap* heap, descriptor* desc)
 		DescRetire(desc);
 	}
 	else {
+		FLUSH(&heap->Partial);//ensure the value we read already persist
+		FLUSHFENCE;
 		ListRemoveEmptyDesc(heap->sc);
 	}
 }
@@ -514,8 +516,9 @@ static void HeapPutPartial(descriptor* desc)
 {
 	descriptor* prev;
 	prev = (descriptor*)desc->heap->Partial; // casts away volatile
-	FLUSHFENCE;//TODO: double check the correctness
-	while (!atomic_compare_exchange_weak(&desc->heap->Partial, &prev, desc)){};
+	do{
+		FLUSHFENCE;
+	} while (!atomic_compare_exchange_weak(&desc->heap->Partial, &prev, desc));
 	FLUSH(&desc->heap->Partial);
 	FLUSHFENCE;
 	if (prev) {
@@ -542,7 +545,8 @@ static void UpdateActive(procheap* heap, descriptor* desc, uint64_t morecredits)
 		FLUSHFENCE;
 		return;
 	}
-
+	FLUSH(&heap->Active);//ensure the value we read already persist
+	FLUSHFENCE;
 	// Someone installed another active sb
 	// Return credits to sb and make it partial
 	oldanchor = desc->Anchor;
@@ -760,10 +764,13 @@ static void* MallocFromNewSB(procheap* heap)
 		*((descriptor **)addr) = desc; 
 		FLUSH(addr-TYPE_SIZE);
 		FLUSH(addr);//so that desc at the head of each block won't lose
+		FLUSHFENCE;
 		return (void *)((uint64_t)addr + PTR_SIZE);
 	} 
 	else {
 		//Free the superblock desc->sb.
+		FLUSH(&heap->Active);//ensure the value we read already persist
+		FLUSHFENCE;
 		munmap(desc->sb, desc->heap->sc->sbsize);
 		DescRetire(desc); 
 		return NULL;

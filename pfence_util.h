@@ -24,6 +24,7 @@
     #define FLUSHFENCE 
 #endif
 
+#define INSTRFENCE asm volatile ("" ::: "memory")
 
 /*
  * We copied the methods from Romulus:
