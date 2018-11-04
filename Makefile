@@ -7,15 +7,15 @@ CXX		= g++
 CLFLAGS		= -lpthread -lm -lstdc++ -std=c++11
 CFLAGS		= -D_GNU_SOURCE -D_REENTRANT #-DDEBUG
 
-OPT = -O0 -g #-DDEBUG
+OPT = -O3 -g #-DDEBUG
 CFLAGS += -Wall $(BITS) -fno-strict-aliasing $(FPIC) -mrtm
 
 # Rules
 .PHONY: all test
-all: libpmmalloc.so 
+all: libpmmalloc.a 
 
-test: libpmmalloc.so
-	$(CC) $(CFLAGS) $(OPT) hookbench.c libpmmalloc.so -o hookbench
+test: libpmmalloc.a
+	$(CC) $(CFLAGS) $(OPT) hookbench.c libpmmalloc.a -o hookbench
 
 .PHONY: clean
 clean:
@@ -27,6 +27,6 @@ pmmalloc.o: pmmalloc.h pmmalloc.c queue.h
 malloc_new.o: malloc_new.cpp pmmalloc.h
 	$(CXX) $(CFLAGS) $(OPT) -I. -c malloc_new.cpp -o malloc_new.o
 
-libpmmalloc.so: pmmalloc.o malloc_new.o
-	$(CXX) $(CLFLAGS) $(OPT) pmmalloc.o malloc_new.o -o libpmmalloc.so -shared
+libpmmalloc.a: pmmalloc.o malloc_new.o
+	ar rcs libpmmalloc.a pmmalloc.o 
 

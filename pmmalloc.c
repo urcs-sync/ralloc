@@ -953,11 +953,11 @@ void PM_free(void* ptr)
 	}
 }
 
-void *calloc(size_t nmemb, size_t size)
+void *PM_calloc(size_t nmemb, size_t size)
 {//not persistent!
 	void *ptr;
 	
-	ptr = malloc(nmemb*size);
+	ptr = PM_malloc(nmemb*size);
 	if (!ptr) {
 		return NULL;
 	}
@@ -965,18 +965,18 @@ void *calloc(size_t nmemb, size_t size)
 	return memset(ptr, 0, nmemb*size);
 }
 
-void *valloc(size_t size)
+void *PM_valloc(size_t size)
 {
 	fprintf(stderr, "valloc() called in libmaged. Not implemented. Exiting.\n");
 	fflush(stderr);
 	exit(1);
 }
 
-void *memalign(size_t boundary, size_t size)
+void *PM_memalign(size_t boundary, size_t size)
 {
 	void *p;
 
-	p = malloc((size + boundary - 1) & ~(boundary - 1));
+	p = PM_malloc((size + boundary - 1) & ~(boundary - 1));
 	if (!p) {
 		return NULL;
 	}
@@ -984,9 +984,9 @@ void *memalign(size_t boundary, size_t size)
 	return(void*)(((uint64_t)p + boundary - 1) & ~(boundary - 1)); 
 }
 
-int posix_memalign(void **memptr, size_t alignment, size_t size)
+int PM_posix_memalign(void **memptr, size_t alignment, size_t size)
 {
-	*memptr = memalign(alignment, size);
+	*memptr = PM_memalign(alignment, size);
 	if (*memptr) {
 		return 0;
 	}
@@ -996,24 +996,24 @@ int posix_memalign(void **memptr, size_t alignment, size_t size)
 	}
 }
 
-void *realloc(void *object, size_t size)
+void *PM_realloc(void *object, size_t size)
 {//not persistent!
 	descriptor* desc;
 	void* header;
 	void* ret;
 
 	if (object == NULL) {
-		return malloc(size);
+		return PM_malloc(size);
 	}
 	else if (size == 0) {
-		free(object);
+		PM_free(object);
 		return NULL;
 	}
 
 	header = (void*)((uint64_t)object - HEADER_SIZE);  
 
 	if (*((char*)header) == (char)LARGE) {
-		ret = malloc(size);
+		ret = PM_malloc(size);
 		memcpy(ret, object, *((uint64_t *)(header + TYPE_SIZE)));
 		munmap(object, *((uint64_t *)(header + TYPE_SIZE)));
 	}
@@ -1023,9 +1023,9 @@ void *realloc(void *object, size_t size)
 			ret = object;
 		}
 		else {
-			ret = malloc(size);
+			ret = PM_malloc(size);
 			memcpy(ret, object, desc->sz - HEADER_SIZE);
-			free(object);
+			PM_free(object);
 		}
 	}
 

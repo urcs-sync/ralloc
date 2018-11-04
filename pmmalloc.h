@@ -30,6 +30,11 @@
 #include "pfence_util.h"
 
 #include "queue.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct Descriptor;
 typedef struct Descriptor descriptor;
 struct Procheap;
@@ -97,6 +102,10 @@ struct Procheap {
 
 extern void* PM_malloc(size_t sz);
 extern void PM_free(void* ptr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* __MMALLOC_H__ */
 
