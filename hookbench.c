@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-
+#include "pmmalloc.h"
+#define p_malloc(sz) PM_malloc(sz)
+#define p_free(ptr) PM_free(ptr)
 // static void
 // noop_alloc_hook(void *extra, hook_alloc_t type, void *result,
 //     uintptr_t result_raw, uintptr_t args_raw[3]) {
@@ -19,19 +21,19 @@
 
 static void
 malloc_free_loop(int iters) {
-	int **p=malloc(iters*sizeof(int*));
+	int **p=p_malloc(iters*sizeof(int*));
 	int ret = 1;
 	for (int i = 0; i < iters; i++) {
-		p[i] = malloc(sizeof(int));
+		p[i] = p_malloc(sizeof(int));
 		*p[i] = i;
 		ret=*p[i]+1;
 		if (i%100000==0) printf("%p: %d\n",p[i],*p[i]);
 	}
 	for(int i=0;i<iters;i++){
-		free(p[i]);
+		p_free(p[i]);
 	}
 	printf("final: %d\n", ret);
-	free(p);
+	p_free(p);
 }
 
 // static void

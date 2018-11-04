@@ -824,7 +824,7 @@ static void* alloc_large_block(size_t sz)
 	return (void*)(addr + PTR_SIZE); 
 }
 
-void* malloc(size_t sz)
+void* PM_malloc(size_t sz)
 { 
 	procheap *heap;
 	void* addr;
@@ -874,7 +874,7 @@ void* malloc(size_t sz)
 	} 
 }
 
-void free(void* ptr) 
+void PM_free(void* ptr) 
 {
 	descriptor* desc;
 	void* sb;

@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2007	Scott Schneider, Christos Antonopoulos
  * 
- * This library is free software; you can redistribute it and/or
+ * This library is PM_free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
@@ -23,7 +23,7 @@ extern "C" {
 
 }
 
-/* following declarations are copied and pasted from jemalloc_cpp.cpp */
+/* following declarations are copied and pasted from jePM_malloc_cpp.cpp */
 void *operator new(std::size_t size);
 void *operator new[](std::size_t size);
 void *operator new(std::size_t size, const std::nothrow_t &) noexcept;
@@ -41,42 +41,42 @@ void operator delete[](void *ptr, std::size_t size) noexcept;
 
 void*
 operator new(std::size_t size) {
-	return malloc(size);
+	return PM_malloc(size);
 }
 
 void*
 operator new[](std::size_t size) {
-	return malloc(size);
+	return PM_malloc(size);
 }
 
 void* 
 operator new(size_t size, const std::nothrow_t &) noexcept {
-	return malloc(size);
+	return PM_malloc(size);
 }
 
 void*
 operator new[](size_t size, const std::nothrow_t &) noexcept {
-	return malloc(size);
+	return PM_malloc(size);
 }
 
 void
 operator delete(void *ptr) noexcept {
-	free(ptr);
+	PM_free(ptr);
 }
 
 void
 operator delete[](void *ptr) noexcept {
-	free(ptr);
+	PM_free(ptr);
 }
 
 void
 operator delete(void *ptr, const std::nothrow_t &) noexcept {
-	free(ptr);
+	PM_free(ptr);
 }
 
 void
 operator delete[](void *ptr, const std::nothrow_t &) noexcept {
-	free(ptr);
+	PM_free(ptr);
 }
 
 #if __cpp_sized_deallocation >= 201309

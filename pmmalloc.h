@@ -95,8 +95,8 @@ struct Procheap {
 	sizeclass*		sc;		// pointer to parent sizeclass
 };
 
-extern void* malloc(size_t sz);
-extern void free(void* ptr);
+extern void* PM_malloc(size_t sz);
+extern void PM_free(void* ptr);
 
 #endif	/* __MMALLOC_H__ */
 
