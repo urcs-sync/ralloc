@@ -84,6 +84,8 @@ inline void *lf_fifo_dequeue(lf_fifo_queue_t *queue)
 		} else {
 			if(status & _XABORT_EXPLICIT) {
 				//explicitly aborted due to empty head
+				FLUSH(&queue->top);
+				FLUSHFENCE;//this action is now ld_acq
 				ret=NULL;
 				break;
 			}
@@ -338,7 +340,7 @@ static void organize_desc_list(descriptor* start, uint64_t count, uint64_t strid
 	ptr += stride;
 	((descriptor*)ptr)->Next = NULL;
 	FLUSH(&((descriptor*)ptr)->Next);
-	// FLUSHFENCE;//TODO: double check if we need this
+	//fence can be done until start is published.
 }
 
 static void organize_list(void* start, uint64_t count, uint64_t stride)
@@ -400,7 +402,7 @@ static descriptor* DescAlloc() {
 			munmap((void*)desc, DESCSBSIZE);   
 		}
 		*/
-		FLUSHFENCE;//TODO: double check the correctness
+		FLUSHFENCE;
 		if ((status = _xbegin()) == _XBEGIN_STARTED) {
 			old_queue = queue_head;
 			if (old_queue.DescAvail) {
@@ -420,6 +422,7 @@ static descriptor* DescAlloc() {
 				_xend();
 				FLUSH(&new_queue);
 				FLUSH(&queue_head);
+				FLUSHFENCE;
 				break;
 			}
 		} else{
@@ -446,6 +449,7 @@ void DescRetire(descriptor* desc)
 	do {
 		desc->Next = (descriptor*)old_queue.DescAvail;
 		new_queue.DescAvail = (uint64_t)desc;
+		FLUSH(&desc->Next);
 		FLUSHFENCE;
 	} while (!atomic_compare_exchange_weak((volatile uint64_t*)&queue_head, ((uint64_t*)&old_queue), *((uint64_t*)&new_queue)));//it's ABA-safe to CAS without tag
 	FLUSH(&queue_head);
@@ -648,7 +652,8 @@ static void* MallocFromActive(procheap *heap)
 	addr += TYPE_SIZE;
 	*((descriptor**)addr) = desc; 
 	FLUSH(addr-TYPE_SIZE);
-	FLUSH(addr);//so that desc of each block won't lose
+	FLUSH(addr);
+	FLUSHFENCE;//so that type and desc of each block won't lose
 	return ((void*)((uint64_t)addr + PTR_SIZE));
 }
 
@@ -707,7 +712,8 @@ retry:
 	addr += TYPE_SIZE;
 	*((descriptor**)addr) = desc; 
 	FLUSH(addr-TYPE_SIZE);
-	FLUSH(addr);//so that desc at the head of each block won't lose
+	FLUSH(addr);
+	FLUSHFENCE;//so that type and desc at the head of each block won't lose
 	return ((void *)((uint64_t)addr + PTR_SIZE));
 }
 
@@ -796,6 +802,8 @@ static procheap* find_heap(size_t sz)
 		FLUSH(&heap->Partial);
 		FLUSH(&heap->sc);
 		heaps[sz / GRANULARITY] = heap;
+		FLUSH(&heaps[sz / GRANULARITY]);
+		FLUSHFENCE;//ensure all writes persist before getting used
 	}
 	
 	return heap;
@@ -811,7 +819,8 @@ static void* alloc_large_block(size_t sz)
 	addr += TYPE_SIZE;
 	*((uint64_t *)addr) = sz + HEADER_SIZE;
 	FLUSH(addr-TYPE_SIZE);
-	FLUSH(addr);//so that desc at the head of each block won't lose
+	FLUSH(addr);
+	FLUSHFENCE;//so that type and desc at the head of each block won't lose
 	return (void*)(addr + PTR_SIZE); 
 }
 
@@ -834,7 +843,6 @@ void* malloc(size_t sz)
 		fprintf(stderr, "Large block allocation: %p\n", addr);
 		fflush(stderr);
 #endif
-		FLUSHFENCE;
 		return addr;
 	}
 
@@ -845,7 +853,6 @@ void* malloc(size_t sz)
 			fprintf(stderr, "malloc() return MallocFromActive %p\n", addr);
 			fflush(stderr);
 #endif
-			FLUSHFENCE;
 			return addr;
 		}
 		addr = MallocFromPartial(heap);
@@ -854,7 +861,6 @@ void* malloc(size_t sz)
 			fprintf(stderr, "malloc() return MallocFromPartial %p\n", addr);
 			fflush(stderr);
 #endif
-			FLUSHFENCE;
 			return addr;
 		}
 		addr = MallocFromNewSB(heap);
@@ -863,7 +869,6 @@ void* malloc(size_t sz)
 			fprintf(stderr, "malloc() return MallocFromNewSB %p\n", addr);
 			fflush(stderr);
 #endif
-			FLUSHFENCE;
 			return addr;
 		}
 	} 
@@ -915,7 +920,7 @@ void free(void* ptr)
 
 		if (oldanchor.count == desc->maxcount - 1) {
 			heap = desc->heap;
-			// instruction fence.
+			INSTRFENCE;// instruction fence.
 #ifdef DEBUG
 			fprintf(stderr, "Marking superblock %p as EMPTY; count %d\n", sb, oldanchor.count);
 			fflush(stderr);
