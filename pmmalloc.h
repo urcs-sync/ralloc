@@ -44,8 +44,8 @@ typedef struct Procheap procheap;
 #define PTR_SIZE	sizeof(void*)
 #define HEADER_SIZE	(TYPE_SIZE + PTR_SIZE)
 
-#define LARGE		0
-#define SMALL		1
+#define LARGE		249
+#define SMALL		250
 
 #define	PAGESIZE	4096
 #define SBSIZE		(16 * PAGESIZE)
@@ -65,7 +65,7 @@ typedef struct Procheap procheap;
  * We instead use Hazard Pointer to protect it, so no tag is in need.
  */
 typedef struct {
-	uint64_t 	DescAvail:64;
+	__uint128_t 	DescAvail:64, tag:64;
 } descriptor_queue;
 
 /* Superblock descriptor structure. We bumped avail and count 

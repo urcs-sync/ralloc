@@ -8,7 +8,7 @@ CLFLAGS		= -lpthread -lm -lstdc++ -std=c++11
 CFLAGS		= -D_GNU_SOURCE -D_REENTRANT #-DDEBUG
 
 OPT = -O3 -g #-DDEBUG
-CFLAGS += -Wall $(BITS) -fno-strict-aliasing $(FPIC) -mrtm
+CFLAGS += -Wall $(BITS) -fno-strict-aliasing $(FPIC)
 
 # Rules
 .PHONY: all test

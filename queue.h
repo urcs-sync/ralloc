@@ -2,9 +2,9 @@
 #define __QUEUE_H_
 
 #include <stdint.h>
-// typedef struct {
-// 	volatile uint64_t top:64;
-// } top_aba_t;
+typedef struct {
+	volatile __uint128_t top:64, ocount:64;
+} top_aba_t;
 
 // Pseudostructure for lock-free list elements.
 // The only requirement is that the 5th-8th byte of
@@ -18,11 +18,11 @@ struct queue_elem_t {
 
 typedef struct {
 	uint64_t 	_pad0[8];
-	volatile uint64_t 	top;
+	top_aba_t	both;
 	uint64_t 	_pad1[8];
 } lf_fifo_queue_t;
 
-#define LF_FIFO_QUEUE_STATIC_INIT	{{0, 0, 0, 0, 0, 0, 0, 0}, 0, {0, 0, 0, 0, 0, 0, 0, 0}}
+#define LF_FIFO_QUEUE_STATIC_INIT	{{0, 0, 0, 0, 0, 0, 0, 0}, {0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}}
 
 /******************************************************************************/
 

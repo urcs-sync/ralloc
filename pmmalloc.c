@@ -18,15 +18,37 @@
 
 #include "pmmalloc.h"
 #include <stdatomic.h>
-#include <immintrin.h> // RTM support (TSX)
 
 /*
- * This implementation uses RTM to avoid ABA-problem in Partial queue and free desc
+ * This implementation uses CAS-16B to avoid ABA-problem in Partial queue and free desc
  * linked list.
  * The heaps are per-threaded, but according to the header of each allocated block, we
  * are able to put them back to the list of their corresponding heap.
  */
-
+#if (__x86_64__ || __ppc64__)
+inline static int _WideCAS(volatile __uint128_t *obj, __uint128_t old_value, 
+	__uint128_t new_value, memory_order morder) {
+	int ret;
+	uint64_t* old_v = (uint64_t*)&old_value;
+	uint64_t* new_v = (uint64_t*)&new_value;
+	__asm__ __volatile__(
+	"lock cmpxchg16b %1;\n"
+	"sete %0;\n"
+	:"=m"(ret),"+m" (*obj)
+	:"a" (old_v[0]), "d" (old_v[1]), "b" (new_v[0]), "c" (new_v[1]));
+	atomic_thread_fence(morder);
+	return ret;
+}
+#else
+inline static int _WideCAS(volatile __uint128_t *obj, __uint128_t old_value, 
+	__uint128_t new_value, memory_order morder) {
+	errexit("WCAS not supported with -m32.");
+}
+#endif
+inline static int WideCAS(volatile __uint128_t *obj, __uint128_t old_value, 
+	__uint128_t new_value) {
+	return _WideCAS(obj, old_value, new_value, memory_order_seq_cst); 
+}
 
 const unsigned int RETRY_MAX = 1024;
 
@@ -36,65 +58,30 @@ static void *lf_fifo_dequeue(lf_fifo_queue_t *queue);
 
 inline void lf_fifo_queue_init(lf_fifo_queue_t *queue)
 {
-	queue->top = 0;
+	queue->both.top = 0;
+	queue->both.ocount = 0;
 }
 
 inline void *lf_fifo_dequeue(lf_fifo_queue_t *queue)
 {
-	/* Tag version of ABA-free dequeue
 	top_aba_t head;
 	top_aba_t next;
 	void* ret = NULL;
 
-	head.top = queue->both.top;
-	head.top = queue->both.top;
 	while(1) {
+		head.top = queue->both.top;
+		head.ocount = queue->both.ocount;
 		if (head.top == 0) {
 			break;
 		}
 		next.top = (uint64_t)(((struct queue_elem_t *)head.top)->next);
 		next.ocount = head.ocount + 1;
-		if (atomic_compare_exchange_weak((volatile uint64_t *)&(queue->both), ((uint64_t*)&head), *((uint64_t*)&next))) {
-			ret = ((void *)head.top);
-			break;
-		}
-	}
-	*/
-
-	uint64_t head;
-	uint64_t next;
-	unsigned int status = 0;
-	unsigned int retry = 0;
-	void* ret = NULL;
-
-	while(1){
-		FLUSHFENCE;//TODO: double check the correctness
-		if ((status = _xbegin ()) == _XBEGIN_STARTED) {
-			head = queue->top;
-			if(head == 0){
-				_xabort (1);//_XABORT_EXPLICIT bit in status will be set
-			}
-			next = (uint64_t)(((struct queue_elem_t *)head)->next);
-			queue->top = next;
-			ret = (void*)head;
-			_xend ();
-			FLUSH(&queue->top);
+		FLUSHFENCE;
+		if (WideCAS((volatile __uint128_t *)&(queue->both), *((__uint128_t*)&head), *((__uint128_t*)&next))) {
+			FLUSH(&queue->both);
 			FLUSHFENCE;
+			ret = (void *)head.top;
 			break;
-		} else {
-			if(status & _XABORT_EXPLICIT) {
-				//explicitly aborted due to empty head
-				FLUSH(&queue->top);
-				FLUSHFENCE;//this action is now ld_acq
-				ret=NULL;
-				break;
-			}
-			else if(retry++ < RETRY_MAX){
-				continue;
-			} else{
-				fprintf(stderr, "Warning: RTM retries too many times!\n");
-				continue;
-			}
 		}
 	}
 	return ret;
@@ -102,42 +89,20 @@ inline void *lf_fifo_dequeue(lf_fifo_queue_t *queue)
 
 inline void lf_fifo_enqueue(lf_fifo_queue_t *queue, void *element)
 {
-	/* tag version of ABA-free enqueue
 	top_aba_t old_top;
 	top_aba_t new_top;
 
-	old_top.ocount = queue->both.ocount;
-	old_top.top = queue->both.top;
 	while(1) {
-
+		old_top.ocount = queue->both.ocount;
+		old_top.top = queue->both.top;
 		((struct queue_elem_t *)element)->next = (struct queue_elem_t *)old_top.top;
 		new_top.top = (uint64_t)element;
 		new_top.ocount = old_top.ocount + 1;
-		if (atomic_compare_exchange_weak((volatile uint64_t *)&(queue->both), ((uint64_t*)&old_top), *((uint64_t*)&new_top))) {
-			return 0;
-		}
-	}
-	*/
-	uint64_t old_top;
-	unsigned int status = 0;
-	unsigned int retry = 0;
-	while(1){
-		FLUSHFENCE;//TODO: double check the correctness
-		if ((status = _xbegin ()) == _XBEGIN_STARTED) {
-			old_top = queue->top;
-			((struct queue_elem_t *)element)->next = (struct queue_elem_t *)old_top;
-			queue->top = (uint64_t)element;
-			_xend ();
-			FLUSH(&queue->top);
+		FLUSHFENCE;
+		if (WideCAS((volatile __uint128_t *)&(queue->both), *((__uint128_t*)&old_top), *((__uint128_t*)& new_top))) {
+			FLUSH(&queue->both);
 			FLUSHFENCE;
 			break;
-		} else {
-			if(retry++ < RETRY_MAX){
-				continue;
-			} else{
-				fprintf(stderr, "Warning: RTM retries too many times!\n");
-				continue;
-			}
 		}
 	}
 	return;
@@ -354,30 +319,28 @@ static void organize_list(void* start, uint64_t count, uint64_t stride)
 		*((uint64_t*)ptr) = i + 1;
 		FLUSH((uint64_t*)ptr);
 	}
-	// FLUSHFENCE();//TODO: double check if we need this
 }
 
 static descriptor* DescAlloc() {
   
 	descriptor_queue old_queue, new_queue;
 	descriptor* desc;
-	unsigned int status;
-	unsigned int retry = 0;
 
 #ifdef DEBUG
 	fprintf(stderr, "In DescAlloc\n");
 	fflush(stderr);
 #endif
 
-	descriptor* new_sb = AllocNewSB(DESCSBSIZE, sizeof(descriptor));
-	organize_desc_list((void *)new_sb, DESCSBSIZE / sizeof(descriptor), sizeof(descriptor));
 	while(1) {
-		/* tag version of ABA-free solution
+		//tag version of ABA-free solution
 		old_queue = queue_head;
 		if (old_queue.DescAvail) {
 			new_queue.DescAvail = (uint64_t)((descriptor*)old_queue.DescAvail)->Next;
 			new_queue.tag = old_queue.tag + 1;
-			if (atomic_compare_exchange_weak((volatile uint64_t*)&queue_head, ((uint64_t*)&old_queue), *((uint64_t*)&new_queue))) {
+			FLUSHFENCE;
+			if (WideCAS((volatile __uint128_t *)&queue_head, *((__uint128_t*)&old_queue), *((__uint128_t*)&new_queue))) {
+				FLUSH(&queue_head);
+				FLUSHFENCE;
 				desc = (descriptor*)old_queue.DescAvail;
 #ifdef DEBUG
 				fprintf(stderr, "Returning recycled descriptor %p (tag %hu)\n", desc, queue_head.tag);
@@ -392,7 +355,10 @@ static descriptor* DescAlloc() {
 
 			new_queue.DescAvail = (uint64_t)desc->Next;
 			new_queue.tag = old_queue.tag + 1;
-			if (atomic_compare_exchange_weak((volatile uint64_t*)&queue_head, ((uint64_t*)&old_queue), *((uint64_t*)&new_queue))) {
+			FLUSHFENCE;
+			if (WideCAS((volatile __uint128_t *)&queue_head,*((__uint128_t*)&old_queue), *((__uint128_t*)&new_queue))) {
+				FLUSH(&queue_head);
+				FLUSHFENCE;
 #ifdef DEBUG
 				fprintf(stderr, "Returning descriptor %p from new descriptor block\n", desc);
 				fflush(stderr);
@@ -400,38 +366,6 @@ static descriptor* DescAlloc() {
 				break;
 			}
 			munmap((void*)desc, DESCSBSIZE);   
-		}
-		*/
-		FLUSHFENCE;
-		if ((status = _xbegin()) == _XBEGIN_STARTED) {
-			old_queue = queue_head;
-			if (old_queue.DescAvail) {
-				new_queue.DescAvail = (uint64_t)((descriptor*)old_queue.DescAvail)->Next;
-				queue_head = new_queue;
-				desc = (descriptor*)old_queue.DescAvail;
-				_xend();
-				FLUSH(&new_queue);
-				FLUSH(&queue_head);
-				FLUSHFENCE;
-				munmap((void*)new_sb, DESCSBSIZE);//don't need new_sb so munmap it.
-				break;
-			} else {
-				desc = new_sb;
-				new_queue.DescAvail = (uint64_t)desc->Next;
-				queue_head = new_queue;
-				_xend();
-				FLUSH(&new_queue);
-				FLUSH(&queue_head);
-				FLUSHFENCE;
-				break;
-			}
-		} else{
-			if(retry++ < RETRY_MAX){
-				continue;
-			} else{
-				fprintf(stderr, "Warning: RTM retries too many times!\n");
-				continue;
-			}
 		}
 	}
 	return desc;
@@ -445,13 +379,14 @@ void DescRetire(descriptor* desc)
 	fprintf(stderr, "Recycling descriptor %p (sb %p)\n", desc, desc->sb);
 	fflush(stderr);
 #endif  
-	old_queue = queue_head;//atomic_compare_exchange_weak updates old_queue on failure of CAS
 	do {
+		old_queue = queue_head;
 		desc->Next = (descriptor*)old_queue.DescAvail;
-		new_queue.DescAvail = (uint64_t)desc;
 		FLUSH(&desc->Next);
+		new_queue.DescAvail = (uint64_t)desc;
+		new_queue.tag = old_queue.tag + 1;
 		FLUSHFENCE;
-	} while (!atomic_compare_exchange_weak((volatile uint64_t*)&queue_head, ((uint64_t*)&old_queue), *((uint64_t*)&new_queue)));//it's ABA-safe to CAS without tag
+	} while (!WideCAS((volatile __uint128_t *)&queue_head, *((__uint128_t*)&old_queue), *((__uint128_t*)&new_queue)));
 	FLUSH(&queue_head);
 	FLUSHFENCE;
 }
