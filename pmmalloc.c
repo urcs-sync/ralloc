@@ -18,7 +18,7 @@
 
 #include "pmmalloc.h"
 #include <stdatomic.h>
-
+static int init_flag = 0;// a flag to indicate whether the library has been init.
 /*
  * This implementation uses CAS-16B to avoid ABA-problem in Partial queue and free desc
  * linked list.
@@ -51,37 +51,49 @@ inline static int WideCAS(volatile __uint128_t *obj, __uint128_t old_value,
 }
 
 const unsigned int RETRY_MAX = 1024;
-
-static void lf_fifo_queue_init(lf_fifo_queue_t *queue);
+static void lf_fifo_init(lf_fifo_queue_t *queue);
 static void lf_fifo_enqueue(lf_fifo_queue_t *queue, void *element);
 static void *lf_fifo_dequeue(lf_fifo_queue_t *queue);
 
-inline void lf_fifo_queue_init(lf_fifo_queue_t *queue)
-{
-	queue->both.top = 0;
-	queue->both.ocount = 0;
-}
+inline void lf_fifo_init(lf_fifo_queue_t *queue){
+	queue->dummy.next.ptr = 0;
+	queue->dummy.next.ocount = 0;
+	queue->head.ptr = (uint64_t)&queue->dummy;
+	queue->head.ocount = 0;
+	queue->tail.ptr = queue->head.ptr;
+	queue->tail.ocount = queue->head.ocount;
+	FLUSH(queue);
 
+}
 inline void *lf_fifo_dequeue(lf_fifo_queue_t *queue)
 {
-	top_aba_t head;
-	top_aba_t next;
+	//TODO: make it persistent
+	aba_t head;
+	aba_t tail;
+	aba_t next;
 	void* ret = NULL;
 
 	while(1) {
-		head.top = queue->both.top;
-		head.ocount = queue->both.ocount;
-		if (head.top == 0) {
-			break;
-		}
-		next.top = (uint64_t)(((struct queue_elem_t *)head.top)->next);
-		next.ocount = head.ocount + 1;
-		FLUSHFENCE;
-		if (WideCAS((volatile __uint128_t *)&(queue->both), *((__uint128_t*)&head), *((__uint128_t*)&next))) {
-			FLUSH(&queue->both);
-			FLUSHFENCE;
-			ret = (void *)head.top;
-			break;
+		head = queue->head;
+		tail = queue->tail;
+		next = ((struct queue_elem_t*)head.ptr)->next;
+		if(*((__uint128_t*)&head) == *((volatile __uint128_t*)&queue->head)){//check if head, tail and next are still consistent
+			if(head.ptr == tail.ptr){//queue is empty or tail falls behind
+				if(next.ptr == 0){
+					ret = NULL;
+					break;
+				} else{
+					next.ocount = tail.ocount+1;
+					WideCAS((volatile __uint128_t *)&queue->tail, 
+						*((__uint128_t*)&tail), *((__uint128_t*)&next));
+				}
+			} else{//no need to consider tail
+				ret = (void*)next.ptr;
+				next.ocount = head.ocount+1;
+				if(WideCAS((volatile __uint128_t *)&queue->head, 
+					*((__uint128_t*)&head), *((__uint128_t*)&next)))
+					break;
+			}
 		}
 	}
 	return ret;
@@ -89,30 +101,38 @@ inline void *lf_fifo_dequeue(lf_fifo_queue_t *queue)
 
 inline void lf_fifo_enqueue(lf_fifo_queue_t *queue, void *element)
 {
-	top_aba_t old_top;
-	top_aba_t new_top;
+	//TODO: make it persistent
+	aba_t tail;
+	aba_t last_node;
+	aba_t new_node;
+	new_node.ptr = (uint64_t)element;
 
 	while(1) {
-		old_top.ocount = queue->both.ocount;
-		old_top.top = queue->both.top;
-		((struct queue_elem_t *)element)->next = (struct queue_elem_t *)old_top.top;
-		new_top.top = (uint64_t)element;
-		new_top.ocount = old_top.ocount + 1;
-		FLUSHFENCE;
-		if (WideCAS((volatile __uint128_t *)&(queue->both), *((__uint128_t*)&old_top), *((__uint128_t*)& new_top))) {
-			FLUSH(&queue->both);
-			FLUSHFENCE;
-			break;
+		tail = queue->tail;
+		last_node = ((struct queue_elem_t*)tail.ptr)->next;
+		if(*((__uint128_t*)&tail) == *((volatile __uint128_t*)&queue->tail)) {//check if tail and last_node are still consistent
+			if(last_node.ptr == 0){//check if tail points to the real last node
+				new_node.ocount = last_node.ocount + 1;
+				if(WideCAS((volatile __uint128_t *)&((struct queue_elem_t*)tail.ptr)->next,
+					*((__uint128_t*)&last_node), *((__uint128_t*)&new_node))){
+					break;
+				}
+			} else{//ok tail doesn't point to the real last node
+				aba_t new_tail;
+				new_tail.ptr = last_node.ptr;
+				new_tail.ocount = tail.ocount+1;
+				WideCAS((volatile __uint128_t *)&queue->tail, 
+					*((__uint128_t*)&tail), *((__uint128_t*)&new_tail));
+			}
 		}
-	}
+	} 
+	new_node.ocount = tail.ocount+1;
+	WideCAS((volatile __uint128_t *)&queue->tail, *((__uint128_t*)&tail), *((__uint128_t*)&new_node));
 	return;
 }
 
 
-
-
-/* This is large and annoying, but it saves us from needing an 
- * initialization routine. */
+/* This is large and annoying, and we still need to call initialization routine*/
 sizeclass sizeclasses[2048 / GRANULARITY] =
 				{
 				{LF_FIFO_QUEUE_STATIC_INIT, 8, SBSIZE}, {LF_FIFO_QUEUE_STATIC_INIT, 16, SBSIZE},
@@ -244,6 +264,17 @@ sizeclass sizeclasses[2048 / GRANULARITY] =
 				{LF_FIFO_QUEUE_STATIC_INIT, 2024, SBSIZE}, {LF_FIFO_QUEUE_STATIC_INIT, 2032, SBSIZE},
 				{LF_FIFO_QUEUE_STATIC_INIT, 2040, SBSIZE}, {LF_FIFO_QUEUE_STATIC_INIT, 2048, SBSIZE},
 				};
+
+static inline void sizeclass_init(){
+	int i = 0;
+	for(;i<2048 / GRANULARITY;i++){
+		lf_fifo_init(&sizeclasses[i].Partial);
+	}
+}
+
+static inline void pm_init(){
+	sizeclass_init();
+}
 
 __thread procheap* heaps[2048 / GRANULARITY] =	{ };
 
@@ -395,6 +426,7 @@ static void ListRemoveEmptyDesc(sizeclass* sc)
 {//TODO: is it necessary?
 	descriptor *desc;
 	lf_fifo_queue_t temp = LF_FIFO_QUEUE_STATIC_INIT;
+	lf_fifo_init(&temp);
 
 	while ((desc = (descriptor *)lf_fifo_dequeue(&sc->Partial))) {
 		lf_fifo_enqueue(&temp, (void *)desc);
@@ -763,7 +795,22 @@ void* PM_malloc(size_t sz)
 { 
 	procheap *heap;
 	void* addr;
-
+	while(init_flag == 0){
+		//the library isn't init
+		int zero = 0;
+		FLUSHFENCE;
+		if(atomic_compare_exchange_weak(&init_flag,&zero,1)){
+			//only one will succeed CASing it to 1
+			pm_init();
+			FLUSH(&init_flag);
+			FLUSHFENCE;
+#ifdef DEBUG
+			fprintf(stderr, "pm library is initialized!\n");
+			fflush(stderr);
+#endif
+			break;
+		}
+	}
 #ifdef DEBUG
 	fprintf(stderr, "malloc() sz %lu\n", sz);
 	fflush(stderr);
@@ -815,7 +862,22 @@ void PM_free(void* ptr)
 	void* sb;
 	anchor oldanchor, newanchor;
 	procheap* heap = NULL;
-
+	while(init_flag == 0){
+		//the library isn't init
+		int zero = 0;
+		FLUSHFENCE;
+		if(atomic_compare_exchange_weak(&init_flag,&zero,1)){
+			//only one will succeed CASing it to 1
+			pm_init();
+			FLUSH(&init_flag);
+			FLUSHFENCE;
+#ifdef DEBUG
+			fprintf(stderr, "pm library is initialized!\n");
+			fflush(stderr);
+#endif
+			break;
+		}
+	}
 #ifdef DEBUG
 	fprintf(stderr, "Calling my free %p\n", ptr);
 	fflush(stderr);

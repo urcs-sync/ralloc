@@ -59,10 +59,10 @@ typedef struct Procheap procheap;
 #define	MAXCREDITS	64 // 2^(bits for credits in active)
 #define GRANULARITY	8
 
-/* We need to squeeze this in 64-bits, but conceptually
+/* We need double 64-bits, but conceptually
  * this is the case:
  *	descriptor* DescAvail;
- * We instead use Hazard Pointer to protect it, so no tag is in need.
+ * 
  */
 typedef struct {
 	__uint128_t 	DescAvail:64, tag:64;

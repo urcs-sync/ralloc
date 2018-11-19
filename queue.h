@@ -3,26 +3,29 @@
 
 #include <stdint.h>
 typedef struct {
-	volatile __uint128_t top:64, ocount:64;
-} top_aba_t;
+	__uint128_t ptr:64, ocount:64;
+} aba_t;
 
 // Pseudostructure for lock-free list elements.
-// The only requirement is that the 5th-8th byte of
+// The only requirement is that the 1st-8th byte of
 // each element should be available to be used as
 // the pointer for the implementation of a singly-linked
 // list. 
 struct queue_elem_t {
-	char 				*_dummy;
-	volatile struct queue_elem_t 	*next;
+	volatile aba_t next;
 };
 
+// Wentao: I don't understand why the original author put pad here. 
+// I will just treat them as padding to avoid false-sharing so 
+// I make them 32B in total.
 typedef struct {
-	uint64_t 	_pad0[8];
-	top_aba_t	both;
-	uint64_t 	_pad1[8];
+	struct queue_elem_t dummy;
+	volatile aba_t		head;
+	volatile aba_t 		tail;
+	uint64_t 	_pad[3];
 } lf_fifo_queue_t;
 
-#define LF_FIFO_QUEUE_STATIC_INIT	{{0, 0, 0, 0, 0, 0, 0, 0}, {0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}}
+#define LF_FIFO_QUEUE_STATIC_INIT	{{{0, 0}}, {0, 0}, {0,0}, {0,0,0}}
 
 /******************************************************************************/
 
