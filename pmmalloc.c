@@ -76,7 +76,7 @@ inline void *lf_fifo_dequeue(lf_fifo_queue_t *queue)
 	while(1) {
 		head = queue->head;
 		tail = queue->tail;
-		next = ((struct queue_elem_t*)head.ptr)->next;
+		next.ptr = ((struct queue_elem_t*)head.ptr)->next.ptr;
 		if(*((__uint128_t*)&head) == *((volatile __uint128_t*)&queue->head)){//check if head, tail and next are still consistent
 			if(head.ptr == tail.ptr){//queue is empty or tail falls behind
 				if(next.ptr == 0){
@@ -88,10 +88,10 @@ inline void *lf_fifo_dequeue(lf_fifo_queue_t *queue)
 						*((__uint128_t*)&tail), *((__uint128_t*)&next));
 				}
 			} else{//no need to consider tail
-				ret = (void*)next.ptr;
 				next.ocount = head.ocount+1;
 				if(WideCAS((volatile __uint128_t *)&queue->head, 
 					*((__uint128_t*)&head), *((__uint128_t*)&next)))
+					ret = (void*)next.ptr;
 					break;
 			}
 		}
