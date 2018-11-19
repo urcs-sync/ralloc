@@ -105,6 +105,8 @@ inline void lf_fifo_enqueue(lf_fifo_queue_t *queue, void *element)
 	aba_t tail;
 	aba_t last_node;
 	aba_t new_node;
+	((struct queue_elem_t *)element)->next.ptr = 0;
+	((struct queue_elem_t *)element)->next.ocount = 0;
 	new_node.ptr = (uint64_t)element;
 
 	while(1) {
@@ -117,7 +119,7 @@ inline void lf_fifo_enqueue(lf_fifo_queue_t *queue, void *element)
 					*((__uint128_t*)&last_node), *((__uint128_t*)&new_node))){
 					break;
 				}
-			} else{//ok tail doesn't point to the real last node
+			} else{//tail doesn't point to the real last node, try to fix
 				aba_t new_tail;
 				new_tail.ptr = last_node.ptr;
 				new_tail.ocount = tail.ocount+1;
