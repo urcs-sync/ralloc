@@ -90,9 +90,10 @@ inline void *lf_fifo_dequeue(lf_fifo_queue_t *queue)
 			} else{//no need to consider tail
 				next.ocount = head.ocount+1;
 				if(WideCAS((volatile __uint128_t *)&queue->head, 
-					*((__uint128_t*)&head), *((__uint128_t*)&next)))
-					ret = (void*)next.ptr;
-					break;
+					*((__uint128_t*)&head), *((__uint128_t*)&next))){
+						ret = (void*)next.ptr;
+						break;
+				}
 			}
 		}
 	}
