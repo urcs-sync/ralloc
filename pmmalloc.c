@@ -50,12 +50,12 @@ inline static int WideCAS(volatile __uint128_t *obj, __uint128_t old_value,
 	return _WideCAS(obj, old_value, new_value, memory_order_seq_cst); 
 }
 
-const unsigned int RETRY_MAX = 1024;
 static void lf_fifo_init(lf_fifo_queue_t *queue);
 static void lf_fifo_enqueue(lf_fifo_queue_t *queue, void *element);
 static void *lf_fifo_dequeue(lf_fifo_queue_t *queue);
 
 inline void lf_fifo_init(lf_fifo_queue_t *queue){
+	queue->has_dummy = 1;
 	queue->dummy.next.ptr = 0;
 	queue->dummy.next.ocount = 0;
 	queue->head.ptr = (uint64_t)&queue->dummy;
@@ -72,32 +72,47 @@ inline void *lf_fifo_dequeue(lf_fifo_queue_t *queue)
 	aba_t tail;
 	aba_t next;
 	void* ret = NULL;
-
-	while(1) {
-		head = queue->head;
-		tail = queue->tail;
-		next.ptr = ((struct queue_elem_t*)head.ptr)->next.ptr;
-		if(*((__uint128_t*)&head) == *((volatile __uint128_t*)&queue->head)){//check if head, tail and next are still consistent
-			if(head.ptr == tail.ptr){//queue is empty or tail falls behind
-				if(next.ptr == 0){
-					ret = NULL;
-					break;
-				} else{
+	while(1) {//retry
+		while(1) {
+			head = queue->head;
+			tail = queue->tail;
+			next.ptr = ((struct queue_elem_t*)head.ptr)->next.ptr;
+			if(*((__uint128_t*)&head) == *((volatile __uint128_t*)&queue->head)){//check if head, tail and next are still consistent
+				if(head.ptr == tail.ptr){//queue is empty or tail falls behind
+					if(next.ptr == 0){
+						if(head.ptr != (uint64_t)&queue->dummy){
+							uint64_t zero=0;
+							if(atomic_compare_exchange_weak(&queue->has_dummy,&zero,1)){
+								lf_fifo_enqueue(queue, &queue->dummy);
+								continue;
+							}
+						}
+						return NULL;
+					}
 					next.ocount = tail.ocount+1;
 					WideCAS((volatile __uint128_t *)&queue->tail, 
-						*((__uint128_t*)&tail), *((__uint128_t*)&next));
-				}
-			} else{//no need to consider tail
-				next.ocount = head.ocount+1;
-				if(WideCAS((volatile __uint128_t *)&queue->head, 
-					*((__uint128_t*)&head), *((__uint128_t*)&next))){
-						ret = (void*)next.ptr;
-						break;
+							*((__uint128_t*)&tail), *((__uint128_t*)&next));
+				} else{//no need to consider tail
+					next.ocount = head.ocount+1;
+					if(WideCAS((volatile __uint128_t *)&queue->head, 
+						*((__uint128_t*)&head), *((__uint128_t*)&next))){
+							ret = (void*)head.ptr;
+							break;
+					}
 				}
 			}
 		}
+		if(head.ptr == (uint64_t)&queue->dummy){
+			queue->has_dummy = 0;
+			uint64_t zero=0;
+			if(atomic_compare_exchange_weak(&queue->has_dummy,&zero,1)){
+				lf_fifo_enqueue(queue, &queue->dummy);
+				continue;//aka got retry
+			}
+			return NULL;
+		}
+		return ret;
 	}
-	return ret;
 }
 
 inline void lf_fifo_enqueue(lf_fifo_queue_t *queue, void *element)
