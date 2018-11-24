@@ -443,21 +443,16 @@ void DescRetire(descriptor* desc)
 static void ListRemoveEmptyDesc(sizeclass* sc)
 {//TODO: is it necessary?
 	descriptor *desc;
-	lf_fifo_queue_t temp = LF_FIFO_QUEUE_STATIC_INIT;
-	lf_fifo_init(&temp);
+	int num_non_empty = 0;
 
 	while ((desc = (descriptor *)lf_fifo_dequeue(&sc->Partial))) {
-		lf_fifo_enqueue(&temp, (void *)desc);
 		if (desc->sb == NULL) {
 			DescRetire(desc);
 		}
 		else {
-			break;
+			lf_fifo_enqueue(&sc->Partial, (void *)desc);
+			if (++num_non_empty >= 2) break;
 		}
-	}
-
-	while ((desc = (descriptor *)lf_fifo_dequeue(&temp))) {
-		lf_fifo_enqueue(&sc->Partial, (void *)desc);
 	}
 }
 
