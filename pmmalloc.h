@@ -44,8 +44,8 @@ typedef struct Procheap procheap;
 #define PTR_SIZE	sizeof(void*)
 #define HEADER_SIZE	(TYPE_SIZE + PTR_SIZE)
 
-#define LARGE		249
-#define SMALL		250
+#define LARGE		120
+#define SMALL		121
 
 #define	PAGESIZE	4096
 #define SBSIZE		(16 * PAGESIZE)

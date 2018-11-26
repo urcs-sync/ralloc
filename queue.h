@@ -19,7 +19,7 @@ struct queue_elem_t {
 // I will just treat them as padding to avoid false-sharing so 
 // I make them 32B in total.
 typedef struct {
-	uint64_t has_dummy;
+	volatile uint64_t has_dummy;
 	struct queue_elem_t dummy;
 	volatile aba_t		head;
 	volatile aba_t 		tail;

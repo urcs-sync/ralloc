@@ -15,7 +15,7 @@ CFLAGS += -Wall $(BITS) -fno-strict-aliasing $(FPIC)
 all: libpmmalloc.a 
 
 test: libpmmalloc.a
-	$(CC) $(CFLAGS) $(OPT) hookbench.c libpmmalloc.a -o hookbench
+	$(CC) $(CFLAGS) $(OPT) hookbench.c libpmmalloc.a -lpthread -o hookbench
 
 .PHONY: clean
 clean:

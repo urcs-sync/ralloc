@@ -77,15 +77,17 @@ inline void *lf_fifo_dequeue(lf_fifo_queue_t *queue)
 			head = queue->head;
 			tail = queue->tail;
 			next.ptr = ((struct queue_elem_t*)head.ptr)->next.ptr;
+			FLUSHFENCE;
 			if(*((__uint128_t*)&head) == *((volatile __uint128_t*)&queue->head)){//check if head, tail and next are still consistent
 				if(head.ptr == tail.ptr){//queue is empty or tail falls behind
-					if(next.ptr == 0){
-						if(head.ptr != (uint64_t)&queue->dummy){
+					if(next.ptr == 0){//only one node there
+						if(head.ptr != (uint64_t)&queue->dummy){//the only node isn't dummy
 							uint64_t zero=0;
-							if(atomic_compare_exchange_weak(&queue->has_dummy,&zero,1)){
+							//so there's no dummy. insert one first
+							if(atomic_compare_exchange_strong(&queue->has_dummy,&zero,1)){
 								lf_fifo_enqueue(queue, &queue->dummy);
-								continue;
 							}
+							continue;
 						}
 						return NULL;
 					}
@@ -102,14 +104,15 @@ inline void *lf_fifo_dequeue(lf_fifo_queue_t *queue)
 				}
 			}
 		}
-		if(head.ptr == (uint64_t)&queue->dummy){
+		((struct queue_elem_t*)head.ptr)->next.ptr = 0;//unpoison the detached node
+		if(head.ptr == (uint64_t)&queue->dummy){//the removed one is dummy
 			queue->has_dummy = 0;
+			FLUSHFENCE;
 			uint64_t zero=0;
-			if(atomic_compare_exchange_weak(&queue->has_dummy,&zero,1)){
+			if(atomic_compare_exchange_strong(&queue->has_dummy,&zero,1)){
 				lf_fifo_enqueue(queue, &queue->dummy);
-				continue;//aka got retry
 			}
-			return NULL;
+			continue;//aka goto retry
 		}
 		return ret;
 	}
@@ -143,7 +146,7 @@ inline void lf_fifo_enqueue(lf_fifo_queue_t *queue, void *element)
 					*((__uint128_t*)&tail), *((__uint128_t*)&new_tail));
 			}
 		}
-	} 
+	}
 	new_node.ocount = tail.ocount+1;
 	WideCAS((volatile __uint128_t *)&queue->tail, *((__uint128_t*)&tail), *((__uint128_t*)&new_node));
 	return;
@@ -441,7 +444,7 @@ void DescRetire(descriptor* desc)
 }
 
 static void ListRemoveEmptyDesc(sizeclass* sc)
-{//TODO: is it necessary?
+{//TODO: double check the correctness
 	descriptor *desc;
 	int num_non_empty = 0;
 
@@ -900,6 +903,10 @@ void PM_free(void* ptr)
 		return;
 	}
 	
+	if(*((char*)((uint64_t)ptr - HEADER_SIZE)) != (char)LARGE && *((char*)((uint64_t)ptr - HEADER_SIZE)) != (char)SMALL) {//this block wasn't allocated by pmmalloc, call regular free by default.
+		free(ptr);
+		return;
+	}
 	// get prefix
 	ptr = (void*)((uint64_t)ptr - HEADER_SIZE);  
 	if (*((char*)ptr) == (char)LARGE) {
