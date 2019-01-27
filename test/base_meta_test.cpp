@@ -12,6 +12,8 @@ int main(){
 		void* hstart = mgr->__fetch_heap_start();
 		BaseMeta* base_md = (BaseMeta*) hstart;
 		base_md->set_mgr(mgr);
+		assert(base_md->get_root(0)==(void*)0xff00);
+		assert(base_md->get_root(1)==(void*)0xfff1);
 		cout<<"done!\n";
 	} else {
 		cout<<"create new RegionManager in /dev/shm/test...";
@@ -21,6 +23,8 @@ int main(){
 		if(res!=0) assert(0&&"mgr allocation fails!");
 		mgr->__store_heap_start(base_md);
 		new (base_md) BaseMeta(mgr, 1);
+		base_md->set_root((void*)0xff00,0);
+		base_md->set_root((void*)0xfff1,1);
 		cout<<"done!\n";
 	}
 	return 0;

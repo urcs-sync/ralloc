@@ -27,18 +27,13 @@ public:
 
 
 private:
-	void restart();
-
 	string filepath;
 	/* manager to map, remap, and unmap the heap */
 	RegionManager* mgr;//initialized when pmmalloc constructs
 	/* persistent metadata and their layout */
 	BaseMeta* base_md;
 
-	/* transient metadata and tools */
-	MichaelScottQueue<Descriptor*> free_desc;
 	//GC
-
 };
 
 #endif /* _PMMALLOC_HPP_ */

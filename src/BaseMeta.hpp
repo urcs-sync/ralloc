@@ -73,7 +73,9 @@ struct Section {
 };
 
 class BaseMeta{
+	/* transient metadata and tools */
 	RegionManager* mgr;//assigned when BaseMeta constructs
+	MichaelScottQueue<Descriptor*> free_desc;
 
 	/* persistent metadata defined here */
 	//base metadata
@@ -92,6 +94,7 @@ class BaseMeta{
 public:
 	BaseMeta(RegionManager* m, uint64_t thd_num = MAX_THREADS) : 
 	mgr(m),
+	free_desc(thd_num),
 	thread_num(thd_num){
 		FLUSH(&thread_num);
 		/* allocate these persistent data into specific memory address */
@@ -123,6 +126,9 @@ public:
 		}
 		FLUSHFENCE;
 	}
+	~BaseMeta(){
+		//TODO: flush metadata back
+	}
 	void set_mgr(RegionManager* m){
 		mgr = m;
 	}
@@ -149,6 +155,17 @@ public:
 		sb_space_num++;
 		FLUSH(&sb_space_num);
 		FLUSHFENCE;
+	}
+	void* set_root(void* ptr, uint64_t i){
+		assert(i<MAX_ROOTS);
+		void* res = nullptr;
+		if(roots[i]!=nullptr) res = roots[i];
+		roots[i] = ptr;
+		return res;
+	}
+	void* get_root(uint64_t i){
+		assert(i<MAX_ROOTS);
+		return roots[i];
 	}
 };
 
