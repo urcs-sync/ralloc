@@ -25,7 +25,7 @@ pmmalloc::pmmalloc(string id, uint64_t thd_num = MAX_THREADS) :
 		mgr = new RegionManager(filepath);
 		void* hstart = mgr->__fetch_heap_start();
 		base_md = (BaseMeta*) hstart;
-		base_md->mgr = mgr;
+		base_md->set_mgr(mgr);
 		//collect if the heap is dirty
 	} else {
 		/* RegionManager init */
@@ -60,10 +60,10 @@ void pmmalloc::free(void* ptr){
 
 //return the old i-th root, if exists.
 void* pmmalloc::set_root(void* ptr, uint64_t i){
-	return nullptr;
+	return base_md->set_root(ptr,i);
 }
 
 //return the current i-th root, or nullptr if not exist.
 void* pmmalloc::get_root(uint64_t i){
-	return nullptr;
+	return base_md->get_root(i);
 }

@@ -69,13 +69,15 @@ void RegionManager::__map_persistent_region(){
 	base_addr = (char*) addr;
 	//adress to remap to, the root pointer to gc metadata, 
 	//and the curr pointer at the end of the day
-	curr_addr = (char*) ((size_t)addr + 3 * sizeof(intptr_t));
-	*(((intptr_t*) base_addr) + 1) = (intptr_t) curr_addr;
+	new (((atomic<char *>*) base_addr) + 1) atomic<char *>((char*) ((size_t)addr + 3 * sizeof(intptr_t)));
+	curr_addr_ptr = ((atomic<char *>*) base_addr) + 1;
+	FLUSH(curr_addr_ptr);
+	FLUSHFENCE;
 	FLUSH( (((intptr_t*) base_addr) + 1)); 
 	FLUSHFENCE;
 	printf("Addr: %p\n", addr);
 	printf("Base_addr: %p\n", base_addr);
-	printf("Current_addr: %p\n", curr_addr);
+	printf("Current_addr: %p\n", curr_addr_ptr->load());
 }
 void RegionManager::__remap_persistent_region(){
 	int fd;
@@ -105,23 +107,24 @@ void RegionManager::__remap_persistent_region(){
 	assert(forced_addr == (intptr_t) addr);
 
 	base_addr = (char*) addr;
-	curr_addr = (char*) (*(((intptr_t*) base_addr) + 1));
+	curr_addr_ptr = ((atomic<char *>*) base_addr) + 1;
 	printf("Forced Addr: %p\n", (void*) forced_addr);
 	printf("Addr: %p\n", addr);
 	printf("Base_addr: %p\n", base_addr);
-	printf("Curr_addr: %p\n", curr_addr);
+	printf("Curr_addr: %p\n", curr_addr_ptr->load());
 }
 
 //persist the curr and base address
 void RegionManager::__close_persistent_region(){
-	*(((intptr_t*) base_addr) + 1) = (intptr_t) curr_addr;
+	// *(((intptr_t*) base_addr) + 1) = (intptr_t) curr_addr;
 	FLUSHFENCE;
-	FLUSH( (((intptr_t*) base_addr) + 1)); 
+	// FLUSH( (((intptr_t*) base_addr) + 1)); 
+	FLUSH(curr_addr_ptr); 
 	FLUSHFENCE;
 
-	printf("At the end current addr: %p\n", curr_addr);
+	printf("At the end current addr: %p\n", curr_addr_ptr->load());
 
-	unsigned long space_used = ((unsigned long) curr_addr 
+	unsigned long space_used = ((unsigned long) curr_addr_ptr->load() 
 		 - (unsigned long) base_addr);
 	unsigned long remaining_space = 
 		 ((unsigned long) FILESIZE - space_used) / (1024 * 1024);
@@ -155,28 +158,34 @@ void* RegionManager::__fetch_heap_start(){
 }
 
 int RegionManager::__nvm_region_allocator(void** memptr, size_t alignment, size_t size){
-	// note: this function is sequential!
 	char* next;
 	char* res;
 	if (size < 0) return 1;
 
 	if (((alignment & (~alignment + 1)) != alignment) ||	//should be multiple of 2
 		(alignment < sizeof(void*))) return 1; //should be at least the size of void*
-	size_t aln_adj = (size_t) curr_addr & (alignment - 1);
+	char * old_curr_addr = curr_addr_ptr->load();
+	while(true){
+		char * new_curr_addr = old_curr_addr;
+		size_t aln_adj = (size_t) new_curr_addr & (alignment - 1);
 
-	if (aln_adj != 0)
-		curr_addr += (alignment - aln_adj);
+		if (aln_adj != 0)
+			new_curr_addr += (alignment - aln_adj);
 
-	res = curr_addr;
-	next = curr_addr + size;
-	if (next > base_addr + FILESIZE){
-		printf("\n----Region Manager: out of space in mmaped file-----\n");
-		return 1;
+		res = new_curr_addr;
+		next = new_curr_addr + size;
+		if (next > base_addr + FILESIZE){
+			printf("\n----Region Manager: out of space in mmaped file-----\n");
+			return 1;
+		}
+		new_curr_addr = next;
+		if(curr_addr_ptr->compare_exchange_weak(old_curr_addr, new_curr_addr))
+			break;
 	}
-	curr_addr = next;
-	*(((intptr_t*) base_addr) + 1) = (intptr_t) curr_addr;
+	// *(((intptr_t*) base_addr) + 1) = (intptr_t) curr_addr;
 	FLUSHFENCE;
-	FLUSH( (((intptr_t*) base_addr) + 1)); 
+	// FLUSH( (((intptr_t*) base_addr) + 1)); 
+	FLUSH(curr_addr_ptr); 
 	FLUSHFENCE;
 	*memptr = res;
 

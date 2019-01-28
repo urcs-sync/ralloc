@@ -23,6 +23,7 @@
 
 #include <string>
 #include <fstream>
+#include <atomic>
 
 #include "pm_config.hpp"
 
@@ -34,11 +35,12 @@ class RegionManager{
 public:
 	int FD = 0;
 	char *base_addr = nullptr;
-	char *curr_addr = nullptr;
+	atomic<char *>* curr_addr_ptr;//this always points to the place of base_addr+1
 
 	RegionManager(const string& file_path):
 		FILESIZE(MAX_FILESIZE),
-		HEAPFILE(file_path.c_str()){
+		HEAPFILE(file_path.c_str()),
+		curr_addr_ptr(nullptr){
 		if(exists_test(HEAPFILE)){
 			__remap_persistent_region();
 		} else {

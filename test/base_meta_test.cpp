@@ -14,6 +14,7 @@ int main(){
 		base_md->set_mgr(mgr);
 		assert(base_md->get_root(0)==(void*)0xff00);
 		assert(base_md->get_root(1)==(void*)0xfff1);
+		delete mgr;
 		cout<<"done!\n";
 	} else {
 		cout<<"create new RegionManager in /dev/shm/test...";
@@ -25,6 +26,7 @@ int main(){
 		new (base_md) BaseMeta(mgr, 1);
 		base_md->set_root((void*)0xff00,0);
 		base_md->set_root((void*)0xfff1,1);
+		delete mgr;
 		cout<<"done!\n";
 	}
 	return 0;

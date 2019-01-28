@@ -7,8 +7,10 @@ TODO
 ~implement persistent region manager
 ~constructor for initializing data structures
 how to expand heap (adding more spaces for desc or sb)?
+	make __nvm_region_allocator parallel (nonblocking)
 destructor
+	finish todos
 adapt functions to cpp
-set root and get root
+~set root and get root
 malloc and free
 garbage collection
