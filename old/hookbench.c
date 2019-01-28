@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "pmmalloc.h"
+#include <pthread.h> 
 #define p_malloc(sz) PM_malloc(sz)
 #define p_free(ptr) PM_free(ptr)
 // static void
@@ -18,22 +19,23 @@
 //     size_t old_usize, size_t new_usize, uintptr_t result_raw,
 //     uintptr_t args_raw[4]) {
 // }
-
-static void
-malloc_free_loop(int iters) {
+const int THREAD_NUM = 4;
+void *malloc_free_loop(void *args) {
+	int iters = *((int*)args);
 	int **p=p_malloc(iters*sizeof(int*));
 	int ret = 1;
 	for (int i = 0; i < iters; i++) {
 		p[i] = p_malloc(sizeof(int));
 		*p[i] = i;
 		ret=*p[i]+1;
-		if (i%100000==0) printf("%p: %d\n",p[i],*p[i]);
+		if (i%100000==0) fprintf(stderr,"%p: %d\n",p[i],*p[i]);
 	}
 	for(int i=0;i<iters;i++){
 		p_free(p[i]);
 	}
 	printf("final: %d\n", ret);
 	p_free(p);
+	return NULL;
 }
 
 // static void
@@ -68,7 +70,10 @@ static void
 test_unhooked(int iters) {
 	// timedelta_t timer;
 	// timer_start(&timer);
-	malloc_free_loop(iters);
+	pthread_t thread_id; 
+	for (int i = 0; i < THREAD_NUM; i++)
+		pthread_create(&thread_id, NULL, malloc_free_loop, (void*)&iters); 
+	pthread_exit(NULL); 
 	// timer_stop(&timer);
 
 	printf("Without hooks: done\n");

@@ -50,12 +50,12 @@ inline static int WideCAS(volatile __uint128_t *obj, __uint128_t old_value,
 	return _WideCAS(obj, old_value, new_value, memory_order_seq_cst); 
 }
 
-const unsigned int RETRY_MAX = 1024;
 static void lf_fifo_init(lf_fifo_queue_t *queue);
 static void lf_fifo_enqueue(lf_fifo_queue_t *queue, void *element);
 static void *lf_fifo_dequeue(lf_fifo_queue_t *queue);
 
 inline void lf_fifo_init(lf_fifo_queue_t *queue){
+	queue->has_dummy = 1;
 	queue->dummy.next.ptr = 0;
 	queue->dummy.next.ocount = 0;
 	queue->head.ptr = (uint64_t)&queue->dummy;
@@ -72,32 +72,50 @@ inline void *lf_fifo_dequeue(lf_fifo_queue_t *queue)
 	aba_t tail;
 	aba_t next;
 	void* ret = NULL;
-
-	while(1) {
-		head = queue->head;
-		tail = queue->tail;
-		next.ptr = ((struct queue_elem_t*)head.ptr)->next.ptr;
-		if(*((__uint128_t*)&head) == *((volatile __uint128_t*)&queue->head)){//check if head, tail and next are still consistent
-			if(head.ptr == tail.ptr){//queue is empty or tail falls behind
-				if(next.ptr == 0){
-					ret = NULL;
-					break;
-				} else{
+	while(1) {//retry
+		while(1) {
+			head = queue->head;
+			tail = queue->tail;
+			next.ptr = ((struct queue_elem_t*)head.ptr)->next.ptr;
+			FLUSHFENCE;
+			if(*((__uint128_t*)&head) == *((volatile __uint128_t*)&queue->head)){//check if head, tail and next are still consistent
+				if(head.ptr == tail.ptr){//queue is empty or tail falls behind
+					if(next.ptr == 0){//only one node there
+						if(head.ptr != (uint64_t)&queue->dummy){//the only node isn't dummy
+							uint64_t zero=0;
+							//so there's no dummy. insert one first
+							if(atomic_compare_exchange_strong(&queue->has_dummy,&zero,1)){
+								lf_fifo_enqueue(queue, &queue->dummy);
+							}
+							continue;
+						}
+						return NULL;
+					}
 					next.ocount = tail.ocount+1;
 					WideCAS((volatile __uint128_t *)&queue->tail, 
-						*((__uint128_t*)&tail), *((__uint128_t*)&next));
-				}
-			} else{//no need to consider tail
-				next.ocount = head.ocount+1;
-				if(WideCAS((volatile __uint128_t *)&queue->head, 
-					*((__uint128_t*)&head), *((__uint128_t*)&next))){
-						ret = (void*)next.ptr;
-						break;
+							*((__uint128_t*)&tail), *((__uint128_t*)&next));
+				} else{//no need to consider tail
+					next.ocount = head.ocount+1;
+					if(WideCAS((volatile __uint128_t *)&queue->head, 
+						*((__uint128_t*)&head), *((__uint128_t*)&next))){
+							ret = (void*)head.ptr;
+							break;
+					}
 				}
 			}
 		}
+		((struct queue_elem_t*)head.ptr)->next.ptr = 0;//unpoison the detached node
+		if(head.ptr == (uint64_t)&queue->dummy){//the removed one is dummy
+			queue->has_dummy = 0;
+			FLUSHFENCE;
+			uint64_t zero=0;
+			if(atomic_compare_exchange_strong(&queue->has_dummy,&zero,1)){
+				lf_fifo_enqueue(queue, &queue->dummy);
+			}
+			continue;//aka goto retry
+		}
+		return ret;
 	}
-	return ret;
 }
 
 inline void lf_fifo_enqueue(lf_fifo_queue_t *queue, void *element)
@@ -128,7 +146,7 @@ inline void lf_fifo_enqueue(lf_fifo_queue_t *queue, void *element)
 					*((__uint128_t*)&tail), *((__uint128_t*)&new_tail));
 			}
 		}
-	} 
+	}
 	new_node.ocount = tail.ocount+1;
 	WideCAS((volatile __uint128_t *)&queue->tail, *((__uint128_t*)&tail), *((__uint128_t*)&new_node));
 	return;
@@ -426,23 +444,18 @@ void DescRetire(descriptor* desc)
 }
 
 static void ListRemoveEmptyDesc(sizeclass* sc)
-{//TODO: is it necessary?
+{//TODO: double check the correctness
 	descriptor *desc;
-	lf_fifo_queue_t temp = LF_FIFO_QUEUE_STATIC_INIT;
-	lf_fifo_init(&temp);
+	int num_non_empty = 0;
 
 	while ((desc = (descriptor *)lf_fifo_dequeue(&sc->Partial))) {
-		lf_fifo_enqueue(&temp, (void *)desc);
 		if (desc->sb == NULL) {
 			DescRetire(desc);
 		}
 		else {
-			break;
+			lf_fifo_enqueue(&sc->Partial, (void *)desc);
+			if (++num_non_empty >= 2) break;
 		}
-	}
-
-	while ((desc = (descriptor *)lf_fifo_dequeue(&temp))) {
-		lf_fifo_enqueue(&sc->Partial, (void *)desc);
 	}
 }
 
@@ -890,6 +903,10 @@ void PM_free(void* ptr)
 		return;
 	}
 	
+	if(*((char*)((uint64_t)ptr - HEADER_SIZE)) != (char)LARGE && *((char*)((uint64_t)ptr - HEADER_SIZE)) != (char)SMALL) {//this block wasn't allocated by pmmalloc, call regular free by default.
+		free(ptr);
+		return;
+	}
 	// get prefix
 	ptr = (void*)((uint64_t)ptr - HEADER_SIZE);  
 	if (*((char*)ptr) == (char)LARGE) {

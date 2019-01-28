@@ -19,13 +19,14 @@ struct queue_elem_t {
 // I will just treat them as padding to avoid false-sharing so 
 // I make them 32B in total.
 typedef struct {
+	volatile uint64_t has_dummy;
 	struct queue_elem_t dummy;
 	volatile aba_t		head;
 	volatile aba_t 		tail;
-	uint64_t 	_pad[3];
+	uint64_t 	_pad[2];
 } lf_fifo_queue_t;
 
-#define LF_FIFO_QUEUE_STATIC_INIT	{{{0, 0}}, {0, 0}, {0,0}, {0,0,0}}
+#define LF_FIFO_QUEUE_STATIC_INIT	{1, {{0, 0}}, {0, 0}, {0,0}, {0,0}}
 
 /******************************************************************************/
 
