@@ -26,6 +26,8 @@ int main(){
 		new (base_md) BaseMeta(mgr, 1);
 		base_md->set_root((void*)0xff00,0);
 		base_md->set_root((void*)0xfff1,1);
+		base_md->new_desc_space();
+		base_md->new_sb_space();
 		delete mgr;
 		cout<<"done!\n";
 	}

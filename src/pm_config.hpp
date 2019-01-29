@@ -8,12 +8,13 @@
 
 /* user customized macros */
 #define HEAPFILE_PREFIX "/dev/shm/";
-const uint64_t MAX_FILESIZE = 5*1024*1024*1024ULL + 24;
+const uint64_t MAX_FILESIZE = 5*1024*1024*1024ULL + 24;//TODO:is 24 a good number?
 const uint64_t MAX_THREADS = 512;
 const int MAX_ROOTS = 1024;
 const int MAX_SECTION = 10;
 const int DESC_SPACE_CAP = 1024;//number of desc sbs per desc space
 const uint64_t SB_SPACE_SIZE = 4*1024*1024*1024ULL;
+//Note: by this config, approximately 1 sb space needs 1 desc space
 
 /* constant variables */
 const int TYPE_SIZE = 4;

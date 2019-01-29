@@ -86,9 +86,9 @@ class BaseMeta{
 	Sizeclass sizeclasses[MAX_SMALLSIZE/GRANULARITY+1];
 	Procheap procheaps[PROCHEAP_NUM][MAX_SMALLSIZE/GRANULARITY+1];
 
-	uint64_t desc_space_num = 0;
+	std::atomic<uint64_t> desc_space_num = 0;
 	Section desc_spaces[MAX_SECTION];
-	uint64_t sb_space_num = 0;
+	std::atomic<uint64_t> sb_space_num = 0;
 	Section sb_spaces[MAX_SECTION];
 	/* persistent metadata ends here */
 public:
@@ -133,30 +133,37 @@ public:
 		mgr = m;
 	}
 	void new_desc_space(){
-		//this is sequential
-		if(desc_space_num>=MAX_SECTION) assert(0&&"desc space number reaches max!");
-		desc_spaces[desc_space_num].sec_bytes = DESC_SPACE_SIZE;
-		int res = mgr->__nvm_region_allocator(&(desc_spaces[desc_space_num].sec_start),PAGESIZE, DESC_SPACE_SIZE);
-		if(res != 0) assert(0&&"region allocation fails!");
-		FLUSH(&desc_spaces[desc_space_num]);
+		if(desc_space_num.load(std::memory_order_relaxed)>=MAX_SECTION) assert(0&&"desc space number reaches max!");
 		FLUSHFENCE;
-		desc_space_num++;
+		uint64_t my_space_num = desc_space_num.fetch_add(1);
 		FLUSH(&desc_space_num);
+		desc_spaces[my_space_num].sec_bytes = 0;//0 if the section isn't init yet, otherwise we are sure the section is ready.
+		FLUSH(&desc_spaces[my_space_num].sec_bytes);
+		FLUSHFENCE;
+		int res = mgr->__nvm_region_allocator(&(desc_spaces[my_space_num].sec_start),PAGESIZE, DESC_SPACE_SIZE);
+		if(res != 0) assert(0&&"region allocation fails!");
+		desc_spaces[my_space_num].sec_bytes = DESC_SPACE_SIZE;
+		FLUSH(&desc_spaces[my_space_num].sec_start);
+		FLUSH(&desc_spaces[my_space_num].sec_bytes);
 		FLUSHFENCE;
 	}
 	void new_sb_space(){
-		//this is sequential
-		if(sb_space_num>=MAX_SECTION) assert(0&&"sb space number reaches max!");
-		sb_spaces[sb_space_num].sec_bytes = SB_SPACE_SIZE;
+		if(sb_space_num.load(std::memory_order_relaxed)>=MAX_SECTION) assert(0&&"sb space number reaches max!");
+		FLUSHFENCE;
+		uint64_t my_space_num = sb_space_num.fetch_add(1);
+		FLUSH(&sb_space_num);
+		sb_spaces[my_space_num].sec_bytes = 0;
+		FLUSH(&sb_spaces[my_space_num].sec_bytes);
+		FLUSHFENCE;
 		int res = mgr->__nvm_region_allocator(&(sb_spaces[sb_space_num].sec_start),PAGESIZE, SB_SPACE_SIZE);
 		if(res != 0) assert(0&&"region allocation fails!");
-		FLUSH(&sb_spaces[sb_space_num]);
-		FLUSHFENCE;
-		sb_space_num++;
-		FLUSH(&sb_space_num);
+		sb_spaces[my_space_num].sec_bytes = SB_SPACE_SIZE;
+		FLUSH(&sb_spaces[my_space_num].sec_start);
+		FLUSH(&sb_spaces[my_space_num].sec_bytes);
 		FLUSHFENCE;
 	}
 	void* set_root(void* ptr, uint64_t i){
+		//this is sequential
 		assert(i<MAX_ROOTS);
 		void* res = nullptr;
 		if(roots[i]!=nullptr) res = roots[i];
@@ -164,6 +171,7 @@ public:
 		return res;
 	}
 	void* get_root(uint64_t i){
+		//this is sequential
 		assert(i<MAX_ROOTS);
 		return roots[i];
 	}
