@@ -15,5 +15,6 @@ adapt functions to cpp
 	declare function in correct place
 	finish the definitions of functions
 ~set root and get root
-malloc and free
+~malloc and free
+thread id lookup
 garbage collection
