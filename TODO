@@ -6,11 +6,14 @@ TODO
 
 ~implement persistent region manager
 ~constructor for initializing data structures
-how to expand heap (adding more spaces for desc or sb)?
+~how to expand heap (adding more spaces for desc or sb)?
 	~make __nvm_region_allocator parallel (nonblocking)
-destructor
-	finish todos
+	~make new_*_space parallel (nonblocking)
+~flush volatile things back
+	assume during the exit they will be flushed automatically and all we need to persist is only the entry (like the ptr partial_desc_queue)
 adapt functions to cpp
+	declare function in correct place
+	finish the definitions of functions
 ~set root and get root
 malloc and free
 garbage collection

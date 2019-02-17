@@ -2,6 +2,7 @@
 #define _BASE_META_HPP_
 
 #include <atomic>
+#include <iostream>
 
 #include "pm_config.hpp"
 
@@ -18,30 +19,20 @@ struct Sizeclass{
 	Sizeclass(uint64_t thread_num = 1,
 			unsigned int bs = 0, 
 			unsigned int sbs = SBSIZE, 
-			MichaelScottQueue<Descriptor*>* pdq = nullptr):
-		sz(bs), 
-		sbsize(sbs),
-		partial_desc_queue(pdq) {
-		if(partial_desc_queue == nullptr) 
-			partial_desc_queue = 
-			new MichaelScottQueue<Descriptor*>(thread_num);
-		FLUSH(&sz);
-		FLUSH(&sbsize);
-		FLUSHFENCE;
-	}
-	void reinit_msq(uint64_t thread_num){
-		if(partial_desc_queue != nullptr) {
-			delete partial_desc_queue;
-			partial_desc_queue = 
-			new MichaelScottQueue<Descriptor*>(thread_num);
-		}
-	}
+			MichaelScottQueue<Descriptor*>* pdq = nullptr);
+	void reinit_msq(uint64_t thread_num);
+
+	//TODO below
+	Descriptor* list_get_partial();//get a partial desc
+	void list_put_partial(Descriptor* desc);//put a partial desc to partial_desc_queue
 }__attribute__((aligned(CACHE_LINE_SIZE)));
+
 struct Active{
 	uint64_t ptr:58, credits:6;
 	Active(){ptr=0;credits=0;}
 	Active(uint64_t in){ptr=in>>6;credits=in&0x3f;}
 };
+
 struct Procheap {
 	Sizeclass* sc;					// pointer to parent sizeclass
 	atomic<Active> active;			// initially NULL; flushed only when exit
@@ -52,13 +43,20 @@ struct Procheap {
 		sc(s),
 		active(a),
 		partial(p) {};
+
+	//TODO below
+	Descriptor* heap_get_partial();
+	void heap_put_partial(Descriptor* desc);
+	void update_active(Descriptor* desc, uint64_t morecredits);
 }__attribute__((aligned(CACHE_LINE_SIZE)));
+
 struct Anchor{
 	uint64_t avail:24,count:24, state:2, tag:14;
 	Anchor(uint64_t a = 0){*this = a;}
 	Anchor(unsigned a, unsigned c, unsigned s, unsigned t):
 		avail(a),count(c),state(s),tag(t){};
 };
+
 struct Descriptor{
 	atomic<Anchor> anchor;
 	void* sb;				// pointer to superblock
@@ -92,89 +90,48 @@ class BaseMeta{
 	Section sb_spaces[MAX_SECTION];
 	/* persistent metadata ends here */
 public:
-	BaseMeta(RegionManager* m, uint64_t thd_num = MAX_THREADS) : 
-	mgr(m),
-	free_desc(thd_num),
-	thread_num(thd_num){
-		FLUSH(&thread_num);
-		/* allocate these persistent data into specific memory address */
-		/* TODO: metadata init */
-
-		/* persistent roots init */
-		for(int i=0;i<MAX_ROOTS;i++){
-			roots[i]=nullptr;
-			FLUSH(&roots[i]);
-		}
-
-		/* sizeclass init */
-		for(int i=0;i<MAX_SMALLSIZE/GRANULARITY;i++){
-			sizeclasses[i].reinit_msq(thd_num);
-			sizeclasses[i].sz = (i+1)*GRANULARITY;
-			FLUSH(&sizeclasses[i]);
-		}
-		sizeclasses[MAX_SMALLSIZE/GRANULARITY].reinit_msq(thd_num);
-		sizeclasses[MAX_SMALLSIZE/GRANULARITY].sz = 0;
-		sizeclasses[MAX_SMALLSIZE/GRANULARITY].sbsize = 0;
-		FLUSH(&sizeclasses[MAX_SMALLSIZE/GRANULARITY]);//the size class for large blocks
-
-		/* processor heap init */
-		for(int t=0;t<PROCHEAP_NUM;t++){
-			for(int i=0;i<MAX_SMALLSIZE/GRANULARITY+1;i++){
-				procheaps[t][i].sc = &sizeclasses[i];
-				FLUSH(&procheaps[t][i]);
-			}
-		}
-		FLUSHFENCE;
-	}
+	BaseMeta(RegionManager* m, uint64_t thd_num = MAX_THREADS);
 	~BaseMeta(){
-		//TODO: flush metadata back
+		//usually BaseMeta shouldn't be destructed, and will be reused in the next time
+		std::cout<<"Warning: BaseMeta is being destructed!\n";
 	}
-	void set_mgr(RegionManager* m){
-		mgr = m;
-	}
-	void new_desc_space(){
-		if(desc_space_num.load(std::memory_order_relaxed)>=MAX_SECTION) assert(0&&"desc space number reaches max!");
-		FLUSHFENCE;
-		uint64_t my_space_num = desc_space_num.fetch_add(1);
-		FLUSH(&desc_space_num);
-		desc_spaces[my_space_num].sec_bytes = 0;//0 if the section isn't init yet, otherwise we are sure the section is ready.
-		FLUSH(&desc_spaces[my_space_num].sec_bytes);
-		FLUSHFENCE;
-		int res = mgr->__nvm_region_allocator(&(desc_spaces[my_space_num].sec_start),PAGESIZE, DESC_SPACE_SIZE);
-		if(res != 0) assert(0&&"region allocation fails!");
-		desc_spaces[my_space_num].sec_bytes = DESC_SPACE_SIZE;
-		FLUSH(&desc_spaces[my_space_num].sec_start);
-		FLUSH(&desc_spaces[my_space_num].sec_bytes);
-		FLUSHFENCE;
-	}
-	void new_sb_space(){
-		if(sb_space_num.load(std::memory_order_relaxed)>=MAX_SECTION) assert(0&&"sb space number reaches max!");
-		FLUSHFENCE;
-		uint64_t my_space_num = sb_space_num.fetch_add(1);
-		FLUSH(&sb_space_num);
-		sb_spaces[my_space_num].sec_bytes = 0;
-		FLUSH(&sb_spaces[my_space_num].sec_bytes);
-		FLUSHFENCE;
-		int res = mgr->__nvm_region_allocator(&(sb_spaces[sb_space_num].sec_start),PAGESIZE, SB_SPACE_SIZE);
-		if(res != 0) assert(0&&"region allocation fails!");
-		sb_spaces[my_space_num].sec_bytes = SB_SPACE_SIZE;
-		FLUSH(&sb_spaces[my_space_num].sec_start);
-		FLUSH(&sb_spaces[my_space_num].sec_bytes);
-		FLUSHFENCE;
-	}
-	void* set_root(void* ptr, uint64_t i){
+	inline void set_mgr(RegionManager* m){mgr = m;}
+	void new_desc_space();
+	void new_sb_space();
+	inline void* set_root(void* ptr, uint64_t i){
 		//this is sequential
 		assert(i<MAX_ROOTS);
 		void* res = nullptr;
 		if(roots[i]!=nullptr) res = roots[i];
 		roots[i] = ptr;
+		FLUSH(&roots[i]);
+		FLUSHFENCE;
 		return res;
 	}
-	void* get_root(uint64_t i){
+	inline void* get_root(uint64_t i){
 		//this is sequential
 		assert(i<MAX_ROOTS);
 		return roots[i];
 	}
+	bool flush(){
+		//flush everything before exit
+		//currently we just assume everything will be automatically flushed back when exit.
+	}
+
+	//TODO below
+	void* alloc_sb(size_t size);
+	void organize_desc_list(Descriptor* start, uint64_t count, uint64_t stride);// put new descs to free_desc queue
+	void organize_sb_list(void* start, uint64_t count, uint64_t stride);//create linked freelist of the sb
+	Descriptor* desc_alloc();
+	void desc_retire(Descriptor* desc);
+	void list_remove_empty_desc(Sizeclass* sc);//try to retire an empty desc from sc->partial_desc_queue
+	void remove_empty_desc(Procheap* heap, Descriptor* desc);//remove the empty desc from heap->partial, or run list_remove_empty_desc on heap->sc
+	Descriptor* mask_credits(Active oldactive);
+	void* malloc_from_active(Procheap* heap);
+	void* malloc_from_partial(Procheap* heap);
+	void* malloc_from_newsb(Procheap* heap);
+	Procheap* find_heap(size_t sz);
+	void* alloc_large_block(size_t sz);
 };
 
 

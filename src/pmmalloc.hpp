@@ -28,6 +28,7 @@ public:
 
 private:
 	string filepath;
+	uint64_t thread_num;
 	/* manager to map, remap, and unmap the heap */
 	RegionManager* mgr;//initialized when pmmalloc constructs
 	/* persistent metadata and their layout */
