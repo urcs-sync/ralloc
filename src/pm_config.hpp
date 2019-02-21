@@ -39,7 +39,7 @@ const int EMPTY = 3;
 const int MAXCREDITS = 64; // 2^(bits for credits in active)
 const int GRANULARITY = 8; // granularity of sizeclass size
 const int MAX_SMALLSIZE = 2048; // largest size of a small object
-const int PROCHEAP_NUM = 1024; // number of processor heap
+const int PROCHEAP_NUM = MAX_THREADS; // number of processor heap
 
 const int DESC_SPACE_SIZE = DESC_SPACE_CAP * DESCSBSIZE;
 

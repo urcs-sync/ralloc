@@ -10,9 +10,9 @@ TODO
 	~make __nvm_region_allocator parallel (nonblocking)
 	~make new_*_space parallel (nonblocking)
 ~flush volatile things back
-	assume during the exit they will be flushed automatically and all we need to persist is only the entry (like the ptr partial_desc_queue)
+	!assume during the exit they will be flushed automatically and all we need to persist is only the entry (like the ptr partial_desc_queue)
 adapt functions to cpp
-	declare function in correct place
+	~declare function in correct place
 	finish the definitions of functions
 ~set root and get root
 ~malloc and free

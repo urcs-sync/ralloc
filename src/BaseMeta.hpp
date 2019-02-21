@@ -15,16 +15,12 @@ struct Descriptor;
 struct Sizeclass{
 	unsigned int sz; // block size
 	unsigned int sbsize; // superblock size
-	MichaelScottQueue<Descriptor*>* partial_desc_queue; // flushed only when exit
+	MichaelScottQueue<Descriptor*>* partial_desc; // flushed only when exit
 	Sizeclass(uint64_t thread_num = 1,
 			unsigned int bs = 0, 
 			unsigned int sbs = SBSIZE, 
 			MichaelScottQueue<Descriptor*>* pdq = nullptr);
 	void reinit_msq(uint64_t thread_num);
-
-	//TODO below
-	Descriptor* list_get_partial();//get a partial desc
-	void list_put_partial(Descriptor* desc);//put a partial desc to partial_desc_queue
 }__attribute__((aligned(CACHE_LINE_SIZE)));
 
 struct Active{
@@ -43,11 +39,6 @@ struct Procheap {
 		sc(s),
 		active(a),
 		partial(p) {};
-
-	//TODO below
-	Descriptor* heap_get_partial();
-	void heap_put_partial(Descriptor* desc);
-	void update_active(Descriptor* desc, uint64_t morecredits);
 }__attribute__((aligned(CACHE_LINE_SIZE)));
 
 struct Anchor{
@@ -119,18 +110,25 @@ public:
 	}
 
 	//TODO below
-	void* alloc_sb(size_t size);
+	void* alloc_sb(size_t size, uint64_t alignement);
 	void organize_desc_list(Descriptor* start, uint64_t count, uint64_t stride);// put new descs to free_desc queue
 	void organize_sb_list(void* start, uint64_t count, uint64_t stride);//create linked freelist of the sb
+	
 	Descriptor* desc_alloc();
 	void desc_retire(Descriptor* desc);
-	void list_remove_empty_desc(Sizeclass* sc);//try to retire an empty desc from sc->partial_desc_queue
+	Descriptor* list_get_partial(Sizeclass* sc);//get a partial desc
+	void list_put_partial(Descriptor* desc);//put a partial desc to partial_desc
+	Descriptor* heap_get_partial(Procheap* heap);
+	void heap_put_partial(Descriptor* desc);
+	void list_remove_empty_desc(Sizeclass* sc);//try to retire an empty desc from sc->partial_desc
 	void remove_empty_desc(Procheap* heap, Descriptor* desc);//remove the empty desc from heap->partial, or run list_remove_empty_desc on heap->sc
+	void update_active(Procheap* heap, Descriptor* desc, uint64_t morecredits);
 	Descriptor* mask_credits(Active oldactive);
+
+	Procheap* find_heap(size_t sz);
 	void* malloc_from_active(Procheap* heap);
 	void* malloc_from_partial(Procheap* heap);
 	void* malloc_from_newsb(Procheap* heap);
-	Procheap* find_heap(size_t sz);
 	void* alloc_large_block(size_t sz);
 };
 

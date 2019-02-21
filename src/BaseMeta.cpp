@@ -6,9 +6,9 @@ Sizeclass::Sizeclass(uint64_t thread_num = 1,
 		MichaelScottQueue<Descriptor*>* pdq = nullptr):
 	sz(bs), 
 	sbsize(sbs),
-	partial_desc_queue(pdq) {
-	if(partial_desc_queue == nullptr) 
-		partial_desc_queue = 
+	partial_desc(pdq) {
+	if(partial_desc == nullptr) 
+		partial_desc = 
 		new MichaelScottQueue<Descriptor*>(thread_num);
 	FLUSH(&sz);
 	FLUSH(&sbsize);
@@ -16,9 +16,9 @@ Sizeclass::Sizeclass(uint64_t thread_num = 1,
 }
 
 void Sizeclass::reinit_msq(uint64_t thread_num){
-	if(partial_desc_queue != nullptr) {
-		delete partial_desc_queue;
-		partial_desc_queue = 
+	if(partial_desc != nullptr) {
+		delete partial_desc;
+		partial_desc = 
 		new MichaelScottQueue<Descriptor*>(thread_num);
 	}
 }
@@ -89,3 +89,133 @@ void BaseMeta::new_sb_space(){
 	FLUSH(&sb_spaces[my_space_num].sec_bytes);
 	FLUSHFENCE;
 }
+
+
+void* BaseMeta::alloc_sb(size_t size, uint64_t alignement);
+void BaseMeta::organize_desc_list(Descriptor* start, uint64_t count, uint64_t stride){
+	// put new descs to free_desc queue
+	uint64_t ptr = (uint64_t)start;
+	int tid = get_thread_id();
+	for(uint64_t i = 1; i < count; i++){
+		ptr += stride;
+		free_desc.enqueue((Descriptor*)ptr, tid);
+	}
+
+}
+void BaseMeta::organize_sb_list(void* start, uint64_t count, uint64_t stride){
+//create linked freelist of the sb
+	uint64_t ptr = (uint64_t)start; 
+	for (uint64_t i = 0; i < count - 1; i++) {
+		*((uint64_t*)ptr) = ptr + stride;
+		ptr += stride;
+	}
+	*((uint64_t*)ptr) = 0;
+}
+
+
+Descriptor* BaseMeta::desc_alloc(){
+	Descriptor* desc = nullptr;
+	int tid = get_thread_id();
+	if(auto tmp = free_desc.dequeue(tid)){
+		desc = tmp.value();
+	}
+	else {
+		desc = alloc_sb(DESCSBSIZE, sizeof(Descriptor));
+		organize_desc_list(desc, DESCSBSIZE/sizeof(Descriptor), sizeof(Descriptor));
+	}
+	return desc;
+}
+inline void BaseMeta::desc_retire(Descriptor* desc){
+	free_desc.enqueue(desc, tid);
+}
+Descriptor* BaseMeta::list_get_partial(Sizeclass* sc){
+	int tid = get_thread_id();//todo
+	auto res = sc->partial_desc.dequeue(tid);
+	if(res) return res.value();
+	else return nullptr;
+}
+inline void BaseMeta::list_put_partial(Descriptor* desc){
+	int tid = get_thread_id();//todo
+	desc->heap->sc->partial_desc.enqueue(desc,tid);
+}
+Descriptor* BaseMeta::heap_get_partial(Procheap* heap){
+	Descriptor* desc = heap->partial.load();
+	do{
+		if(desc == nullptr){
+			return list_get_partial(heap->sc);
+		}
+	}while(!heap->partial.compare_exchange_weak(desc,nullptr));
+	return desc;
+}
+void BaseMeta::heap_put_partial(Descriptor* desc){
+	Descriptor* prev = desc->heap->partial.load();
+	while(!desc->heap->partial.compare_exchange_weak(prev,desc));
+	if(prev){
+		list_put_partial(prev);
+	}
+}
+void BaseMeta::list_remove_empty_desc(Sizeclass* sc){
+	//try to retire empty descs from sc->partial_desc until reaches nonempty
+	Descriptor* desc;
+	int num_non_empty = 0;
+	int tid = get_thread_id();
+	while(auto tmp = sc->partial_desc.dequeue(tid)){
+		desc = tmp.value();
+		if(desc->sb == nullptr){
+			desc_retire(desc);
+		}
+		else {
+			sc->partial_desc.enqueue(desc,tid);
+			if(++num_non_empty >= 2) break;
+		}
+	}
+}
+void BaseMeta::remove_empty_desc(Procheap* heap, Descriptor* desc){
+	//remove the empty desc from heap->partial, or run list_remove_empty_desc on heap->sc
+	if(heap->partial.compare_exchange_strong(desc,nullptr)) {
+		desc_retire(desc);
+	}
+	else {
+		list_remove_empty_desc(heap->sc);
+	}
+}
+void BaseMeta::update_active(Procheap* heap, Descriptor* desc, uint64_t morecredits){
+	Active oldactive, newactive;
+	Anchor oldanchor, newanchor;
+	
+	*((uint64_t*)&oldactive) = 0;
+	newactive.ptr = (uint64_t)desc>>6;
+	newactive.credits = morecredits - 1;
+	if(heap->active.compare_exchange_strong(oldactive,newactive)){
+		return;
+	}
+	oldanchor = desc->anchor.load();
+	do{
+		newanchor = oldanchor;
+		newanchor.count += morecredits;
+		newancho.state = PARTIAL;
+	}while(!desc->anchor.compare_exchange_weak(oldanchor,newanchor));
+	heap_put_partial(desc);
+}
+inline Descriptor* BaseMeta::mask_credits(Active oldactive){
+	uint64_t ret = oldactive.ptr;
+	return (Descriptor*)(ret<<6);
+}
+
+
+Procheap* BaseMeta::find_heap(size_t sz){
+	// We need to fit both the object and the descriptor in a single block
+	sz += HEADER_SIZE;
+	if (sz > 2048) {
+		return nullptr;
+	}
+	int tid = get_thread_id();
+	return &procheaps[tid][sz / GRANULARITY];
+}
+void* BaseMeta::malloc_from_active(Procheap* heap);
+void* BaseMeta::malloc_from_partial(Procheap* heap);
+void* BaseMeta::malloc_from_newsb(Procheap* heap);
+void* BaseMeta::alloc_large_block(size_t sz);
+
+
+
