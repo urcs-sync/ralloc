@@ -75,6 +75,9 @@ public:
 	void* __fetch_heap_start();
 
 	int __nvm_region_allocator(void** /*ret */, size_t /* alignment */, size_t /*size */);
+
+	//true if ptr is in persistent region, otherwise false
+	bool __within_range(void* ptr);
 };
 
 

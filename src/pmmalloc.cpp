@@ -15,7 +15,7 @@ using namespace std;
  * if such a heap doesn't exist, create one. aka start.
  * id is the distinguishable identity of applications.
  */
-pmmalloc::pmmalloc(string id, uint64_t thd_num = MAX_THREADS) : 
+pmmalloc::pmmalloc(string id, uint64_t thd_num) : 
 	thread_num(thd_num){
 	bool restart = false;
 
@@ -50,7 +50,7 @@ bool pmmalloc::collect(){
 	return true;
 }
 
-void* pmmalloc::malloc(size_t sz, vector<void*>(*f) = nullptr){
+void* pmmalloc::p_malloc(size_t sz, vector<void*>(*f)){
 	//TODO: put f in each block
 	Procheap *heap;
 	void* addr;
@@ -99,7 +99,7 @@ void* pmmalloc::malloc(size_t sz, vector<void*>(*f) = nullptr){
 	} 
 }
 
-void pmmalloc::free(void* ptr){
+void pmmalloc::p_free(void* ptr){
 	Descriptor* desc;
 	void* sb;
 	Anchor oldanchor, newanchor;
@@ -113,11 +113,11 @@ void pmmalloc::free(void* ptr){
 		return;
 	}
 	
-	//TODO: a better way to determine if it's allocated by pmmalloc?
-	if(*((char*)((uint64_t)ptr - HEADER_SIZE)) != (char)LARGE && *((char*)((uint64_t)ptr - HEADER_SIZE)) != (char)SMALL) {//this block wasn't allocated by pmmalloc, call regular free by default.
-		free(ptr);
-		return;
-	}
+	// if(!mgr->__within_range(ptr)) {
+	// //this block wasn't allocated by pmmalloc, call regular free by default.
+	// 	free(ptr);
+	// 	return;
+	// }
 	// get prefix
 	ptr = (void*)((uint64_t)ptr - HEADER_SIZE);  
 	if (*((char*)ptr) == (char)LARGE) {
@@ -125,7 +125,7 @@ void pmmalloc::free(void* ptr){
 		fprintf(stderr, "Freeing large block\n");
 		fflush(stderr);
 #endif
-		pseudo: make the sb available
+		base_md->sb_retire(ptr, *((uint64_t *)(ptr + TYPE_SIZE)));
 		return;
 	}
 	desc = *((Descriptor**)((uint64_t)ptr + TYPE_SIZE));
@@ -160,16 +160,16 @@ void pmmalloc::free(void* ptr){
 		}
 		// memory fence.
 		FLUSHFENCE;
-	} while (!atomic_compare_exchange_weak((volatile uint64_t*)&desc->anchor, ((uint64_t*)&oldanchor), *((uint64_t*)&newanchor)));
+	} while (!desc->anchor.compare_exchange_weak(oldanchor, newanchor));
 	FLUSH(&desc->anchor);
 	FLUSHFENCE;
 	if (newanchor.state == EMPTY) {
 #ifdef DEBUG
-		fprintf(stderr, "Freeing superblock %p with desc %p (count %hu)\n", sb, desc, desc->Anchor.count);
+		fprintf(stderr, "Freeing superblock %p with desc %p (count %hu)\n", sb, desc, desc->anchor.load().count);
 		fflush(stderr);
 #endif
 
-		pseudo: make the sb available
+		base_md->sb_retire(sb, heap->sc->sbsize);
 		base_md->remove_empty_desc(heap, desc);
 	} 
 	else if (oldanchor.state == FULL) {
@@ -177,7 +177,7 @@ void pmmalloc::free(void* ptr){
 		fprintf(stderr, "Puting superblock %p to PARTIAL heap\n", sb);
 		fflush(stderr);
 #endif
-		desc->heap->heap_put_partial(desc);//TODO: make it elegant
+		base_md->heap_put_partial(desc);
 	}
 }
 

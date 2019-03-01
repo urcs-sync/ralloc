@@ -70,10 +70,11 @@ static void
 test_unhooked(int iters) {
 	// timedelta_t timer;
 	// timer_start(&timer);
-	pthread_t thread_id; 
+	pthread_t thread_id[THREAD_NUM]; 
 	for (int i = 0; i < THREAD_NUM; i++)
-		pthread_create(&thread_id, NULL, malloc_free_loop, (void*)&iters); 
-	pthread_exit(NULL); 
+		pthread_create(&thread_id[i], NULL, malloc_free_loop, (void*)&iters); 
+	for (int i = 0; i < THREAD_NUM; i++)
+		pthread_join(thread_id[i], NULL); 
 	// timer_stop(&timer);
 
 	printf("Without hooks: done\n");

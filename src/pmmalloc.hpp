@@ -11,17 +11,14 @@
 #include "BaseMeta.hpp"
 
 using namespace std;
-/*
- * TODO: arrange the heap layout (start addr of each structs)
- * Maybe a table would be helpful. Learn how Makalu does this
- */
+
 class pmmalloc{
 public:
 	pmmalloc(string id, uint64_t thd_num = MAX_THREADS); // start/restart the heap by the application id.
 	~pmmalloc(); // destructor to close the heap
 	bool collect();
-	void* malloc(size_t sz, vector<void*>(*f) = nullptr);
-	void free(void* ptr);
+	void* p_malloc(size_t sz, vector<void*>(*f) = nullptr);
+	void p_free(void* ptr);
 	void* set_root(void* ptr, uint64_t i);//return the old i-th root
 	void* get_root(uint64_t i);
 

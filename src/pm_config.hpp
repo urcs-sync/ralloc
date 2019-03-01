@@ -6,10 +6,16 @@
 
 #include "pfence_util.h"
 
+/* prefixing indicator */
+// persistent data in pmmalloc
+#define PM_PERSIST
+// transient data in pmmalloc
+#define PM_TRANSIENT
+
 /* user customized macros */
 #define HEAPFILE_PREFIX "/dev/shm/"
 #define ENABLE_FILTER_FUNC 1
-#define DEBUG 1
+// #define DEBUG 1
 const uint64_t MAX_FILESIZE = 5*1024*1024*1024ULL + 24;//TODO:is 24 a good number?
 const uint64_t MAX_THREADS = 512;
 const int MAX_ROOTS = 1024;

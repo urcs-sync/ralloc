@@ -70,7 +70,7 @@ void RegionManager::__map_persistent_region(){
 	//adress to remap to, the root pointer to gc metadata, 
 	//and the curr pointer at the end of the day
 	new (((atomic<char *>*) base_addr) + 1) atomic<char *>((char*) ((size_t)addr + 3 * sizeof(intptr_t)));
-	curr_addr_ptr = ((atomic<char *>*) base_addr) + 1;
+	curr_addr_ptr = (atomic<char *>*)(((intptr_t*) base_addr) + 1);
 	FLUSH(curr_addr_ptr);
 	FLUSHFENCE;
 	FLUSH( (((intptr_t*) base_addr) + 1)); 
@@ -107,7 +107,7 @@ void RegionManager::__remap_persistent_region(){
 	assert(forced_addr == (intptr_t) addr);
 
 	base_addr = (char*) addr;
-	curr_addr_ptr = ((atomic<char *>*) base_addr) + 1;
+	curr_addr_ptr = (atomic<char *>*)(((intptr_t*) base_addr) + 1);
 	printf("Forced Addr: %p\n", (void*) forced_addr);
 	printf("Addr: %p\n", addr);
 	printf("Base_addr: %p\n", base_addr);
@@ -190,4 +190,9 @@ int RegionManager::__nvm_region_allocator(void** memptr, size_t alignment, size_
 	*memptr = res;
 
 	return 0;
+}
+
+bool RegionManager::__within_range(void* ptr){
+	intptr_t curr_addr = (intptr_t)curr_addr_ptr->load();
+	return ((intptr_t)base_addr<(intptr_t)ptr) && ((intptr_t)ptr<curr_addr);
 }

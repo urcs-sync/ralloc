@@ -11,10 +11,21 @@ TODO
 	~make new_*_space parallel (nonblocking)
 ~flush volatile things back
 	!assume during the exit they will be flushed automatically and all we need to persist is only the entry (like the ptr partial_desc_queue)
-adapt functions to cpp
+~adapt functions to cpp
 	~declare function in correct place
-	finish the definitions of functions
+	~finish the definitions of functions
 ~set root and get root
 ~malloc and free
-thread id lookup
+sb allocation/deallocation (management)
+	maybe put large allocation and small in different region
+	how to deallocate a region in nonblocking way
+allocate transient data into a fixed region to allow sharing among applications
+~change var names in doc.
+~thread id lookup
+redesign the number of sizeclasses in BaseMeta
+use one desc pointer per sb (currently it's one per block)
 garbage collection
+	put filter function in blocks
+	metadata fix/reconstruction
+		when #thread changes?
+	sb coalesce

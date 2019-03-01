@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "pm_config.hpp"
+#include "thread_util.hpp"
 
 #include "RegionManager.hpp"
 #include "MichaelScottQueue.hpp"
@@ -13,9 +14,9 @@ struct Descriptor;
 
 /* data structures */
 struct Sizeclass{
-	unsigned int sz; // block size
-	unsigned int sbsize; // superblock size
-	MichaelScottQueue<Descriptor*>* partial_desc; // flushed only when exit
+	PM_TRANSIENT MichaelScottQueue<Descriptor*>* partial_desc;
+	PM_PERSIST unsigned int sz; // block size
+	PM_PERSIST unsigned int sbsize; // superblock size
 	Sizeclass(uint64_t thread_num = 1,
 			unsigned int bs = 0, 
 			unsigned int sbs = SBSIZE, 
@@ -30,55 +31,55 @@ struct Active{
 };
 
 struct Procheap {
-	Sizeclass* sc;					// pointer to parent sizeclass
-	atomic<Active> active;			// initially NULL; flushed only when exit
-	atomic<Descriptor*> partial;	// initially NULL, pointer to the partially used sb's desc; flushed only when exit
+	PM_TRANSIENT atomic<Active> active;			// initially NULL
+	PM_TRANSIENT atomic<Descriptor*> partial;	// initially NULL, pointer to the partially used sb's desc
+	PM_PERSIST Sizeclass* sc;					// pointer to parent sizeclass
 	Procheap(Sizeclass* s = nullptr,
 			uint64_t a = 0,
 			Descriptor* p = nullptr):
-		sc(s),
 		active(a),
-		partial(p) {};
+		partial(p),
+		sc(s) {};
 }__attribute__((aligned(CACHE_LINE_SIZE)));
 
 struct Anchor{
 	uint64_t avail:24,count:24, state:2, tag:14;
-	Anchor(uint64_t a = 0){*this = a;}
+	Anchor(uint64_t a = 0){(*(uint64_t*)this) = a;}
 	Anchor(unsigned a, unsigned c, unsigned s, unsigned t):
 		avail(a),count(c),state(s),tag(t){};
 };
 
 struct Descriptor{
-	atomic<Anchor> anchor;
-	void* sb;				// pointer to superblock
-	Procheap* heap;			// pointer to owner procheap
-	unsigned int sz;		// block size
-	unsigned int maxcount;	// superblock size / sz
+	PM_TRANSIENT atomic<Anchor> anchor;
+	PM_PERSIST void* sb;				// pointer to superblock
+	PM_PERSIST Procheap* heap;			// pointer to owner procheap
+	PM_PERSIST unsigned int sz;		// block size
+	PM_PERSIST unsigned int maxcount;	// superblock size / sz
 }__attribute__ ((aligned (64))); //align to 64 so that last 6 of active can use for credits
 
 struct Section {
-	void* sec_start;
-	size_t sec_bytes;
+	PM_PERSIST void* sec_start;
+	PM_PERSIST size_t sec_bytes;
 };
 
 class BaseMeta{
 	/* transient metadata and tools */
-	RegionManager* mgr;//assigned when BaseMeta constructs
-	MichaelScottQueue<Descriptor*> free_desc;
+	PM_TRANSIENT RegionManager* mgr;//assigned when BaseMeta constructs
+	PM_TRANSIENT MichaelScottQueue<Descriptor*> free_desc;
 
 	/* persistent metadata defined here */
 	//base metadata
-	uint64_t thread_num;
+	PM_PERSIST uint64_t thread_num;
 	//TODO: other metadata
 
-	void* roots[MAX_ROOTS];//persistent root
-	Sizeclass sizeclasses[MAX_SMALLSIZE/GRANULARITY+1];
-	Procheap procheaps[PROCHEAP_NUM][MAX_SMALLSIZE/GRANULARITY+1];
+	PM_PERSIST void* roots[MAX_ROOTS];//persistent root
+	PM_PERSIST Sizeclass sizeclasses[MAX_SMALLSIZE/GRANULARITY+1];
+	PM_PERSIST Procheap procheaps[PROCHEAP_NUM][MAX_SMALLSIZE/GRANULARITY+1];
 
-	std::atomic<uint64_t> desc_space_num = 0;
-	Section desc_spaces[MAX_SECTION];
-	std::atomic<uint64_t> sb_space_num = 0;
-	Section sb_spaces[MAX_SECTION];
+	PM_PERSIST std::atomic<uint64_t> desc_space_num = 0;
+	PM_PERSIST Section desc_spaces[MAX_SECTION];
+	PM_PERSIST std::atomic<uint64_t> sb_space_num = 0;
+	PM_PERSIST Section sb_spaces[MAX_SECTION];
 	/* persistent metadata ends here */
 public:
 	BaseMeta(RegionManager* m, uint64_t thd_num = MAX_THREADS);
@@ -86,6 +87,8 @@ public:
 		//usually BaseMeta shouldn't be destructed, and will be reused in the next time
 		std::cout<<"Warning: BaseMeta is being destructed!\n";
 	}
+	inline uint64_t min(uint64_t a, uint64_t b){return a>b?b:a;}
+	inline uint64_t max(uint64_t a, uint64_t b){return a>b?a:b;}
 	inline void set_mgr(RegionManager* m){mgr = m;}
 	void new_desc_space();
 	void new_sb_space();
@@ -107,10 +110,11 @@ public:
 	bool flush(){
 		//flush everything before exit
 		//currently we just assume everything will be automatically flushed back when exit.
+		return true;
 	}
 
-	//TODO below
-	void* alloc_sb(size_t size, uint64_t alignement);
+	void* sb_alloc(size_t size, uint64_t alignement);
+	void sb_retire(void* sb, size_t size);
 	void organize_desc_list(Descriptor* start, uint64_t count, uint64_t stride);// put new descs to free_desc queue
 	void organize_sb_list(void* start, uint64_t count, uint64_t stride);//create linked freelist of the sb
 	
