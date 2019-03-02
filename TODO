@@ -18,6 +18,7 @@ TODO
 ~malloc and free
 sb allocation/deallocation (management)
 	maybe put large allocation and small in different region
+		~small sb and freelist of it
 		when create a large sb space, we treat the whole space as a free sb and extract to use
 	how to deallocate a region in nonblocking way
 allocate transient data into a fixed region to allow sharing among applications
