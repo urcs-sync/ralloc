@@ -94,8 +94,8 @@ void* BaseMeta::small_sb_alloc(){
 		sb = tmp.value();
 	}
 	else{
-		cout<<"allocate sb space "<<space_num<<endl;
 		uint64_t space_num = new_space(1);
+		cout<<"allocate sb space "<<space_num<<endl;
 		sb = spaces[1][space_num].sec_start;
 		organize_sb_list(sb,SB_SPACE_SIZE/SBSIZE,SBSIZE);
 	}

@@ -130,6 +130,7 @@ void RegionManager::__close_persistent_region(){
 		 ((unsigned long) FILESIZE - space_used) / (1024 * 1024);
 	printf("Space Used(rounded down to MiB): %ld, Remaining(MiB): %ld\n", 
 			space_used / (1024 * 1024), remaining_space);
+	munmap((void*)base_addr, FILESIZE);
 	close(FD);
 }
 
