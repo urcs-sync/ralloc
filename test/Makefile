@@ -12,15 +12,15 @@ msqueue_test: msqueue_test.cpp
 
 region_manager_test: ../obj/RegionManager.o region_manager_test.cpp
 	$(CXX) -I $(SRC) -o $@ $^ $(CXXFLAGS) $(LIBS)
-	rm -f /dev/shm/test
+	rm -f /dev/shm/test*
 
 base_meta_test: base_meta_test.cpp libpmmalloc.a
 	$(CXX) -I $(SRC) -o $@ $^ $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
-	rm -f /dev/shm/test
+	rm -f /dev/shm/test*
 
 pmmalloc_test: pmmalloc_test.cpp libpmmalloc.a
 	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
-	rm -f /dev/shm/test
+	rm -f /dev/shm/test*
 
 ../obj/%.o: ../src/%.cpp
 	$(CXX) -I $(SRC) -o $@ -c $^ $(CXXFLAGS)

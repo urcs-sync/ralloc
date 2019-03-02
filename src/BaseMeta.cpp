@@ -33,6 +33,7 @@ void Sizeclass::reinit_msq(uint64_t thread_num){
 BaseMeta::BaseMeta(RegionManager* m, uint64_t thd_num) : 
 	mgr(m),
 	free_desc(thd_num),
+	free_sb(thd_num),
 	thread_num(thd_num) {
 	FLUSH(&thread_num);
 	/* allocate these persistent data into specific memory address */
@@ -65,43 +66,50 @@ BaseMeta::BaseMeta(RegionManager* m, uint64_t thd_num) :
 	FLUSHFENCE;
 }
 
-void BaseMeta::new_desc_space(){
-	if(desc_space_num.load(std::memory_order_relaxed)>=MAX_SECTION) assert(0&&"desc space number reaches max!");
+uint64_t BaseMeta::new_space(int i){//i=0:desc, i=1:small sb, i=2:large sb
+	if(space_num[i].load(std::memory_order_relaxed)>=MAX_SECTION) assert(0&&"space number reaches max!");
 	FLUSHFENCE;
-	uint64_t my_space_num = desc_space_num.fetch_add(1);
-	FLUSH(&desc_space_num);
-	desc_spaces[my_space_num].sec_bytes = 0;//0 if the section isn't init yet, otherwise we are sure the section is ready.
-	FLUSH(&desc_spaces[my_space_num].sec_bytes);
+	uint64_t my_space_num = space_num[i].fetch_add(1);
+	FLUSH(&space_num[i]);
+	spaces[i][my_space_num].sec_bytes = 0;
+	FLUSH(&spaces[i][my_space_num].sec_bytes);
 	FLUSHFENCE;
-	int res = mgr->__nvm_region_allocator(&(desc_spaces[my_space_num].sec_start),PAGESIZE, DESC_SPACE_SIZE);
+	uint64_t space_size = i==0?DESC_SPACE_SIZE:SB_SPACE_SIZE;
+	int res = mgr->__nvm_region_allocator(&(spaces[i][my_space_num].sec_start),PAGESIZE, space_size);
 	if(res != 0) assert(0&&"region allocation fails!");
-	desc_spaces[my_space_num].sec_bytes = DESC_SPACE_SIZE;
-	FLUSH(&desc_spaces[my_space_num].sec_start);
-	FLUSH(&desc_spaces[my_space_num].sec_bytes);
+	// spaces[i][my_space_num].sec_curr.store(spaces[i][my_space_num].sec_start);
+	spaces[i][my_space_num].sec_bytes = space_size;
+	FLUSH(&spaces[i][my_space_num].sec_start);
+	// FLUSH(&spaces[i][my_space_num].sec_curr);
+	FLUSH(&spaces[i][my_space_num].sec_bytes);
 	FLUSHFENCE;
+	return my_space_num;
 }
 
-void BaseMeta::new_sb_space(){
-	if(sb_space_num.load(std::memory_order_relaxed)>=MAX_SECTION) assert(0&&"sb space number reaches max!");
-	FLUSHFENCE;
-	uint64_t my_space_num = sb_space_num.fetch_add(1);
-	FLUSH(&sb_space_num);
-	sb_spaces[my_space_num].sec_bytes = 0;
-	FLUSH(&sb_spaces[my_space_num].sec_bytes);
-	FLUSHFENCE;
-	int res = mgr->__nvm_region_allocator(&(sb_spaces[sb_space_num].sec_start),PAGESIZE, SB_SPACE_SIZE);
-	if(res != 0) assert(0&&"region allocation fails!");
-	sb_spaces[my_space_num].sec_bytes = SB_SPACE_SIZE;
-	FLUSH(&sb_spaces[my_space_num].sec_start);
-	FLUSH(&sb_spaces[my_space_num].sec_bytes);
-	FLUSHFENCE;
-}
 
+void* BaseMeta::small_sb_alloc(){
+	void* sb = nullptr;
+	int tid = get_thread_id();
+	if(auto tmp = free_sb.dequeue(tid)){
+		sb = tmp.value();
+	}
+	else{
+		cout<<"allocate sb space "<<space_num<<endl;
+		uint64_t space_num = new_space(1);
+		sb = spaces[1][space_num].sec_start;
+		organize_sb_list(sb,SB_SPACE_SIZE/SBSIZE,SBSIZE);
+	}
+	return sb;
+}
+void BaseMeta::small_sb_retire(void* sb){
+	int tid = get_thread_id();
+	free_sb.enqueue(sb,tid);
+}
 //todo
-void* BaseMeta::sb_alloc(size_t size, uint64_t alignement){
+void* BaseMeta::large_sb_alloc(size_t size, uint64_t alignement){
 	void* addr = mmap(nullptr,size,PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 	if (addr == MAP_FAILED) {
-		fprintf(stderr, "sb_alloc() mmap failed, %lu: ", size);
+		fprintf(stderr, "large_sb_alloc() mmap failed, %lu: ", size);
 		switch (errno) {
 			case EBADF:	fprintf(stderr, "EBADF"); break;
 			case EACCES:	fprintf(stderr, "EACCES"); break;
@@ -116,14 +124,14 @@ void* BaseMeta::sb_alloc(size_t size, uint64_t alignement){
 		exit(1);
 	}
 	else if(addr == nullptr){
-		fprintf(stderr, "sb_alloc() mmap of size %lu returned NULL\n", size);
+		fprintf(stderr, "large_sb_alloc() mmap of size %lu returned NULL\n", size);
 		fflush(stderr);
 		exit(1);
 	}
 	return addr;
 }
 //todo
-void BaseMeta::sb_retire(void* sb, size_t size){
+void BaseMeta::large_sb_retire(void* sb, size_t size){
 	munmap(sb, size);
 }
 void BaseMeta::organize_desc_list(Descriptor* start, uint64_t count, uint64_t stride){
@@ -137,7 +145,16 @@ void BaseMeta::organize_desc_list(Descriptor* start, uint64_t count, uint64_t st
 
 }
 void BaseMeta::organize_sb_list(void* start, uint64_t count, uint64_t stride){
-//create linked freelist of the sb
+	// put new sbs to free_sb queue
+	uint64_t ptr = (uint64_t)start;
+	int tid = get_thread_id();
+	for(uint64_t i = 1; i < count; i++){
+		ptr += stride;
+		free_sb.enqueue((void*)ptr, tid);
+	}
+}
+void BaseMeta::organize_blk_list(void* start, uint64_t count, uint64_t stride){
+//create linked freelist of blocks in the sb
 	uint64_t ptr = (uint64_t)start; 
 	for (uint64_t i = 1; i < count - 1; i++) {
 		ptr += stride;
@@ -153,12 +170,19 @@ Descriptor* BaseMeta::desc_alloc(){
 		desc = tmp.value();
 	}
 	else {
-		desc = (Descriptor*)sb_alloc(DESCSBSIZE, sizeof(Descriptor));
-		organize_desc_list(desc, DESCSBSIZE/sizeof(Descriptor), sizeof(Descriptor));
+		uint64_t space_num = new_space(0);
+		// cout<<"allocate desc space "<<space_num<<endl;
+		// spaces[0][space_num].sec_curr.store((void*)((size_t)spaces[0][space_num].sec_start+spaces[0][space_num].sec_bytes));
+		desc = spaces[0][space_num].sec_start;
+		organize_desc_list(desc, DESC_SPACE_SIZE/sizeof(Descriptor), sizeof(Descriptor));
+
+		// desc = (Descriptor*)sb_alloc(DESCSBSIZE, sizeof(Descriptor));
+		// organize_desc_list(desc, DESCSBSIZE/sizeof(Descriptor), sizeof(Descriptor));
 	}
 	return desc;
 }
 inline void BaseMeta::desc_retire(Descriptor* desc){
+	int tid = get_thread_id();
 	free_desc.enqueue(desc, tid);
 }
 Descriptor* BaseMeta::list_get_partial(Sizeclass* sc){
@@ -360,7 +384,7 @@ void* BaseMeta::malloc_from_newsb(Procheap* heap){
 	void* addr = nullptr;
 
 	Descriptor* desc = desc_alloc();
-	desc->sb = sb_alloc(heap->sc->sbsize, SBSIZE);
+	desc->sb = small_sb_alloc();
 	desc->heap = heap;
 	newanchor.avail = 1;
 	desc->sz = heap->sc->sz;
@@ -369,7 +393,7 @@ void* BaseMeta::malloc_from_newsb(Procheap* heap){
 	FLUSH(&desc->heap);
 	FLUSH(&desc->sz);
 	FLUSH(&desc->maxcount);
-	organize_sb_list(desc->sb, desc->maxcount, desc->sz);
+	organize_blk_list(desc->sb, desc->maxcount, desc->sz);
 
 	newactive.ptr = (uint64_t)desc>>6;
 	newactive.credits = min(desc->maxcount - 1, MAXCREDITS)-1;
@@ -389,13 +413,13 @@ void* BaseMeta::malloc_from_newsb(Procheap* heap){
 		return (void*)((uint64_t)addr + PTR_SIZE);
 	}
 	else {
-		sb_retire(desc->sb, desc->heap->sc->sbsize);
+		small_sb_retire(desc->sb);
 		desc_retire(desc);
 		return nullptr;
 	}
 }
 void* BaseMeta::alloc_large_block(size_t sz){
-	void* addr = sb_alloc(sz + HEADER_SIZE, SBSIZE);
+	void* addr = large_sb_alloc(sz + HEADER_SIZE, SBSIZE);
 	*((char*)addr) = (char)LARGE;
 	addr += TYPE_SIZE;
 	*((uint64_t*)addr) = sz + HEADER_SIZE;

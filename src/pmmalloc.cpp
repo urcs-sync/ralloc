@@ -125,7 +125,7 @@ void pmmalloc::p_free(void* ptr){
 		fprintf(stderr, "Freeing large block\n");
 		fflush(stderr);
 #endif
-		base_md->sb_retire(ptr, *((uint64_t *)(ptr + TYPE_SIZE)));
+		base_md->large_sb_retire(ptr, *((uint64_t *)(ptr + TYPE_SIZE)));
 		return;
 	}
 	desc = *((Descriptor**)((uint64_t)ptr + TYPE_SIZE));
@@ -169,7 +169,7 @@ void pmmalloc::p_free(void* ptr){
 		fflush(stderr);
 #endif
 
-		base_md->sb_retire(sb, heap->sc->sbsize);
+		base_md->small_sb_retire(sb);
 		base_md->remove_empty_desc(heap, desc);
 	} 
 	else if (oldanchor.state == FULL) {

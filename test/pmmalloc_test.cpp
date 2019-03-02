@@ -46,6 +46,14 @@ int main(){
 	int iters = 10 * 1000 * 1000;
 	printf("Benchmarking hooks with %d iterations:\n", iters);
 	test_unhooked(iters);
+	test_unhooked(iters);
+	test_unhooked(iters);
+	test_unhooked(iters);
+	test_unhooked(iters);
+	test_unhooked(iters);
+	test_unhooked(iters);
+	test_unhooked(iters);
+	delete alloc;
 	cout<<"done!\n";
 	return 0;
 }

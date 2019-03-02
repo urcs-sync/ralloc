@@ -21,6 +21,7 @@ struct Sizeclass{
 			unsigned int bs = 0, 
 			unsigned int sbs = SBSIZE, 
 			MichaelScottQueue<Descriptor*>* pdq = nullptr);
+	~Sizeclass(){delete partial_desc;}
 	void reinit_msq(uint64_t thread_num);
 }__attribute__((aligned(CACHE_LINE_SIZE)));
 
@@ -53,19 +54,21 @@ struct Descriptor{
 	PM_TRANSIENT atomic<Anchor> anchor;
 	PM_PERSIST void* sb;				// pointer to superblock
 	PM_PERSIST Procheap* heap;			// pointer to owner procheap
-	PM_PERSIST unsigned int sz;		// block size
+	PM_PERSIST unsigned int sz;			// block size
 	PM_PERSIST unsigned int maxcount;	// superblock size / sz
 }__attribute__ ((aligned (64))); //align to 64 so that last 6 of active can use for credits
 
 struct Section {
 	PM_PERSIST void* sec_start;
+	// PM_PERSIST std::atomic<void*> sec_curr;
 	PM_PERSIST size_t sec_bytes;
-};
+}__attribute__((aligned(CACHE_LINE_SIZE)));
 
 class BaseMeta{
 	/* transient metadata and tools */
 	PM_TRANSIENT RegionManager* mgr;//assigned when BaseMeta constructs
 	PM_TRANSIENT MichaelScottQueue<Descriptor*> free_desc;
+	PM_TRANSIENT MichaelScottQueue<void*> free_sb;//unused small sb
 
 	/* persistent metadata defined here */
 	//base metadata
@@ -76,10 +79,8 @@ class BaseMeta{
 	PM_PERSIST Sizeclass sizeclasses[MAX_SMALLSIZE/GRANULARITY+1];
 	PM_PERSIST Procheap procheaps[PROCHEAP_NUM][MAX_SMALLSIZE/GRANULARITY+1];
 
-	PM_PERSIST std::atomic<uint64_t> desc_space_num = 0;
-	PM_PERSIST Section desc_spaces[MAX_SECTION];
-	PM_PERSIST std::atomic<uint64_t> sb_space_num = 0;
-	PM_PERSIST Section sb_spaces[MAX_SECTION];
+	PM_PERSIST std::atomic<uint64_t> space_num[3];//0:desc, 1:small sb, 2: large sb
+	PM_PERSIST Section spaces[3][MAX_SECTION];//0:desc, 1:small sb, 2: large sb
 	/* persistent metadata ends here */
 public:
 	BaseMeta(RegionManager* m, uint64_t thd_num = MAX_THREADS);
@@ -90,8 +91,7 @@ public:
 	inline uint64_t min(uint64_t a, uint64_t b){return a>b?b:a;}
 	inline uint64_t max(uint64_t a, uint64_t b){return a>b?a:b;}
 	inline void set_mgr(RegionManager* m){mgr = m;}
-	void new_desc_space();
-	void new_sb_space();
+	uint64_t new_space(int i);//i=0:desc, i=1:small sb, i=2:large sb. return index of allocated space.
 	inline void* set_root(void* ptr, uint64_t i){
 		//this is sequential
 		assert(i<MAX_ROOTS);
@@ -113,10 +113,13 @@ public:
 		return true;
 	}
 
-	void* sb_alloc(size_t size, uint64_t alignement);
-	void sb_retire(void* sb, size_t size);
+	void* small_sb_alloc();
+	void small_sb_retire(void* sb);
+	void* large_sb_alloc(size_t size, uint64_t alignement);
+	void large_sb_retire(void* sb, size_t size);
 	void organize_desc_list(Descriptor* start, uint64_t count, uint64_t stride);// put new descs to free_desc queue
-	void organize_sb_list(void* start, uint64_t count, uint64_t stride);//create linked freelist of the sb
+	void organize_sb_list(void* start, uint64_t count, uint64_t stride);// put new sbs to free_sb queue
+	void organize_blk_list(void* start, uint64_t count, uint64_t stride);//create linked freelist of blocks in the sb
 	
 	Descriptor* desc_alloc();
 	void desc_retire(Descriptor* desc);
