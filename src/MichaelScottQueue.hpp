@@ -32,6 +32,7 @@
 #include <atomic>
 #include <stdexcept>
 #include <optional>
+#include "pm_config.hpp"
 #include "HazardPointers.hpp"
 
 
@@ -82,10 +83,10 @@ private:
 	}
 
 	// Pointers to head and tail of the list
-	alignas(128) std::atomic<Node*> head;
-	alignas(128) std::atomic<Node*> tail;
+	alignas(CACHE_LINE_SIZE) std::atomic<Node*> head;
+	alignas(CACHE_LINE_SIZE) std::atomic<Node*> tail;
 
-	static const int MAX_THREADS = 512;
+	// static const int MAX_THREADS = 512;
 	const int maxThreads;
 
 	// We need two hazard pointers for dequeue()
@@ -104,7 +105,7 @@ public:
 
 	~MichaelScottQueue() {
 		while (dequeue(0)); // Drain the queue
-		delete head.load();			// Delete the last node
+		delete head.load(); // Delete the last node
 	}
 
 	std::string className() { return "MichaelScottQueue"; }
@@ -113,7 +114,7 @@ public:
 		Node* newNode = new Node(item);
 		while (true) {
 			Node* ltail = hp.protectPtr(kHpTail, tail, tid);
-			if (ltail == tail.load()) {
+			if (ltail == tail.load()) {//to ensure we protect correct tail
 				Node* lnext = ltail->next.load();
 				if (lnext == nullptr) {
 					// It seems this is the last node, so add the newNode here
@@ -130,21 +131,28 @@ public:
 		}
 	}
 
-
 	std::optional<T> dequeue(const int tid) {
-		Node* node = hp.protect(kHpHead, head, tid);
-		while (node != tail.load()) {
-			Node* lnext = hp.protect(kHpNext, node->next, tid);
-			if (casHead(node, lnext)) {
-				T item = lnext->item.value(); // Another thread may clean up lnext after we do hp.clear()
+		while(true){
+			Node* lhead = hp.protect(kHpHead, head, tid);
+			if(lhead != head.load()) continue;//to ensure we protect correct head
+			Node* ltail = tail.load();
+			Node* lnext = hp.protect(kHpNext, lhead->next, tid);
+			if(lhead != head.load()) continue;//to ensure next is correct
+			if(lnext == nullptr){
 				hp.clear(tid);
-				hp.retire(node, tid);
-				return item;
+				return {}; // Queue is empty
 			}
-			node = hp.protect(kHpHead, head, tid);
+			if(lhead != ltail){
+				if(casHead(lhead,lnext)){
+					T item = lnext->item.value(); // Another thread may clean up lnext after we do hp.clear()
+					hp.clear(tid);
+					hp.retire(lhead, tid);
+					return item;
+				}
+			} else {
+				casTail(ltail, lnext);
+			}
 		}
-		hp.clear(tid);
-		return {};				// Queue is empty
 	}
 };
 

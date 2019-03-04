@@ -90,7 +90,7 @@ uint64_t BaseMeta::new_space(int i){//i=0:desc, i=1:small sb, i=2:large sb
 void* BaseMeta::small_sb_alloc(){
 	void* sb = nullptr;
 	int tid = get_thread_id();
-	if(auto tmp = free_sb.dequeue(tid)){
+	if(auto tmp = free_sb.pop(tid)){
 		sb = tmp.value();
 	}
 	else{
@@ -103,7 +103,7 @@ void* BaseMeta::small_sb_alloc(){
 }
 void BaseMeta::small_sb_retire(void* sb){
 	int tid = get_thread_id();
-	free_sb.enqueue(sb,tid);
+	free_sb.push(sb,tid);
 }
 //todo
 void* BaseMeta::large_sb_alloc(size_t size, uint64_t alignement){
@@ -150,7 +150,7 @@ void BaseMeta::organize_sb_list(void* start, uint64_t count, uint64_t stride){
 	int tid = get_thread_id();
 	for(uint64_t i = 1; i < count; i++){
 		ptr += stride;
-		free_sb.enqueue((void*)ptr, tid);
+		free_sb.push((void*)ptr, tid);
 	}
 }
 void BaseMeta::organize_blk_list(void* start, uint64_t count, uint64_t stride){

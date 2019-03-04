@@ -9,6 +9,7 @@
 
 #include "RegionManager.hpp"
 #include "MichaelScottQueue.hpp"
+#include "LockfreeStack.hpp"
 
 struct Descriptor;
 
@@ -68,7 +69,8 @@ class BaseMeta{
 	/* transient metadata and tools */
 	PM_TRANSIENT RegionManager* mgr;//assigned when BaseMeta constructs
 	PM_TRANSIENT MichaelScottQueue<Descriptor*> free_desc;
-	PM_TRANSIENT MichaelScottQueue<void*> free_sb;//unused small sb
+	//todo: make free_sb FILO to mitigate page fault
+	PM_TRANSIENT LockfreeStack<void*> free_sb;//unused small sb
 
 	/* persistent metadata defined here */
 	//base metadata
