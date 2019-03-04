@@ -158,13 +158,13 @@ void* RegionManager::__fetch_heap_start(){
 	return (void*) (*(((intptr_t*) base_addr) + 2));
 }
 
-int RegionManager::__nvm_region_allocator(void** memptr, size_t alignment, size_t size){
+bool RegionManager::__nvm_region_allocator(void** memptr, size_t alignment, size_t size){
 	char* next;
 	char* res;
-	if (size < 0) return 1;
+	if (size < 0) return false;
 
 	if (((alignment & (~alignment + 1)) != alignment) ||	//should be multiple of 2
-		(alignment < sizeof(void*))) return 1; //should be at least the size of void*
+		(alignment < sizeof(void*))) return false; //should be at least the size of void*
 	char * old_curr_addr = curr_addr_ptr->load();
 	while(true){
 		char * new_curr_addr = old_curr_addr;
@@ -177,7 +177,7 @@ int RegionManager::__nvm_region_allocator(void** memptr, size_t alignment, size_
 		next = new_curr_addr + size;
 		if (next > base_addr + FILESIZE){
 			printf("\n----Region Manager: out of space in mmaped file-----\n");
-			return 1;
+			return false;
 		}
 		new_curr_addr = next;
 		if(curr_addr_ptr->compare_exchange_weak(old_curr_addr, new_curr_addr))
@@ -186,11 +186,43 @@ int RegionManager::__nvm_region_allocator(void** memptr, size_t alignment, size_
 	// *(((intptr_t*) base_addr) + 1) = (intptr_t) curr_addr;
 	FLUSHFENCE;
 	// FLUSH( (((intptr_t*) base_addr) + 1)); 
-	FLUSH(curr_addr_ptr); 
+	FLUSH(curr_addr_ptr);
 	FLUSHFENCE;
 	*memptr = res;
 
-	return 0;
+	return true;
+}
+
+int RegionManager::__try_nvm_region_allocator(void** memptr, size_t alignment, size_t size){
+	char* next;
+	char* res;
+	if (size < 0) return -1;
+
+	if (((alignment & (~alignment + 1)) != alignment) || //should be multiple of 2
+		(alignment < sizeof(void*))) return -1; //should be at least the size of void*
+	char * old_curr_addr = curr_addr_ptr->load();
+	char * new_curr_addr = old_curr_addr;
+	size_t aln_adj = (size_t) new_curr_addr & (alignment - 1);
+
+	if (aln_adj != 0)
+		new_curr_addr += (alignment - aln_adj);
+
+	res = new_curr_addr;
+	next = new_curr_addr + size;
+	if (next > base_addr + FILESIZE){
+		printf("\n----Region Manager: out of space in mmaped file-----\n");
+		return -1;
+	}
+	new_curr_addr = next;
+	if(curr_addr_ptr->compare_exchange_strong(old_curr_addr, new_curr_addr)) {
+		FLUSHFENCE;
+		FLUSH(curr_addr_ptr);
+		FLUSHFENCE;
+		*memptr = res;
+		return 0;
+	} else {
+		return 1;
+	}
 }
 
 bool RegionManager::__within_range(void* ptr){

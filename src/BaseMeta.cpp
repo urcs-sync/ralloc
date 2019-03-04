@@ -75,8 +75,8 @@ uint64_t BaseMeta::new_space(int i){//i=0:desc, i=1:small sb, i=2:large sb
 	FLUSH(&spaces[i][my_space_num].sec_bytes);
 	FLUSHFENCE;
 	uint64_t space_size = i==0?DESC_SPACE_SIZE:SB_SPACE_SIZE;
-	int res = mgr->__nvm_region_allocator(&(spaces[i][my_space_num].sec_start),PAGESIZE, space_size);
-	if(res != 0) assert(0&&"region allocation fails!");
+	bool res = mgr->__nvm_region_allocator(&(spaces[i][my_space_num].sec_start),PAGESIZE, space_size);
+	if(!res) assert(0&&"region allocation fails!");
 	// spaces[i][my_space_num].sec_curr.store(spaces[i][my_space_num].sec_start);
 	spaces[i][my_space_num].sec_bytes = space_size;
 	FLUSH(&spaces[i][my_space_num].sec_start);
@@ -107,6 +107,7 @@ void BaseMeta::small_sb_retire(void* sb){
 }
 //todo
 void* BaseMeta::large_sb_alloc(size_t size, uint64_t alignement){
+	// assert(0&"not persistently implemented yet!");
 	void* addr = mmap(nullptr,size,PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 	if (addr == MAP_FAILED) {
 		fprintf(stderr, "large_sb_alloc() mmap failed, %lu: ", size);
@@ -132,6 +133,7 @@ void* BaseMeta::large_sb_alloc(size_t size, uint64_t alignement){
 }
 //todo
 void BaseMeta::large_sb_retire(void* sb, size_t size){
+	// assert(0&"not persistently implemented yet!");
 	munmap(sb, size);
 }
 void BaseMeta::organize_desc_list(Descriptor* start, uint64_t count, uint64_t stride){
@@ -287,7 +289,7 @@ void* BaseMeta::malloc_from_active(Procheap* heap){
 			return nullptr;
 		}
 		if(oldactive.credits == 0){
-			//only one reserved block left, set heao->active to NULL
+			//only one reserved block left, set heap->active to NULL
 			*((uint64_t*)(&newactive)) = 0;
 		}
 		else {

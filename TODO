@@ -23,6 +23,7 @@ sb allocation/deallocation (management)
 		implement ordered list
 		when create a large sb space, we treat the whole space as a free sb and extract to use. the size of space is max(desired size, large_sb_space_size)
 	how to deallocate a region in nonblocking way
+mmap multiple regions and represent them by ids, and introduce smart ptrs using id and offset to dereference.
 allocate transient data into a fixed region to allow sharing among applications
 ~change var names in doc.
 ~thread id lookup

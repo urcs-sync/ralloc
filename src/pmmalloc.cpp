@@ -31,8 +31,8 @@ pmmalloc::pmmalloc(string id, uint64_t thd_num) :
 		filepath = HEAPFILE_PREFIX + id + "_" + 
 			to_string(time(nullptr));
 		mgr = new RegionManager(filepath);
-		int res = mgr->__nvm_region_allocator((void**)&base_md,sizeof(void*),sizeof(BaseMeta));
-		if(res!=0) assert(0&&"mgr allocation fails!");
+		bool res = mgr->__nvm_region_allocator((void**)&base_md,sizeof(void*),sizeof(BaseMeta));
+		if(!res) assert(0&&"mgr allocation fails!");
 		mgr->__store_heap_start(base_md);
 		new (base_md) BaseMeta(mgr, thd_num);
 	}

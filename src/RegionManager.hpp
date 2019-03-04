@@ -74,7 +74,17 @@ public:
 	//retrieve heap root
 	void* __fetch_heap_start();
 
-	int __nvm_region_allocator(void** /*ret */, size_t /* alignment */, size_t /*size */);
+	/* return true if succeeds, otherwise false
+	 * ret should be flushed after the call as a return value if needed
+	 */
+	bool __nvm_region_allocator(void** /*ret */, size_t /* alignment */, size_t /*size */);
+
+	/* try to expand the region.
+	 *  0: succeed
+	 * +1: fail due to completed expansion during the routine
+	 * -1: fail due to wrong parameter or out of space error
+	 */
+	int __try_nvm_region_allocator(void** /*ret */, size_t /* alignment */, size_t /*size */);
 
 	//true if ptr is in persistent region, otherwise false
 	bool __within_range(void* ptr);
