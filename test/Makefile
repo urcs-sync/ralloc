@@ -2,7 +2,7 @@ SRC = ../src
 CXX = g++
 
 CXXFLAGS = -O0 -g -fpermissive -std=c++17
-LIBS = -lpthread -lstdc++ -fPIC
+LIBS = -lpthread -lstdc++ -latomic -fPIC 
 
 
 all: msqueue_test region_manager_test base_meta_test pmmalloc_test
@@ -21,6 +21,12 @@ base_meta_test: base_meta_test.cpp libpmmalloc.a
 pmmalloc_test: pmmalloc_test.cpp libpmmalloc.a
 	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
 	rm -f /dev/shm/test*
+
+pptr_test: pptr_test.cpp
+	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS)
+
+arraystack_test: arraystack_test.cpp libpmmalloc.a
+	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
 
 ../obj/%.o: ../src/%.cpp
 	$(CXX) -I $(SRC) -o $@ -c $^ $(CXXFLAGS)

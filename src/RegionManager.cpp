@@ -73,8 +73,6 @@ void RegionManager::__map_persistent_region(){
 	curr_addr_ptr = (atomic<char *>*)(((intptr_t*) base_addr) + 1);
 	FLUSH(curr_addr_ptr);
 	FLUSHFENCE;
-	FLUSH( (((intptr_t*) base_addr) + 1)); 
-	FLUSHFENCE;
 	printf("Addr: %p\n", addr);
 	printf("Base_addr: %p\n", base_addr);
 	printf("Current_addr: %p\n", curr_addr_ptr->load());
@@ -114,6 +112,62 @@ void RegionManager::__remap_persistent_region(){
 	printf("Curr_addr: %p\n", curr_addr_ptr->load());
 }
 
+void RegionManager::__map_transient_region(){
+	int fd;
+	fd  = open(HEAPFILE, O_RDWR | O_CREAT | O_TRUNC,
+				S_IRUSR | S_IWUSR);
+
+	FD = fd;
+	off_t offt = lseek(fd, FILESIZE-1, SEEK_SET);
+	assert(offt != -1);
+
+	int result = write(fd, "", 1);
+	assert(result != -1);
+
+	void * addr =
+		mmap(0, FILESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	assert(addr != MAP_FAILED);
+
+	base_addr = (char*) addr;
+	//adress to remap to, the root pointer to gc metadata, 
+	//and the curr pointer at the end of the day
+	new ((atomic<char *>*) base_addr + 1) atomic<char *>((char*) ((size_t)addr + 2*sizeof(intptr_t)));
+	curr_addr_ptr = (atomic<char *>*)((intptr_t*) base_addr + 1);
+	FLUSH(curr_addr_ptr);
+	FLUSHFENCE;
+	printf("Addr: %p\n", addr);
+	printf("Base_addr: %p\n", base_addr);
+	printf("Current_addr: %p\n", curr_addr_ptr->load());
+}
+void RegionManager::__remap_transient_region(){
+	int fd;
+	fd = open(HEAPFILE, O_RDWR,
+				S_IRUSR | S_IWUSR);
+
+	FD = fd;
+	off_t offt = lseek(fd, FILESIZE-1, SEEK_SET);
+	assert(offt != -1);
+
+	int result = write(fd, "", 1);
+	assert(result != -1);
+
+	offt = lseek(fd, 0, SEEK_SET);
+	assert (offt == 0);
+
+	void * addr =
+		mmap(0, FILESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	assert(addr != MAP_FAILED);
+
+	base_addr = (char*) addr;
+	curr_addr_ptr = (atomic<char *>*)(((intptr_t*) base_addr) + 1);
+	char* offset = curr_addr_ptr->load();
+	bool res = curr_addr_ptr->compare_exchange_strong(offset,(char*)((uint64_t)offset+(uint64_t)base_addr));//recover curr_addr by the offset
+	assert(res&&"something wrong while CASing curr_addr");
+	printf("Addr: %p\n", addr);
+	printf("Base_addr: %p\n", base_addr);
+	printf("Curr_addr: %p\n", curr_addr_ptr->load());
+}
+
 //persist the curr and base address
 void RegionManager::__close_persistent_region(){
 	// *(((intptr_t*) base_addr) + 1) = (intptr_t) curr_addr;
@@ -134,20 +188,36 @@ void RegionManager::__close_persistent_region(){
 	close(FD);
 }
 
-//print the status
-// void RegionManager::__close_transient_region(){
-// 	printf("At the end current addr: %p\n", curr_addr);
-// 	unsigned long space_used = ((unsigned long) curr_addr
-// 		 - (unsigned long) base_addr);
-// 	unsigned long remaining_space =
-// 		 ((unsigned long) FILESIZE - space_used) / (1024 * 1024);
-// 	printf("Space Used(rounded down to MiB): %ld, Remaining(MiB): %ld\n",
-// 			space_used / (1024 * 1024), remaining_space);
-// }
+//flush transient region back
+void RegionManager::__close_transient_region(){
+	FLUSHFENCE;
+	// FLUSH( (((intptr_t*) base_addr) + 1)); 
+	char* curr_addr = curr_addr_ptr->load();
+	bool res = curr_addr_ptr->compare_exchange_strong(curr_addr,(char*)((uint64_t)curr_addr-(uint64_t)base_addr));// store offset of curr_addr
+	assert(res&&"something wrong while CASing curr_addr");
+	FLUSH(curr_addr_ptr);
+	for(uint64_t tmp = (uint64_t)base_addr;
+		tmp<(uint64_t)curr_addr;
+		tmp+=CACHE_LINE_SIZE/8){
+		FLUSH((void*)tmp);
+	}
+	FLUSHFENCE;
+	
+	printf("At the end current addr: %p\n", curr_addr);
 
-//store heap root
+	unsigned long space_used = ((unsigned long) curr_addr 
+		 - (unsigned long) base_addr);
+	unsigned long remaining_space = 
+		 ((unsigned long) FILESIZE - space_used) / (1024 * 1024);
+	printf("Space Used(rounded down to MiB): %ld, Remaining(MiB): %ld\n", 
+			space_used / (1024 * 1024), remaining_space);
+	munmap((void*)base_addr, FILESIZE);
+	close(FD);
+}
+
+//store heap root by offset from base
 void RegionManager::__store_heap_start(void* root){
-	*(((intptr_t*) base_addr) + 2) = (intptr_t) root;
+	*(((intptr_t*) base_addr) + 2) = (intptr_t) root - (intptr_t) base_addr;
 	FLUSHFENCE;
 	FLUSH( (((intptr_t*) base_addr) + 2)); 
 	FLUSHFENCE;
@@ -155,7 +225,7 @@ void RegionManager::__store_heap_start(void* root){
 
 //retrieve heap root
 void* RegionManager::__fetch_heap_start(){
-	return (void*) (*(((intptr_t*) base_addr) + 2));
+	return (void*) (*(((intptr_t*) base_addr) + 2) + (intptr_t) base_addr);
 }
 
 bool RegionManager::__nvm_region_allocator(void** memptr, size_t alignment, size_t size){

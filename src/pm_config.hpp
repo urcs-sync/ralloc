@@ -16,7 +16,7 @@
 #define HEAPFILE_PREFIX "/dev/shm/"
 #define ENABLE_FILTER_FUNC 1
 // #define DEBUG 1
-const uint64_t MAX_FILESIZE = 16*1024*1024*1024ULL + 24;//TODO:is 24 a good number?
+const uint64_t MAX_FILESIZE = 16*1024*1024*1024ULL;
 const uint64_t MAX_THREADS = 512;
 const int MAX_ROOTS = 1024;
 const int MAX_SECTION = 10;
@@ -47,5 +47,5 @@ const int GRANULARITY = 8; // granularity of sizeclass size
 const int MAX_SMALLSIZE = 2048; // largest size of a small object
 const int PROCHEAP_NUM = MAX_THREADS; // number of processor heap
 
-
+const uint64_t FREELIST_CAP = 10*1024*1024ULL; //largest amount of nodes in freelist
 #endif

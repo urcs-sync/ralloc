@@ -2,7 +2,7 @@
 #define _LOCKFREE_STACK_HPP_
 
 #include <atomic>
-#include <optional>
+#include "optional.hpp"
 #include "pm_config.hpp"
 #include "HazardPointers.hpp"
 
@@ -20,10 +20,10 @@ class LockfreeStack {
 
 private:
 	struct Node {
-		std::optional<T> item;
+		optional<T> item;
 		std::atomic<Node*> next;
 
-		Node(std::optional<T> userItem = {}) : item{userItem}, next{nullptr} { }
+		Node(optional<T> userItem = {}) : item{userItem}, next{nullptr} { }
 
 		bool casNext(Node *cmp, Node *val) {
 			return next.compare_exchange_strong(cmp, val);
@@ -64,7 +64,7 @@ public:
 		}
 	}
 
-	std::optional<T> pop(const int tid) {
+	optional<T> pop(const int tid) {
 		while(true){
 			Node* ltop = hp.protectPtr(kHpTop, top, tid);
 			if(ltop != nullptr){

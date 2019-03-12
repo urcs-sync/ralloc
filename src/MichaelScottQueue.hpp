@@ -31,7 +31,7 @@
 
 #include <atomic>
 #include <stdexcept>
-#include <optional>
+#include "optional.hpp"
 #include "pm_config.hpp"
 #include "HazardPointers.hpp"
 
@@ -64,10 +64,10 @@ class MichaelScottQueue {
 
 private:
 	struct Node {
-		std::optional<T> item;
+		optional<T> item;
 		std::atomic<Node*> next;
 
-		Node(std::optional<T> userItem = {}) : item{userItem}, next{nullptr} { }
+		Node(optional<T> userItem = {}) : item{userItem}, next{nullptr} { }
 
 		bool casNext(Node *cmp, Node *val) {
 			return next.compare_exchange_strong(cmp, val);
@@ -131,7 +131,7 @@ public:
 		}
 	}
 
-	std::optional<T> dequeue(const int tid) {
+	optional<T> dequeue(const int tid) {
 		while(true){
 			Node* lhead = hp.protect(kHpHead, head, tid);
 			if(lhead != head.load()) continue;//to ensure we protect correct head

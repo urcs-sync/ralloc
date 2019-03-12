@@ -36,19 +36,32 @@ public:
 	int FD = 0;
 	char *base_addr = nullptr;
 	atomic<char *>* curr_addr_ptr;//this always points to the place of base_addr+1
+	bool persist;
 
-	RegionManager(const string& file_path):
-		FILESIZE(MAX_FILESIZE),
+	RegionManager(const string& file_path, bool p = true, uint64_t size = MAX_FILESIZE):
+		FILESIZE(size+24),
 		HEAPFILE(file_path.c_str()),
-		curr_addr_ptr(nullptr){
-		if(exists_test(HEAPFILE)){
-			__remap_persistent_region();
+		curr_addr_ptr(nullptr),
+		persist(p){
+		if(persist){
+			if(exists_test(HEAPFILE)){
+				__remap_persistent_region();
+			} else {
+				__map_persistent_region();
+			}
 		} else {
-			__map_persistent_region();
+			if(exists_test(HEAPFILE)){
+				__remap_transient_region();
+			} else {
+				__map_transient_region();
+			}
 		}
 	};
 	~RegionManager(){
-		__close_persistent_region();
+		if(persist)
+			__close_persistent_region();
+		else
+			__close_transient_region();
 	}
 	//mmap anynomous, not used by default
 	// void __map_transient_region();
@@ -59,19 +72,23 @@ public:
 	}
 
 	//mmap file
+	//the only difference between persist and trans version is
+	//persist always map to the same addr while trans doesn't
 	void __map_persistent_region();
 	void __remap_persistent_region();
+	void __map_transient_region();
+	void __remap_transient_region();
 
 	//persist the curr and base address
 	void __close_persistent_region();
 
-	//print the status
-	// void __close_transient_region();
+	//flush transient region back
+	void __close_transient_region();
 
-	//store heap root
+	//store heap root by offset from base
 	void __store_heap_start(void*);
 
-	//retrieve heap root
+	//retrieve heap root from offset from base
 	void* __fetch_heap_start();
 
 	/* return true if succeeds, otherwise false

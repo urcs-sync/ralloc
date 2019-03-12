@@ -1,7 +1,7 @@
 #include "thread_util.hpp"
 
 thread_local int tid = -1;
-std::atomic<uint64_t> thread_count = 0;
+std::atomic<uint64_t> thread_count(0);
 
 struct thd_info{
 	void *(*start_routine)(void *);

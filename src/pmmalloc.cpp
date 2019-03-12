@@ -1,7 +1,5 @@
 #include "pmmalloc.hpp"
 
-#include <ctime>
-
 #include <string>
 #include <atomic>
 #include <vector>
@@ -28,8 +26,7 @@ pmmalloc::pmmalloc(string id, uint64_t thd_num) :
 		//collect if the heap is dirty
 	} else {
 		/* RegionManager init */
-		filepath = HEAPFILE_PREFIX + id + "_" + 
-			to_string(time(nullptr));
+		filepath = HEAPFILE_PREFIX + id;
 		mgr = new RegionManager(filepath);
 		bool res = mgr->__nvm_region_allocator((void**)&base_md,sizeof(void*),sizeof(BaseMeta));
 		if(!res) assert(0&&"mgr allocation fails!");
