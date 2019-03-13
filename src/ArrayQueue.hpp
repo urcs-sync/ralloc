@@ -23,7 +23,7 @@
  * 		assert failure will be triggered when overflow.
  *
  * template parameter T:
- * 		T must be a type <= 64 bit
+ * 		T must be a type == 64 bit
  * 		T must be some type convertible to int, like pointers
  * Functions:
  * 		ArrayQueue(string id): 
@@ -167,7 +167,7 @@ private:
 	};
 	struct Node{
 		T value;
-		uint32_t counter;
+		uint64_t counter;
 		Node(T val = (T)0, uint32_t a = 0) noexcept:
 			value(val),
 			counter(a){};
