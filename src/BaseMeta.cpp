@@ -33,7 +33,7 @@ void Sizeclass::reinit_msq(uint64_t thread_num){
 BaseMeta::BaseMeta(RegionManager* m, uint64_t thd_num) : 
 	mgr(m),
 	free_desc(thd_num),
-	free_sb(thd_num),
+	free_sb("pmmalloc_freesb"),
 	thread_num(thd_num) {
 	FLUSH(&thread_num);
 	/* allocate these persistent data into specific memory address */
@@ -90,7 +90,7 @@ uint64_t BaseMeta::new_space(int i){//i=0:desc, i=1:small sb, i=2:large sb
 void* BaseMeta::small_sb_alloc(){
 	void* sb = nullptr;
 	int tid = get_thread_id();
-	if(auto tmp = free_sb.pop(tid)){
+	if(auto tmp = free_sb.pop()){
 		sb = tmp.value();
 	}
 	else{
@@ -103,7 +103,7 @@ void* BaseMeta::small_sb_alloc(){
 }
 void BaseMeta::small_sb_retire(void* sb){
 	int tid = get_thread_id();
-	free_sb.push(sb,tid);
+	free_sb.push(sb);
 }
 //todo
 void* BaseMeta::large_sb_alloc(size_t size, uint64_t alignement){
@@ -152,7 +152,7 @@ void BaseMeta::organize_sb_list(void* start, uint64_t count, uint64_t stride){
 	int tid = get_thread_id();
 	for(uint64_t i = 1; i < count; i++){
 		ptr += stride;
-		free_sb.push((void*)ptr, tid);
+		free_sb.push((void*)ptr);
 	}
 }
 void BaseMeta::organize_blk_list(void* start, uint64_t count, uint64_t stride){

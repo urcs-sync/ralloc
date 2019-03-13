@@ -9,7 +9,7 @@
 
 #include "RegionManager.hpp"
 #include "MichaelScottQueue.hpp"
-#include "LockfreeStack.hpp"
+#include "ArrayStack.hpp"
 
 struct Descriptor;
 
@@ -70,7 +70,7 @@ class BaseMeta{
 	PM_TRANSIENT RegionManager* mgr;//assigned when BaseMeta constructs
 	PM_TRANSIENT MichaelScottQueue<Descriptor*> free_desc;
 	//todo: make free_sb FILO to mitigate page fault
-	PM_TRANSIENT LockfreeStack<void*> free_sb;//unused small sb
+	PM_TRANSIENT ArrayStack<void*> free_sb;//unused small sb
 
 	/* persistent metadata defined here */
 	//base metadata

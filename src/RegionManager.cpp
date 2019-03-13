@@ -28,7 +28,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <sys/select.h>
 
+#include <iostream>
 // //mmap anynomous
 // void RegionManager::__map_transient_region(){
 // 	char* ret = (char*) mmap((void*) 0, FILESIZE,
@@ -48,8 +50,9 @@
 
 //mmap file
 void RegionManager::__map_persistent_region(){
+	printf("Creating a new persistent region...\n");
 	int fd;
-	fd  = open(HEAPFILE, O_RDWR | O_CREAT | O_TRUNC,
+	fd  = open(HEAPFILE.c_str(), O_RDWR | O_CREAT | O_TRUNC,
 				S_IRUSR | S_IWUSR);
 
 	FD = fd;
@@ -78,8 +81,9 @@ void RegionManager::__map_persistent_region(){
 	printf("Current_addr: %p\n", curr_addr_ptr->load());
 }
 void RegionManager::__remap_persistent_region(){
+	printf("Remapping the persistent region...\n");
 	int fd;
-	fd = open(HEAPFILE, O_RDWR,
+	fd = open(HEAPFILE.c_str(), O_RDWR,
 				S_IRUSR | S_IWUSR);
 
 	FD = fd;
@@ -113,8 +117,9 @@ void RegionManager::__remap_persistent_region(){
 }
 
 void RegionManager::__map_transient_region(){
+	printf("Creating a new transient region...\n");
 	int fd;
-	fd  = open(HEAPFILE, O_RDWR | O_CREAT | O_TRUNC,
+	fd  = open(HEAPFILE.c_str(), O_RDWR | O_CREAT | O_TRUNC,
 				S_IRUSR | S_IWUSR);
 
 	FD = fd;
@@ -140,8 +145,9 @@ void RegionManager::__map_transient_region(){
 	printf("Current_addr: %p\n", curr_addr_ptr->load());
 }
 void RegionManager::__remap_transient_region(){
+	printf("Remapping the transient region...\n");
 	int fd;
-	fd = open(HEAPFILE, O_RDWR,
+	fd = open(HEAPFILE.c_str(), O_RDWR,
 				S_IRUSR | S_IWUSR);
 
 	FD = fd;
@@ -298,4 +304,25 @@ int RegionManager::__try_nvm_region_allocator(void** memptr, size_t alignment, s
 bool RegionManager::__within_range(void* ptr){
 	intptr_t curr_addr = (intptr_t)curr_addr_ptr->load();
 	return ((intptr_t)base_addr<(intptr_t)ptr) && ((intptr_t)ptr<curr_addr);
+}
+
+void RegionManager::__destroy(){
+	if(!exists_test(HEAPFILE)){
+		std::cout<<"File "<<HEAPFILE<<" doesn't exist!\n";
+		return;
+	}
+	std::cout<<"Do you really want to destroy "<<HEAPFILE<<"?[y/N]\n";
+	char choice = std::cin.get();
+	switch(choice){
+		case 'y':
+		case 'Y':
+			remove(HEAPFILE.c_str());
+			return;
+		case '\n':
+		case 'n':
+		case 'N':
+		default:
+			return;
+	}
+
 }

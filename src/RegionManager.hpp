@@ -26,12 +26,11 @@
 #include <atomic>
 
 #include "pm_config.hpp"
-
 using namespace std;
 
 class RegionManager{
 	const uint64_t FILESIZE;
-	const char * HEAPFILE;
+	const string HEAPFILE;
 public:
 	int FD = 0;
 	char *base_addr = nullptr;
@@ -40,7 +39,7 @@ public:
 
 	RegionManager(const string& file_path, bool p = true, uint64_t size = MAX_FILESIZE):
 		FILESIZE(size+24),
-		HEAPFILE(file_path.c_str()),
+		HEAPFILE(file_path),
 		curr_addr_ptr(nullptr),
 		persist(p){
 		if(persist){
@@ -62,6 +61,9 @@ public:
 			__close_persistent_region();
 		else
 			__close_transient_region();
+#ifdef DEBUG
+		__destroy();
+#endif
 	}
 	//mmap anynomous, not used by default
 	// void __map_transient_region();
@@ -105,6 +107,9 @@ public:
 
 	//true if ptr is in persistent region, otherwise false
 	bool __within_range(void* ptr);
+
+	//destroy the region and delete the file
+	void __destroy();
 };
 
 
