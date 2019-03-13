@@ -28,6 +28,9 @@ pptr_test: pptr_test.cpp
 arraystack_test: arraystack_test.cpp libpmmalloc.a
 	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
 
+arrayqueue_test: arrayqueue_test.cpp libpmmalloc.a
+	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
+
 ../obj/%.o: ../src/%.cpp
 	$(CXX) -I $(SRC) -o $@ -c $^ $(CXXFLAGS)
 

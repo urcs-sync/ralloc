@@ -100,7 +100,8 @@ public:
 		while(true){
 			Top old_top = top.load();
 			finish(old_top.value, old_top.index, old_top.counter);
-			if(old_top.index == size - 1) assert(0&&"stack is full!");
+			if(old_top.index == size - 1) 
+				assert(0&&"stack is full!");
 			Top new_top(val,old_top.index+1,nodes[old_top.index+1].load().counter+1);
 			if(top.compare_exchange_weak(old_top,new_top))
 				return;
@@ -118,6 +119,7 @@ public:
 				return old_top.value;
 		}
 	}
+private:
 	void finish(T value, uint32_t index, uint32_t counter){
 		Node old_node(nodes[index].load().value, counter-1);
 		Node new_node(value, counter);
