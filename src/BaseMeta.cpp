@@ -32,7 +32,7 @@ void Sizeclass::reinit_msq(uint64_t thread_num){
 
 BaseMeta::BaseMeta(RegionManager* m, uint64_t thd_num) : 
 	mgr(m),
-	free_desc(thd_num),
+	free_desc("pmmalloc_freedesc"),
 	free_sb("pmmalloc_freesb"),
 	thread_num(thd_num) {
 	FLUSH(&thread_num);
@@ -142,7 +142,7 @@ void BaseMeta::organize_desc_list(Descriptor* start, uint64_t count, uint64_t st
 	int tid = get_thread_id();
 	for(uint64_t i = 1; i < count; i++){
 		ptr += stride;
-		free_desc.enqueue((Descriptor*)ptr, tid);
+		free_desc.push((Descriptor*)ptr);
 	}
 
 }
@@ -168,7 +168,7 @@ void BaseMeta::organize_blk_list(void* start, uint64_t count, uint64_t stride){
 Descriptor* BaseMeta::desc_alloc(){
 	Descriptor* desc = nullptr;
 	int tid = get_thread_id();
-	if(auto tmp = free_desc.dequeue(tid)){
+	if(auto tmp = free_desc.pop()){
 		desc = tmp.value();
 	}
 	else {
@@ -185,7 +185,7 @@ Descriptor* BaseMeta::desc_alloc(){
 }
 inline void BaseMeta::desc_retire(Descriptor* desc){
 	int tid = get_thread_id();
-	free_desc.enqueue(desc, tid);
+	free_desc.push(desc);
 }
 Descriptor* BaseMeta::list_get_partial(Sizeclass* sc){
 	//get a partial desc from sizeclass partial_desc queue

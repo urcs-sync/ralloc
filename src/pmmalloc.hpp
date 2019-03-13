@@ -19,18 +19,10 @@ public:
 	void p_free(void* ptr);
 	void* set_root(void* ptr, uint64_t i);//return the old i-th root
 	void* get_root(uint64_t i);
-	void init(string id, uint64_t thd_num = MAX_THREADS){delete obj;obj = new pmmalloc(id,thd_num);}
-	void destroy(){delete obj; obj = nullptr;}
-	static pmmalloc* get_obj(){
-		if(obj==nullptr)
-			assert(0&&"pmmalloc isn't initialized!");
-		return obj;
-	}
-
-private:
 	pmmalloc(string id, uint64_t thd_num = MAX_THREADS); // start/restart the heap by the application id.
 	~pmmalloc(); // destructor to close the heap
-	static pmmalloc* obj = nullptr;
+
+private:
 	string filepath;
 	uint64_t thread_num;
 	/* manager to map, remap, and unmap the heap */

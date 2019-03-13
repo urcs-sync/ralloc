@@ -103,6 +103,7 @@ public:
 			if(old_top.index == size - 1) 
 				assert(0&&"stack is full!");
 			Top new_top(val,old_top.index+1,nodes[old_top.index+1].load().counter+1);
+fuck:
 			if(top.compare_exchange_weak(old_top,new_top))
 				return;
 		}

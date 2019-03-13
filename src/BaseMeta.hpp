@@ -10,6 +10,7 @@
 #include "RegionManager.hpp"
 #include "MichaelScottQueue.hpp"
 #include "ArrayStack.hpp"
+#include "ArrayQueue.hpp"
 
 struct Descriptor;
 
@@ -68,7 +69,7 @@ struct Section {
 class BaseMeta{
 	/* transient metadata and tools */
 	PM_TRANSIENT RegionManager* mgr;//assigned when BaseMeta constructs
-	PM_TRANSIENT MichaelScottQueue<Descriptor*> free_desc;
+	PM_TRANSIENT ArrayQueue<Descriptor*> free_desc;
 	//todo: make free_sb FILO to mitigate page fault
 	PM_TRANSIENT ArrayStack<void*> free_sb;//unused small sb
 

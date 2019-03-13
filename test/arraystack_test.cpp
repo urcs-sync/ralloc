@@ -18,9 +18,9 @@ using namespace std;
 const int THREAD_NUM = 4;
 const int TEST_SEC = 5;
 
-ArrayStack<unsigned int> msq("freesb");
-multiset<unsigned int> in[THREAD_NUM];
-queue<unsigned int> out[THREAD_NUM];
+ArrayStack<uint64_t> msq("freesb");
+multiset<uint64_t> in[THREAD_NUM];
+queue<uint64_t> out[THREAD_NUM];
 struct timeval time_up;
 
 int test(int tid){
@@ -29,18 +29,18 @@ int test(int tid){
 	struct timeval now;
 	gettimeofday(&now,NULL);
 	int ops = 0;
-	// unsigned int cnt = 0;
+	// uint64_t cnt = 0;
 	cout << "thread " << tid << " starts\n";
 	while(now.tv_sec < time_up.tv_sec 
 			|| (now.tv_sec==time_up.tv_sec && now.tv_usec<time_up.tv_usec) ){
 		if(gen_p()%2==0) { // in
-			unsigned int k = gen_k()%1000000000;
+			uint64_t k = gen_k()%1000000000;
 			in[tid].insert(k);
 			k = (k<<2) | (tid&0b11);
 			msq.push(k);
 			// cout<<"push: "<<k<<endl;
 		} else { // out
-			optional<unsigned int> res = msq.pop();
+			optional<uint64_t> res = msq.pop();
 			if(res) {
 				out[tid].push(res.value());
 				// cout<<"pop: "<<res.value()<<endl;
@@ -60,7 +60,7 @@ int check(){
 		while(!out[i].empty()){
 			auto x = out[i].front();
 			out[i].pop();
-			unsigned int tid = x & 0b11;
+			uint64_t tid = x & 0b11;
 			x = x >> 2;
 			auto iter = in[tid].find(x);
 			assert(iter!=in[tid].end() && "Fail to find the dequeued element!");
@@ -70,8 +70,8 @@ int check(){
 	cout<<"passed!\n";
 	cout<<"dequeuing from msq...";
 	while(auto _x = msq.pop()){
-		unsigned int x = _x.value();
-		unsigned int tid = x & 0b11;
+		uint64_t x = _x.value();
+		uint64_t tid = x & 0b11;
 		x = x >> 2;
 		auto iter = in[tid].find(x);
 		assert(iter!=in[tid].end() && "Fail to find the dequeuing element!");

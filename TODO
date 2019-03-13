@@ -27,8 +27,8 @@ mmap multiple regions and represent them by ids, and introduce smart ptrs using 
 ~allocate transient data into a fixed region to allow sharing among applications
 	fix inputs for ArrayQueue constructor and enqueue/dequeue in BaseMeta
 	~fix inputs for ArrayStack constructor and enqueue/dequeue in BaseMeta
-	add destroy functions for array queue and stack
-		fix segfault after destroying
+	~add destroy functions for array queue and stack
+		~fix segfault after destroying
 make pmmalloc singleton
 ~change var names in doc.
 ~thread id lookup

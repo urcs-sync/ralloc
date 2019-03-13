@@ -8,7 +8,7 @@
 
 using namespace std;
 
-const int THREAD_NUM = 4;
+const int THREAD_NUM = 1;
 pmmalloc* alloc;
 atomic<bool> start{false};
 
