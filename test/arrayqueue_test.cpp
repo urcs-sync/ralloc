@@ -82,7 +82,6 @@ int check(){
 		assert(in[i].empty() && "set isn't empty!");
 	}
 	cout<<"passed!\n";
-	msq.destroy();
 	return 0;
 }
 void faultHandler(int sig) {
@@ -119,6 +118,5 @@ int main(){
 	testComplete = true;
 	check();
 	cout<<"test finishes!\n";
-	msq.destroy();
 	return 0;
 }
