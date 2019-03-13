@@ -13,15 +13,15 @@
  * in order to share and reuse it in persistent memory.
  *
  * Requirement: 
- * 	1.	It uses 128-bit atomic primitives such as 128CAS.
- * 		Please make sure your machine and compiler support it 
+ * 	1.	It uses 128-bit CAS.
+ * 		Please make sure your machine support cmpxchg16b
  * 		and the flag -latomic is set when you compile.
  * 	2.	The capacity of the stack is fixed and is decided by 
  * 		const variable FREELIST_CAP defined in pm_config.hpp.
  * 		assert failure will be triggered when overflow.
  *
  * template parameter T:
- * 		T must be a type <= 64 bit
+ * 		T must be a type == 64 bit
  * 		T must be some type convertible to int, like pointers
  * Functions:
  * 		ArrayStack(string id): 
@@ -99,24 +99,24 @@ public:
 	void push(T val){
 		while(true){
 			Top old_top = top.load();
-			finish(old_top.value, old_top.index, old_top.counter);
-			if(old_top.index == size - 1) 
+			finish(old_top.value, old_top.index_counter.index, old_top.index_counter.counter);
+			if(old_top.index_counter.index == size - 1) 
 				assert(0&&"stack is full!");
-			Top new_top(val,old_top.index+1,nodes[old_top.index+1].load().counter+1);
+			Top new_top(val,old_top.index_counter.index+1,nodes[old_top.index_counter.index+1].load().counter.counter+1);
 fuck:
-			if(top.compare_exchange_weak(old_top,new_top))
+			if(top.WideCAS(old_top,new_top))
 				return;
 		}
 	}
 	optional<T> pop(){
 		while(true){
 			Top old_top = top.load();
-			finish(old_top.value, old_top.index, old_top.counter);
-			if(old_top.index == 0) 
+			finish(old_top.value, old_top.index_counter.index, old_top.index_counter.counter);
+			if(old_top.index_counter.index == 0) 
 				return {};
-			Node below_top = nodes[old_top.index-1].load();
-			Top new_top(below_top.value,old_top.index-1,below_top.counter+1);
-			if(top.compare_exchange_weak(old_top,new_top)) 
+			Node below_top = nodes[old_top.index_counter.index-1].load();
+			Top new_top(below_top.value,old_top.index_counter.index-1,below_top.counter.counter+1);
+			if(top.WideCAS(old_top,new_top)) 
 				return old_top.value;
 		}
 	}
@@ -124,27 +124,94 @@ private:
 	void finish(T value, uint32_t index, uint32_t counter){
 		Node old_node(nodes[index].load().value, counter-1);
 		Node new_node(value, counter);
-		nodes[index].compare_exchange_strong(old_node,new_node);
+		nodes[index].WideCAS(old_node,new_node);
 		return;
 	}
 	struct Top{
+		struct IndexCounter{
+			uint32_t index;
+			uint32_t counter;
+			IndexCounter(uint32_t a=0, uint32_t b=0) noexcept:
+				index(a),counter(b){};
+		};
 		T value;
-		uint32_t index;
-		uint32_t counter;
+		IndexCounter index_counter;
 		Top(T val=(T)0, uint32_t a=0, uint32_t b=0) noexcept:
 			value(val),
-			index(a),
-			counter(b){};
-	};
+			index_counter(a,b){};
+#if (__x86_64__ || __ppc64__)
+		inline bool WideCAS(Top &old_value, 
+			Top &new_value, std::memory_order morder) {
+			bool ret;
+			__asm__ __volatile__(
+			"lock cmpxchg16b %1;\n"
+			"sete %0;\n"
+			:"=m"(ret),"+m" (*(volatile Top *) (this))
+			:"a" (old_value.value), "d" (old_value.index_counter), "b" (new_value.value), "c" (new_value.index_counter));
+			std::atomic_thread_fence(morder);
+			return ret;
+		}
+#else
+		inline bool WideCAS(Top &old_value, 
+			Top &new_value, std::memory_order morder) {
+			errexit("WCAS not supported with -m32.");
+		}
+#endif
+		inline bool WideCAS(Top &old_value, Top &new_value){
+			return WideCAS(old_value, new_value, std::memory_order_seq_cst);
+		}
+		inline Top load(std::memory_order morder){
+			Top ret = *this;
+			std::atomic_thread_fence(morder);
+			return ret;
+		}
+		inline Top load(){
+			return load(std::memory_order_seq_cst);
+		}
+	}__attribute__((aligned(CACHE_LINE_SIZE)));
 	struct Node{
+		struct Counter{
+			uint64_t counter;
+			Counter(uint32_t a) noexcept:
+				counter(a){};
+		};
 		T value;
-		uint32_t counter;
+		Counter counter;
 		Node(T val = (T)0, uint32_t a = 0) noexcept:
 			value(val),
 			counter(a){};
-	};
-	atomic<Top> top;
-	atomic<Node> nodes[size];
+#if (__x86_64__ || __ppc64__)
+		inline bool WideCAS(Node &old_value, 
+			Node &new_value, std::memory_order morder) {
+			bool ret;
+			__asm__ __volatile__(
+			"lock cmpxchg16b %1;\n"
+			"sete %0;\n"
+			:"=m"(ret),"+m" (*(volatile Node *) (this))
+			:"a" (old_value.value), "d" (old_value.counter), "b" (new_value.value), "c" (new_value.counter));
+			std::atomic_thread_fence(morder);
+			return ret;
+		}
+#else
+		inline bool WideCAS(Node &old_value, 
+			Node &new_value, std::memory_order morder) {
+			errexit("WCAS not supported with -m32.");
+		}
+#endif
+		inline bool WideCAS(Node &old_value, Node &new_value){
+			return WideCAS(old_value, new_value, std::memory_order_seq_cst);
+		}
+		inline Node load(std::memory_order morder){
+			Node ret = *this;
+			std::atomic_thread_fence(morder);
+			return ret;
+		}
+		inline Node load(){
+			return load(std::memory_order_seq_cst);
+		}
+	}__attribute__((aligned(CACHE_LINE_SIZE)));
+	Top top;
+	Node nodes[size];
 };
 
 #endif
