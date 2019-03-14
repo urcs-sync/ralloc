@@ -1,3 +1,21 @@
+/*
+ * Copyright (C) 2007  Scott Schneider, Christos Antonopoulos
+ * 
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ * 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
 #ifndef _BASE_META_HPP_
 #define _BASE_META_HPP_
 
@@ -55,6 +73,18 @@
  * 		base_md = (BaseMeta*) hstart;
  * 		base_md->set_mgr(mgr);
  * 		base_md->restart();
+ *
+ * By default free_sb is mapped to $(HEAPFILE_PREFIX)_stack_pmmalloc_freesb,
+ * free_desc to $(HEAPFILE_PREFIX)_queue_pmmalloc_freedesc, 
+ * and partial_desc of each sizeclass with block size sz to 
+ * $(HEAPFILE_PREFIX)_queue_scpartial$(sz).
+ *
+ * Most of functions related to malloc and free share large portion of 
+ * code with the open source project https://github.com/scotts/michael.
+ * Some modifications were applied for bug fixing or functionality adjustment.
+ *
+ * Adapted and reimplemented by:
+ * 		Wentao Cai (wcai6@cs.rochester.edu)
  */
 
 struct Descriptor;
