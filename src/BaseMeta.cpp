@@ -77,7 +77,6 @@ uint64_t BaseMeta::new_space(int i){//i=0:desc, i=1:small sb, i=2:large sb
 
 void* BaseMeta::small_sb_alloc(){
 	void* sb = nullptr;
-	int tid = get_thread_id();
 	if(auto tmp = free_sb->pop()){
 		sb = tmp.value();
 	}
@@ -90,7 +89,6 @@ void* BaseMeta::small_sb_alloc(){
 	return sb;
 }
 void BaseMeta::small_sb_retire(void* sb){
-	int tid = get_thread_id();
 	free_sb->push(sb);
 }
 //todo
@@ -127,7 +125,6 @@ void BaseMeta::large_sb_retire(void* sb, size_t size){
 void BaseMeta::organize_desc_list(Descriptor* start, uint64_t count, uint64_t stride){
 	// put new descs to free_desc queue
 	uint64_t ptr = (uint64_t)start;
-	int tid = get_thread_id();
 	for(uint64_t i = 1; i < count; i++){
 		ptr += stride;
 		free_desc->push((Descriptor*)ptr);
@@ -137,7 +134,6 @@ void BaseMeta::organize_desc_list(Descriptor* start, uint64_t count, uint64_t st
 void BaseMeta::organize_sb_list(void* start, uint64_t count, uint64_t stride){
 	// put new sbs to free_sb queue
 	uint64_t ptr = (uint64_t)start;
-	int tid = get_thread_id();
 	for(uint64_t i = 1; i < count; i++){
 		ptr += stride;
 		free_sb->push((void*)ptr);
@@ -155,7 +151,6 @@ void BaseMeta::organize_blk_list(void* start, uint64_t count, uint64_t stride){
 
 Descriptor* BaseMeta::desc_alloc(){
 	Descriptor* desc = nullptr;
-	int tid = get_thread_id();
 	if(auto tmp = free_desc->pop()){
 		desc = tmp.value();
 	}
@@ -163,7 +158,7 @@ Descriptor* BaseMeta::desc_alloc(){
 		uint64_t space_num = new_space(0);
 		// cout<<"allocate desc space "<<space_num<<endl;
 		// spaces[0][space_num].sec_curr.store((void*)((size_t)spaces[0][space_num].sec_start+spaces[0][space_num].sec_bytes));
-		desc = spaces[0][space_num].sec_start;
+		desc = (Descriptor*)spaces[0][space_num].sec_start;
 		organize_desc_list(desc, DESC_SPACE_SIZE/sizeof(Descriptor), sizeof(Descriptor));
 
 		// desc = (Descriptor*)sb_alloc(DESCSBSIZE, sizeof(Descriptor));
@@ -172,19 +167,16 @@ Descriptor* BaseMeta::desc_alloc(){
 	return desc;
 }
 inline void BaseMeta::desc_retire(Descriptor* desc){
-	int tid = get_thread_id();
 	free_desc->push(desc);
 }
 Descriptor* BaseMeta::list_get_partial(Sizeclass* sc){
 	//get a partial desc from sizeclass partial_desc queue
-	int tid = get_thread_id();
 	auto res = sc->partial_desc->pop();
 	if(res) return res.value();
 	else return nullptr;
 }
 inline void BaseMeta::list_put_partial(Descriptor* desc){
 	//put a partial desc to sizeclass partial_desc queue
-	int tid = get_thread_id();
 	desc->heap->sc->partial_desc->push(desc);
 }
 Descriptor* BaseMeta::heap_get_partial(Procheap* heap){
@@ -209,7 +201,6 @@ void BaseMeta::list_remove_empty_desc(Sizeclass* sc){
 	//try to retire empty descs from sc->partial_desc until reaches nonempty
 	Descriptor* desc;
 	int num_non_empty = 0;
-	int tid = get_thread_id();
 	while(auto tmp = sc->partial_desc->pop()){
 		desc = tmp.value();
 		if(desc->sb == nullptr){

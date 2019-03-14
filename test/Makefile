@@ -1,7 +1,10 @@
 SRC = ../src
 CXX = g++
 
-CXXFLAGS = -O0 -g -fpermissive -std=c++17 -DDESTROY
+WARNING_FLAGS:=-ftrapv -Wreturn-type -W -Wall \
+-Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-parameter
+
+CXXFLAGS = -O0 -g -fpermissive -std=c++17 -DDESTROY $(WARNING_FLAGS)
 LIBS = -lpthread -lstdc++ -latomic -fPIC 
 
 

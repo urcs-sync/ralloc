@@ -122,7 +122,7 @@ public:
 		assert(i<MAX_ROOTS);
 		return roots[i];
 	}
-	bool restart(){
+	void restart(){
 		free_desc = new ArrayQueue<Descriptor*>("pmmalloc_freedesc");
 		free_sb = new ArrayStack<void*>("pmmalloc_freesb");
 		for(int i=0;i<MAX_SMALLSIZE/GRANULARITY;i++){
@@ -130,14 +130,13 @@ public:
 				new ArrayQueue<Descriptor*,PARTIAL_CAP>("scpartial"+to_string((i+1)*GRANULARITY));
 		}
 	}
-	bool cleanup(){
+	void cleanup(){
 		//flush everything before exit
 		delete free_desc;
 		delete free_sb;
 		for(int i=0;i<MAX_SMALLSIZE/GRANULARITY;i++){
 			sizeclasses[i].cleanup();
 		}
-		return true;
 	}
 
 	void* small_sb_alloc();

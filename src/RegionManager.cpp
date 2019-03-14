@@ -237,7 +237,7 @@ void* RegionManager::__fetch_heap_start(){
 bool RegionManager::__nvm_region_allocator(void** memptr, size_t alignment, size_t size){
 	char* next;
 	char* res;
-	if (size < 0) return false;
+	if (size <= 0) return false;
 
 	if (((alignment & (~alignment + 1)) != alignment) ||	//should be multiple of 2
 		(alignment < sizeof(void*))) return false; //should be at least the size of void*
@@ -272,7 +272,7 @@ bool RegionManager::__nvm_region_allocator(void** memptr, size_t alignment, size
 int RegionManager::__try_nvm_region_allocator(void** memptr, size_t alignment, size_t size){
 	char* next;
 	char* res;
-	if (size < 0) return -1;
+	if (size <= 0) return -1;
 
 	if (((alignment & (~alignment + 1)) != alignment) || //should be multiple of 2
 		(alignment < sizeof(void*))) return -1; //should be at least the size of void*
