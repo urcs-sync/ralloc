@@ -19,7 +19,6 @@ int main(){
 	} else {
 		cout<<"create new RegionManager in /dev/shm/test...";
 		mgr = new RegionManager("/dev/shm/test");
-		base_md;
 		int res = mgr->__nvm_region_allocator((void**)&base_md,sizeof(void*),sizeof(BaseMeta));
 		if(res!=0) assert(0&&"mgr allocation fails!");
 		mgr->__store_heap_start(base_md);

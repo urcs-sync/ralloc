@@ -11,7 +11,7 @@
 #include "ArrayStack.hpp"
 #include "ArrayQueue.hpp"
 
-/********BaseMeta.hpp********
+/********class BaseMeta********
  * This is the file where meta data structures of
  * pmmalloc are defined.
  *
@@ -23,7 +23,38 @@
  * 	3. 	Initialize BaseMeta* by calling constructor 
  * 		in place.
  *
+ * Some useful functions to know:
+ * 		void BaseMeta::restart():
+ * 			Restart the BaseMeta after data is remapped in
+ *			BaseMeta. It traces and recovers free lists.
+ *		void BaseMeta::cleanup():
+ *			Do cleanup before program exits.
+ *			It flushes free lists and marks as clean.
+ *		void set_mgr(RegionManager* m):
+ *			Set mgr pointer to m.
+ *			It should be called after data is remapped in
+ *			BaseMeta.
+ *		void* set_root(void* ptr, uint64_t i):
+ *			Set persistent root i to ptr, return the old root
+ *			in root i if there is, or nullptr if there isn't.
+ *		void* get_root(uint64_t i):
+ *			Return persistent root i, or nullptr if there isn't.
  *
+ * Procedure to do a fresh start mapping to $filepath$:
+ * 		BaseMeta* base_md;
+ * 		RegionManager* mgr = new RegionManager(filepath);
+ * 		bool res = mgr->__nvm_region_allocator((void**)&base_md,sizeof(void*),sizeof(BaseMeta));
+ * 		if(!res) assert(0&&"mgr allocation fails!");
+ * 		mgr->__store_heap_start(base_md);
+ * 		new (base_md) BaseMeta(mgr, thd_num);
+ *
+ * Procedure to restart from $filepath$:
+ * 		BaseMeta* base_md;
+ * 		RegionManager* mgr = new RegionManager(filepath);
+ * 		void* hstart = mgr->__fetch_heap_start();
+ * 		base_md = (BaseMeta*) hstart;
+ * 		base_md->set_mgr(mgr);
+ * 		base_md->restart();
  */
 
 struct Descriptor;
@@ -102,6 +133,7 @@ public:
 	~BaseMeta(){
 		//usually BaseMeta shouldn't be destructed, and will be reused in the next time
 		std::cout<<"Warning: BaseMeta is being destructed!\n";
+		cleanup();
 	}
 	inline uint64_t min(uint64_t a, uint64_t b){return a>b?b:a;}
 	inline uint64_t max(uint64_t a, uint64_t b){return a>b?a:b;}
