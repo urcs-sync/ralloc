@@ -48,4 +48,5 @@ const int MAX_SMALLSIZE = 2048; // largest size of a small object
 const int PROCHEAP_NUM = MAX_THREADS; // number of processor heap
 
 const uint64_t FREELIST_CAP = 10*1024*1024ULL; //largest amount of nodes in freelist
+const uint64_t PARTIAL_CAP = 10*1024ULL;//largest amount of nodes in partial list
 #endif

@@ -1,33 +1,26 @@
 #include <sys/mman.h>
 
+#include <string>
+
 #include "BaseMeta.hpp"
 
 using namespace std;
-Sizeclass::Sizeclass(uint64_t thread_num,
-		unsigned int bs, 
-		unsigned int sbs, 
-		MichaelScottQueue<Descriptor*>* pdq):
-	partial_desc(pdq),
-	sz(bs), 
+Sizeclass::Sizeclass(unsigned int sbs):
+	partial_desc(nullptr),
+	sz(0), 
 	sbsize(sbs) {
-	if(partial_desc == nullptr) {
-		partial_desc = 
-		new MichaelScottQueue<Descriptor*>(thread_num);
-	}
 	FLUSH(&partial_desc);
 	FLUSH(&sz);
 	FLUSH(&sbsize);
 	FLUSHFENCE;
 }
 
-void Sizeclass::reinit_msq(uint64_t thread_num){
-	if(partial_desc != nullptr) {
-		delete partial_desc;
-		partial_desc = 
-		new MichaelScottQueue<Descriptor*>(thread_num);
-		FLUSH(&partial_desc);
-		FLUSHFENCE;
-	}
+void Sizeclass::init(unsigned int bs){
+	sz = bs;
+	partial_desc = new ArrayQueue<Descriptor*,PARTIAL_CAP>("scpartial"+to_string(sz));
+	FLUSH(&sz);
+	FLUSH(&partial_desc);
+	FLUSHFENCE;
 }
 
 BaseMeta::BaseMeta(RegionManager* m, uint64_t thd_num) : 
@@ -47,14 +40,9 @@ BaseMeta::BaseMeta(RegionManager* m, uint64_t thd_num) :
 
 	/* sizeclass init */
 	for(int i=0;i<MAX_SMALLSIZE/GRANULARITY;i++){
-		sizeclasses[i].reinit_msq(thd_num);
-		sizeclasses[i].sz = (i+1)*GRANULARITY;
+		sizeclasses[i].init((i+1)*GRANULARITY);
 		FLUSH(&sizeclasses[i]);
 	}
-	sizeclasses[MAX_SMALLSIZE/GRANULARITY].reinit_msq(thd_num);
-	sizeclasses[MAX_SMALLSIZE/GRANULARITY].sz = 0;
-	sizeclasses[MAX_SMALLSIZE/GRANULARITY].sbsize = 0;
-	FLUSH(&sizeclasses[MAX_SMALLSIZE/GRANULARITY]);//the size class for large blocks
 
 	/* processor heap init */
 	for(int t=0;t<PROCHEAP_NUM;t++){
@@ -190,14 +178,14 @@ inline void BaseMeta::desc_retire(Descriptor* desc){
 Descriptor* BaseMeta::list_get_partial(Sizeclass* sc){
 	//get a partial desc from sizeclass partial_desc queue
 	int tid = get_thread_id();
-	auto res = sc->partial_desc->dequeue(tid);
+	auto res = sc->partial_desc->pop();
 	if(res) return res.value();
 	else return nullptr;
 }
 inline void BaseMeta::list_put_partial(Descriptor* desc){
 	//put a partial desc to sizeclass partial_desc queue
 	int tid = get_thread_id();
-	desc->heap->sc->partial_desc->enqueue(desc,tid);
+	desc->heap->sc->partial_desc->push(desc);
 }
 Descriptor* BaseMeta::heap_get_partial(Procheap* heap){
 	Descriptor* desc = heap->partial.load();
@@ -222,13 +210,13 @@ void BaseMeta::list_remove_empty_desc(Sizeclass* sc){
 	Descriptor* desc;
 	int num_non_empty = 0;
 	int tid = get_thread_id();
-	while(auto tmp = sc->partial_desc->dequeue(tid)){
+	while(auto tmp = sc->partial_desc->pop()){
 		desc = tmp.value();
 		if(desc->sb == nullptr){
 			desc_retire(desc);
 		}
 		else {
-			sc->partial_desc->enqueue(desc,tid);
+			sc->partial_desc->push(desc);
 			if(++num_non_empty >= 2) break;
 		}
 	}

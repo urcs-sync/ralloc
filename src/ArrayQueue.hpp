@@ -48,28 +48,28 @@
  * Implemented by:
  * 		Wentao Cai (wcai6@cs.rochester.edu)
  */
-template <class T, int size=FREELIST_CAP> class _ArrayQueue;
-template <class T>
+template <class T, int size> class _ArrayQueue;
+template <class T, int size=FREELIST_CAP>
 class ArrayQueue {
 public:
 	ArrayQueue(std::string _id):id(_id){
 		if(sizeof(T)>8) assert(0&&"type T larger than one word!");
 		string path = HEAPFILE_PREFIX + string("_queue_")+id;
 		if(RegionManager::exists_test(path)){
-			mgr = new RegionManager(path,false);
+			mgr = new RegionManager(path,false,2*sizeof(_ArrayQueue<T,size>));
 			void* hstart = mgr->__fetch_heap_start();
-			_queue = (_ArrayQueue<T>*) hstart;
+			_queue = (_ArrayQueue<T,size>*) hstart;
 			if(_queue->clean == false){
 				//todo: call gc to reconstruct the queue
 				assert(0&&"queue is dirty and recovery isn't implemented yet");
 			}
 		} else {
 			//doesn't exist. create a new one
-			mgr = new RegionManager(path,false);
-			bool res = mgr->__nvm_region_allocator((void**)&_queue,PAGESIZE,sizeof(_ArrayQueue<T>));
+			mgr = new RegionManager(path,false,2*sizeof(_ArrayQueue<T,size>));
+			bool res = mgr->__nvm_region_allocator((void**)&_queue,PAGESIZE,sizeof(_ArrayQueue<T,size>));
 			if(!res) assert(0&&"mgr allocation fails!");
 			mgr->__store_heap_start(_queue);
-			new (_queue) _ArrayQueue<T>();
+			new (_queue) _ArrayQueue<T,size>();
 		}
 	};
 	~ArrayQueue(){
@@ -87,7 +87,7 @@ private:
 	const std::string id;
 	/* manager to map, remap, and unmap the heap */
 	RegionManager* mgr;//initialized when ArrayQueue constructs
-	_ArrayQueue<T>* _queue;
+	_ArrayQueue<T,size>* _queue;
 };
 
 /*

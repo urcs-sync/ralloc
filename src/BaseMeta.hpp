@@ -8,7 +8,6 @@
 #include "thread_util.hpp"
 
 #include "RegionManager.hpp"
-#include "MichaelScottQueue.hpp"
 #include "ArrayStack.hpp"
 #include "ArrayQueue.hpp"
 
@@ -16,15 +15,13 @@ struct Descriptor;
 
 /* data structures */
 struct Sizeclass{
-	PM_TRANSIENT MichaelScottQueue<Descriptor*>* partial_desc;
+	PM_TRANSIENT ArrayQueue<Descriptor*,PARTIAL_CAP>* partial_desc;
 	PM_PERSIST unsigned int sz; // block size
 	PM_PERSIST unsigned int sbsize; // superblock size
-	Sizeclass(uint64_t thread_num = 1,
-			unsigned int bs = 0, 
-			unsigned int sbs = SBSIZE, 
-			MichaelScottQueue<Descriptor*>* pdq = nullptr);
+	Sizeclass(unsigned int sbs = SBSIZE);
 	~Sizeclass(){delete partial_desc;}
-	void reinit_msq(uint64_t thread_num);
+	void init(unsigned int bs);
+	void cleanup(){partial_desc->cleanup();}
 }__attribute__((aligned(CACHE_LINE_SIZE)));
 
 struct Active{
@@ -79,8 +76,8 @@ class BaseMeta{
 	//TODO: other metadata
 
 	PM_PERSIST void* roots[MAX_ROOTS];//persistent root
-	PM_PERSIST Sizeclass sizeclasses[MAX_SMALLSIZE/GRANULARITY+1];
-	PM_PERSIST Procheap procheaps[PROCHEAP_NUM][MAX_SMALLSIZE/GRANULARITY+1];
+	PM_PERSIST Sizeclass sizeclasses[MAX_SMALLSIZE/GRANULARITY];
+	PM_PERSIST Procheap procheaps[PROCHEAP_NUM][MAX_SMALLSIZE/GRANULARITY];
 
 	PM_PERSIST std::atomic<uint64_t> space_num[3];//0:desc, 1:small sb, 2: large sb
 	PM_PERSIST Section spaces[3][MAX_SECTION];//0:desc, 1:small sb, 2: large sb
@@ -114,6 +111,9 @@ public:
 		//flush everything before exit
 		free_desc.cleanup();
 		free_sb.cleanup();
+		for(int i=0;i<MAX_SMALLSIZE/GRANULARITY;i++){
+			sizeclasses[i].cleanup();
+		}
 		return true;
 	}
 

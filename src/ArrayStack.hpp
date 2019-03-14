@@ -46,28 +46,28 @@
  * Implemented by:
  * 		Wentao Cai (wcai6@cs.rochester.edu)
  */
-template <class T, int size=FREELIST_CAP> class _ArrayStack;
-template <class T>
+template <class T, int size> class _ArrayStack;
+template <class T, int size=FREELIST_CAP>
 class ArrayStack {
 public:
 	ArrayStack(std::string _id):id(_id){
 		if(sizeof(T)>8) assert(0&&"type T larger than one word!");
 		string path = HEAPFILE_PREFIX + string("_stack_")+id;
 		if(RegionManager::exists_test(path)){
-			mgr = new RegionManager(path,false);
+			mgr = new RegionManager(path,false,2*sizeof(_ArrayStack<T,size>));
 			void* hstart = mgr->__fetch_heap_start();
-			_stack = (_ArrayStack<T>*) hstart;
+			_stack = (_ArrayStack<T,size>*) hstart;
 			if(_stack->clean == false){
 				//todo: call gc to reconstruct the stack
 				assert(0&&"stack is dirty and recovery isn't implemented yet");
 			}
 		} else {
 			//doesn't exist. create a new one
-			mgr = new RegionManager(path,false);
-			bool res = mgr->__nvm_region_allocator((void**)&_stack,PAGESIZE,sizeof(_ArrayStack<T>));
+			mgr = new RegionManager(path,false,2*sizeof(_ArrayStack<T,size>));
+			bool res = mgr->__nvm_region_allocator((void**)&_stack,PAGESIZE,sizeof(_ArrayStack<T,size>));
 			if(!res) assert(0&&"mgr allocation fails!");
 			mgr->__store_heap_start(_stack);
-			new (_stack) _ArrayStack<T>();
+			new (_stack) _ArrayStack<T,size>();
 		}
 	};
 	~ArrayStack(){
@@ -85,7 +85,7 @@ private:
 	const std::string id;
 	/* manager to map, remap, and unmap the heap */
 	RegionManager* mgr;//initialized when ArrayStack constructs
-	_ArrayStack<T>* _stack;
+	_ArrayStack<T,size>* _stack;
 };
 
 /*
