@@ -25,11 +25,10 @@ sb allocation/deallocation (management)
 	how to deallocate a region in nonblocking way
 mmap multiple regions and represent them by ids, and introduce smart ptrs using id and offset to dereference.
 ~allocate transient data into a fixed region to allow sharing among applications
-	fix inputs for ArrayQueue constructor and enqueue/dequeue in BaseMeta
+	~fix inputs for ArrayQueue constructor and enqueue/dequeue in BaseMeta
 	~fix inputs for ArrayStack constructor and enqueue/dequeue in BaseMeta
 	~add destroy functions for array queue and stack
 		~fix segfault after destroying
-make pmmalloc singleton
 ~change var names in doc.
 ~thread id lookup
 redesign the number of sizeclasses in BaseMeta

@@ -16,6 +16,9 @@
 /* 
  * This is the C++ version of region_manager code from Makalu
  * https://github.com/HewlettPackard/Atlas/tree/makalu/makalu_alloc
+ *
+ * I did some modification including making __nvm_region_allocator() 
+ * to be nonblocking.
  */
 
 #ifndef _REGION_MANAGER_HPP_

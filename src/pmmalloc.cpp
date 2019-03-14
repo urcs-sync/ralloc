@@ -15,7 +15,8 @@ using namespace std;
  */
 pmmalloc::pmmalloc(string id, uint64_t thd_num) : 
 	thread_num(thd_num){
-	bool restart = false;
+	filepath = HEAPFILE_PREFIX + id;
+	bool restart = RegionManager::exists_test(filepath);
 
 	//TODO: find all heap files with this id to determine the value of restart, and assign appropriate path to filepath
 	if(restart){
@@ -23,10 +24,10 @@ pmmalloc::pmmalloc(string id, uint64_t thd_num) :
 		void* hstart = mgr->__fetch_heap_start();
 		base_md = (BaseMeta*) hstart;
 		base_md->set_mgr(mgr);
+		base_md->restart();
 		//collect if the heap is dirty
 	} else {
 		/* RegionManager init */
-		filepath = HEAPFILE_PREFIX + id;
 		mgr = new RegionManager(filepath);
 		bool res = mgr->__nvm_region_allocator((void**)&base_md,sizeof(void*),sizeof(BaseMeta));
 		if(!res) assert(0&&"mgr allocation fails!");

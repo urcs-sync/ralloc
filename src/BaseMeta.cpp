@@ -25,10 +25,10 @@ void Sizeclass::init(unsigned int bs){
 
 BaseMeta::BaseMeta(RegionManager* m, uint64_t thd_num) : 
 	mgr(m),
-	free_desc("pmmalloc_freedesc"),
-	free_sb("pmmalloc_freesb"),
 	thread_num(thd_num) {
 	FLUSH(&thread_num);
+	free_desc = new ArrayQueue<Descriptor*>("pmmalloc_freedesc");
+	free_sb = new ArrayStack<void*>("pmmalloc_freesb");
 	/* allocate these persistent data into specific memory address */
 	/* TODO: metadata init */
 
@@ -78,7 +78,7 @@ uint64_t BaseMeta::new_space(int i){//i=0:desc, i=1:small sb, i=2:large sb
 void* BaseMeta::small_sb_alloc(){
 	void* sb = nullptr;
 	int tid = get_thread_id();
-	if(auto tmp = free_sb.pop()){
+	if(auto tmp = free_sb->pop()){
 		sb = tmp.value();
 	}
 	else{
@@ -91,7 +91,7 @@ void* BaseMeta::small_sb_alloc(){
 }
 void BaseMeta::small_sb_retire(void* sb){
 	int tid = get_thread_id();
-	free_sb.push(sb);
+	free_sb->push(sb);
 }
 //todo
 void* BaseMeta::large_sb_alloc(size_t size, uint64_t alignement){
@@ -130,7 +130,7 @@ void BaseMeta::organize_desc_list(Descriptor* start, uint64_t count, uint64_t st
 	int tid = get_thread_id();
 	for(uint64_t i = 1; i < count; i++){
 		ptr += stride;
-		free_desc.push((Descriptor*)ptr);
+		free_desc->push((Descriptor*)ptr);
 	}
 
 }
@@ -140,7 +140,7 @@ void BaseMeta::organize_sb_list(void* start, uint64_t count, uint64_t stride){
 	int tid = get_thread_id();
 	for(uint64_t i = 1; i < count; i++){
 		ptr += stride;
-		free_sb.push((void*)ptr);
+		free_sb->push((void*)ptr);
 	}
 }
 void BaseMeta::organize_blk_list(void* start, uint64_t count, uint64_t stride){
@@ -156,7 +156,7 @@ void BaseMeta::organize_blk_list(void* start, uint64_t count, uint64_t stride){
 Descriptor* BaseMeta::desc_alloc(){
 	Descriptor* desc = nullptr;
 	int tid = get_thread_id();
-	if(auto tmp = free_desc.pop()){
+	if(auto tmp = free_desc->pop()){
 		desc = tmp.value();
 	}
 	else {
@@ -173,7 +173,7 @@ Descriptor* BaseMeta::desc_alloc(){
 }
 inline void BaseMeta::desc_retire(Descriptor* desc){
 	int tid = get_thread_id();
-	free_desc.push(desc);
+	free_desc->push(desc);
 }
 Descriptor* BaseMeta::list_get_partial(Sizeclass* sc){
 	//get a partial desc from sizeclass partial_desc queue

@@ -11,6 +11,21 @@
 #include "ArrayStack.hpp"
 #include "ArrayQueue.hpp"
 
+/********BaseMeta.hpp********
+ * This is the file where meta data structures of
+ * pmmalloc are defined.
+ *
+ * The logic is: 
+ * 	1. 	Use RegionManager to allocate a persistent 
+ * 		region with size of BaseMeta
+ * 	2. 	Use the pointer to the persistent region 
+ * 		as BaseMeta*
+ * 	3. 	Initialize BaseMeta* by calling constructor 
+ * 		in place.
+ *
+ *
+ */
+
 struct Descriptor;
 
 /* data structures */
@@ -66,9 +81,9 @@ struct Section {
 class BaseMeta{
 	/* transient metadata and tools */
 	PM_TRANSIENT RegionManager* mgr;//assigned when BaseMeta constructs
-	PM_TRANSIENT ArrayQueue<Descriptor*> free_desc;
+	PM_TRANSIENT ArrayQueue<Descriptor*>* free_desc;
 	//todo: make free_sb FILO to mitigate page fault
-	PM_TRANSIENT ArrayStack<void*> free_sb;//unused small sb
+	PM_TRANSIENT ArrayStack<void*>* free_sb;//unused small sb
 
 	/* persistent metadata defined here */
 	//base metadata
@@ -107,10 +122,18 @@ public:
 		assert(i<MAX_ROOTS);
 		return roots[i];
 	}
+	bool restart(){
+		free_desc = new ArrayQueue<Descriptor*>("pmmalloc_freedesc");
+		free_sb = new ArrayStack<void*>("pmmalloc_freesb");
+		for(int i=0;i<MAX_SMALLSIZE/GRANULARITY;i++){
+			sizeclasses[i].partial_desc = 
+				new ArrayQueue<Descriptor*,PARTIAL_CAP>("scpartial"+to_string((i+1)*GRANULARITY));
+		}
+	}
 	bool cleanup(){
 		//flush everything before exit
-		free_desc.cleanup();
-		free_sb.cleanup();
+		delete free_desc;
+		delete free_sb;
 		for(int i=0;i<MAX_SMALLSIZE/GRANULARITY;i++){
 			sizeclasses[i].cleanup();
 		}

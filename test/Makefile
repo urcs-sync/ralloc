@@ -1,7 +1,7 @@
 SRC = ../src
 CXX = g++
 
-CXXFLAGS = -O0 -g -fpermissive -std=c++17 -DDESTROY
+CXXFLAGS = -O0 -g -fpermissive -std=c++17 #-DDESTROY
 LIBS = -lpthread -lstdc++ -latomic -fPIC 
 
 
@@ -12,15 +12,12 @@ msqueue_test: msqueue_test.cpp
 
 region_manager_test: ../obj/RegionManager.o region_manager_test.cpp
 	$(CXX) -I $(SRC) -o $@ $^ $(CXXFLAGS) $(LIBS)
-	rm -f /dev/shm/test*
 
 base_meta_test: base_meta_test.cpp libpmmalloc.a
 	$(CXX) -I $(SRC) -o $@ $^ $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
-	rm -f /dev/shm/test*
 
 pmmalloc_test: pmmalloc_test.cpp libpmmalloc.a
 	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
-	rm -f /dev/shm/test*
 
 pptr_test: pptr_test.cpp
 	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS)
@@ -41,3 +38,4 @@ clean:
 	rm -f *_test
 	rm -f ../obj/*
 	rm -f libpmmalloc.a
+	rm -f /dev/shm/*
