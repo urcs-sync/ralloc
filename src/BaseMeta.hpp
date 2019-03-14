@@ -110,9 +110,10 @@ public:
 		assert(i<MAX_ROOTS);
 		return roots[i];
 	}
-	bool flush(){
+	bool cleanup(){
 		//flush everything before exit
-		//currently we just assume everything will be automatically flushed back when exit.
+		free_desc.cleanup();
+		free_sb.cleanup();
 		return true;
 	}
 

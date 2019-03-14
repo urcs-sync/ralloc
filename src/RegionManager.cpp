@@ -311,18 +311,6 @@ void RegionManager::__destroy(){
 		std::cout<<"File "<<HEAPFILE<<" doesn't exist!\n";
 		return;
 	}
-	std::cout<<"Do you really want to destroy "<<HEAPFILE<<"?[y/N]\n";
-	char choice = std::cin.get();
-	switch(choice){
-		case 'y':
-		case 'Y':
-			remove(HEAPFILE.c_str());
-			return;
-		case '\n':
-		case 'n':
-		case 'N':
-		default:
-			return;
-	}
-
+	remove(HEAPFILE.c_str());
+	return;
 }

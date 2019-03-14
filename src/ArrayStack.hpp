@@ -35,6 +35,8 @@
  * 			Push val to the stack.
  * 		optional<T> pop(): 
  * 			Pop the top value from the stack, or empty.
+ * 		cleanup(): 
+ * 			Do the work as destructor. 
  *
  * It's from paper: 
  * 		Non-blocking Array-based Algorithms for Stacks and Queues
@@ -69,11 +71,14 @@ public:
 		}
 	};
 	~ArrayStack(){
+		cleanup();
+	};
+	void cleanup(){
 		_stack->clean = true;
 		FLUSH(&_stack->clean);
 		FLUSHFENCE;
 		delete mgr;
-	};
+	}
 	void push(T val){_stack->push(val);};
 	optional<T> pop(){return _stack->pop();};
 private:

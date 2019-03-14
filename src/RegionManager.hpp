@@ -61,7 +61,7 @@ public:
 			__close_persistent_region();
 		else
 			__close_transient_region();
-#ifdef DEBUG
+#ifdef DESTROY
 		__destroy();
 #endif
 	}

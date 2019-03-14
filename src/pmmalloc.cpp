@@ -38,6 +38,7 @@ pmmalloc::pmmalloc(string id, uint64_t thd_num) :
 //destructor aka close
 pmmalloc::~pmmalloc(){
 	//close
+	base_md->cleanup();
 	delete mgr;
 }
 

@@ -1,7 +1,7 @@
 SRC = ../src
 CXX = g++
 
-CXXFLAGS = -O0 -g -fpermissive -std=c++17 -DDEBUG
+CXXFLAGS = -O0 -g -fpermissive -std=c++17 -DDESTROY
 LIBS = -lpthread -lstdc++ -latomic -fPIC 
 
 
