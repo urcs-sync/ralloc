@@ -43,8 +43,8 @@ const int PARTIAL = 2;
 const int EMPTY = 3;
 
 const int MAXCREDITS = 64; // 2^(bits for credits in active)
-const int GRANULARITY = 8; // granularity of sizeclass size
-const int MAX_SMALLSIZE = 2048; // largest size of a small object
+const int GRANULARITY = 8; // granularity of sizeclass size in byte
+const int MAX_SMALLSIZE = 2048; // largest size of a small object im byte
 const int PROCHEAP_NUM = MAX_THREADS; // number of processor heap
 
 const uint64_t FREELIST_CAP = 10*1024*1024ULL; //largest amount of nodes in freelist

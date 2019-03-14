@@ -110,6 +110,7 @@ void BaseMeta::small_sb_retire(void* sb){
 }
 //todo
 void* BaseMeta::large_sb_alloc(size_t size, uint64_t alignement){
+	cout<<"WARNING: Allocating a large object is not persisted yet!\n";
 	// assert(0&"not persistently implemented yet!");
 	void* addr = mmap(nullptr,size,PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 	if (addr == MAP_FAILED) {
@@ -268,7 +269,7 @@ inline Descriptor* BaseMeta::mask_credits(Active oldactive){
 Procheap* BaseMeta::find_heap(size_t sz){
 	// We need to fit both the object and the descriptor in a single block
 	sz += HEADER_SIZE;
-	if (sz > 2048) {
+	if (sz > MAX_SMALLSIZE) {
 		return nullptr;
 	}
 	int tid = get_thread_id();

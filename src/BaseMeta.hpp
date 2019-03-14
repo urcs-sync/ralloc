@@ -92,8 +92,8 @@ struct Descriptor;
 /* data structures */
 struct Sizeclass{
 	PM_TRANSIENT ArrayQueue<Descriptor*,PARTIAL_CAP>* partial_desc;
-	PM_PERSIST unsigned int sz; // block size
-	PM_PERSIST unsigned int sbsize; // superblock size
+	PM_PERSIST unsigned int sz; // block size in byte
+	PM_PERSIST unsigned int sbsize; // superblock size in byte
 	Sizeclass(unsigned int sbs = SBSIZE);
 	~Sizeclass(){delete partial_desc;}
 	void init(unsigned int bs);
