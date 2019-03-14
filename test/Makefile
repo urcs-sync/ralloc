@@ -5,10 +5,10 @@ WARNING_FLAGS:=-ftrapv -Wreturn-type -W -Wall \
 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-parameter
 
 CXXFLAGS = -O0 -g -fpermissive -std=c++17 -DDESTROY $(WARNING_FLAGS)
-LIBS = -lpthread -lstdc++ -latomic -fPIC 
+LIBS = -pthread -lstdc++ -latomic -fPIC
 
 
-all: msqueue_test region_manager_test base_meta_test pmmalloc_test
+all: msqueue_test region_manager_test base_meta_test pmmalloc_test arraystack_test arrayqueue_test benchmark_test
 
 msqueue_test: msqueue_test.cpp
 	$(CXX) -I $(SRC) -o $@ $^ $(CXXFLAGS) $(LIBS)
@@ -33,6 +33,12 @@ arrayqueue_test: arrayqueue_test.cpp libpmmalloc.a
 
 ../obj/%.o: ../src/%.cpp
 	$(CXX) -I $(SRC) -o $@ -c $^ $(CXXFLAGS)
+
+benchmark_test: threadtest_test sh6bench_test larson_test cache-scratch_test cache-thrash_test
+
+threadtest_test: ./benchmark/threadtest.cpp libpmmalloc.a
+	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
+
 
 libpmmalloc.a:../obj/pmmalloc.o ../obj/BaseMeta.o ../obj/RegionManager.o ../obj/thread_util.o
 	ar -rcs $@ $^

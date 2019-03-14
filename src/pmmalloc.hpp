@@ -35,7 +35,7 @@ using namespace std;
  * Maged Michael's lock-free allocator.
  *
  * Function:
- * 		pmmalloc(string id):
+ * 		pmmalloc(string id, uint64_t thd_num):
  * 			Constructor with id to decide where the data maps to.
  * 			If the file exists, it tries to restart; otherwise,
  * 			it starts from scratch.
