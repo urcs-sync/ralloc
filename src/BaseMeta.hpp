@@ -115,7 +115,12 @@ struct Procheap {
 			Descriptor* p = nullptr):
 		active(a),
 		partial(p),
-		sc(s) {};
+		sc(s) {
+			FLUSH(&active);
+			FLUSH(&partial);
+			FLUSH(&sc);
+			FLUSHFENCE;
+		};
 }__attribute__((aligned(CACHE_LINE_SIZE)));
 
 struct Anchor{

@@ -53,17 +53,24 @@ public:
 	ArrayStack(std::string _id):id(_id){
 		if(sizeof(T)>8) assert(0&&"type T larger than one word!");
 		string path = HEAPFILE_PREFIX + string("_stack_")+id;
+#ifdef GC//we don't need online flush
+		bool persist = false;
+#else//we need eager flush
+		bool persist = true;
+#endif
 		if(RegionManager::exists_test(path)){
-			mgr = new RegionManager(path,false,2*sizeof(_ArrayStack<T,size>));
+			mgr = new RegionManager(path,persist,2*sizeof(_ArrayStack<T,size>));
 			void* hstart = mgr->__fetch_heap_start();
 			_stack = (_ArrayStack<T,size>*) hstart;
+#ifdef GC//we call GC to bring dirty queue back to life
 			if(_stack->clean == false){
 				//todo: call gc to reconstruct the stack
 				assert(0&&"stack is dirty and recovery isn't implemented yet");
 			}
+#endif
 		} else {
 			//doesn't exist. create a new one
-			mgr = new RegionManager(path,false,2*sizeof(_ArrayStack<T,size>));
+			mgr = new RegionManager(path,persist,2*sizeof(_ArrayStack<T,size>));
 			bool res = mgr->__nvm_region_allocator((void**)&_stack,PAGESIZE,sizeof(_ArrayStack<T,size>));
 			if(!res) assert(0&&"mgr allocation fails!");
 			mgr->__store_heap_start(_stack);
@@ -74,6 +81,7 @@ public:
 		cleanup();
 	};
 	void cleanup(){
+		FLUSHFENCE;
 		_stack->clean = true;
 		FLUSH(&_stack->clean);
 		FLUSHFENCE;
@@ -108,8 +116,16 @@ public:
 			if(old_top.index == size - 1) 
 				assert(0&&"stack is full!");
 			Top new_top(val,old_top.index+1,nodes[old_top.index+1].load().counter+1);
-			if(top.compare_exchange_weak(old_top,new_top))
+#ifndef GC//no GC so we need online flush and fence
+			FLUSHFENCE;
+#endif
+			if(top.compare_exchange_weak(old_top,new_top)){
+#ifndef GC//no GC so we need online flush and fence
+				FLUSH(&top);
+				FLUSHFENCE;
+#endif
 				return;
+			}
 		}
 	}
 	optional<T> pop(){
@@ -120,15 +136,30 @@ public:
 				return {};
 			Node below_top = nodes[old_top.index-1].load();
 			Top new_top(below_top.value,old_top.index-1,below_top.counter+1);
-			if(top.compare_exchange_weak(old_top,new_top)) 
+#ifndef GC//no GC so we need online flush and fence
+			FLUSHFENCE;
+#endif
+			if(top.compare_exchange_weak(old_top,new_top)) {
+#ifndef GC//no GC so we need online flush and fence
+				FLUSH(&top);
+				FLUSHFENCE;
+#endif
 				return old_top.value;
+			}
 		}
 	}
 private:
 	void finish(T value, uint32_t index, uint32_t counter){
 		Node old_node(nodes[index].load().value, counter-1);
 		Node new_node(value, counter);
+#ifndef GC//no GC so we need online flush and fence
+		FLUSHFENCE;
+#endif
 		nodes[index].compare_exchange_strong(old_node,new_node);
+#ifndef GC//no GC so we need online flush and fence
+		FLUSH(&nodes[index]);
+		FLUSHFENCE;
+#endif
 		return;
 	}
 	struct Top{

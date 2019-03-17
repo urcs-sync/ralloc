@@ -174,11 +174,14 @@ void pmmalloc::p_free(void* ptr){
 		else {
 			++newanchor.count;
 		}
-		// memory fence.
+#ifndef GC//no GC so we need online flush and fence
 		FLUSHFENCE;
+#endif
 	} while (!desc->anchor.compare_exchange_weak(oldanchor, newanchor));
+#ifndef GC//no GC so we need online flush and fence
 	FLUSH(&desc->anchor);
 	FLUSHFENCE;
+#endif
 	if (newanchor.state == EMPTY) {
 #ifdef DEBUG
 		fprintf(stderr, "Freeing superblock %p with desc %p (count %hu)\n", sb, desc, desc->anchor.load().count);

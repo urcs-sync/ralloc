@@ -50,7 +50,9 @@
 
 //mmap file
 void RegionManager::__map_persistent_region(){
+#ifdef DEBUG
 	printf("Creating a new persistent region...\n");
+#endif
 	int fd;
 	fd  = open(HEAPFILE.c_str(), O_RDWR | O_CREAT | O_TRUNC,
 				S_IRUSR | S_IWUSR);
@@ -83,7 +85,9 @@ void RegionManager::__map_persistent_region(){
 #endif
 }
 void RegionManager::__remap_persistent_region(){
+#ifdef DEBUG
 	printf("Remapping the persistent region...\n");
+#endif
 	int fd;
 	fd = open(HEAPFILE.c_str(), O_RDWR,
 				S_IRUSR | S_IWUSR);
@@ -215,12 +219,15 @@ void RegionManager::__close_transient_region(){
 	bool res = curr_addr_ptr->compare_exchange_strong(curr_addr,(char*)((uint64_t)curr_addr-(uint64_t)base_addr));// store offset of curr_addr
 	assert(res&&"something wrong while CASing curr_addr");
 	FLUSH(curr_addr_ptr);
+	FLUSHFENCE;
+#ifdef GC
 	for(uint64_t tmp = (uint64_t)base_addr;
 		tmp<(uint64_t)curr_addr;
 		tmp+=CACHE_LINE_SIZE/8){
 		FLUSH((void*)tmp);
 	}
 	FLUSHFENCE;
+#endif
 
 #ifdef DEBUG
 	printf("At the end current addr: %p\n", curr_addr);
@@ -238,8 +245,8 @@ void RegionManager::__close_transient_region(){
 
 //store heap root by offset from base
 void RegionManager::__store_heap_start(void* root){
-	*(((intptr_t*) base_addr) + 2) = (intptr_t) root - (intptr_t) base_addr;
 	FLUSHFENCE;
+	*(((intptr_t*) base_addr) + 2) = (intptr_t) root - (intptr_t) base_addr;
 	FLUSH( (((intptr_t*) base_addr) + 2)); 
 	FLUSHFENCE;
 }
