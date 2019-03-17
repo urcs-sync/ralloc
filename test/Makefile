@@ -45,6 +45,9 @@ threadtest_test: ./benchmark/threadtest.cpp libpmmalloc.a
 sh6bench_test: ./benchmark/sh6bench.cpp libpmmalloc.a
 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
 
+larson_test: ./benchmark/larson.cpp libpmmalloc.a
+	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
+
 libpmmalloc.a:../obj/pmmalloc.o ../obj/BaseMeta.o ../obj/RegionManager.o ../obj/thread_util.o
 	ar -rcs $@ $^
 
