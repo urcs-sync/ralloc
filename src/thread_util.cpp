@@ -17,11 +17,11 @@ void* func_wrapper (void *args){
 	return ret;
 }
 
-void pm_thread_create (pthread_t *new_thread,
+int pm_thread_create (pthread_t *new_thread,
 					const pthread_attr_t *attr,
 					void *(*start_routine)(void *), void *arg){
 	thd_info* thd = new thd_info(start_routine, arg);
-	pthread_create(new_thread,attr,func_wrapper,thd);
+	return pthread_create(new_thread,attr,func_wrapper,thd);
 }
 
 int get_thread_id(){

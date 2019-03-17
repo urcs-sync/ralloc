@@ -9,7 +9,7 @@ extern std::atomic<uint64_t> thread_count;
 
 extern void* func_wrapper (void *args);
 
-extern void pm_thread_create (pthread_t *new_thread,
+extern int pm_thread_create (pthread_t *new_thread,
 					const pthread_attr_t *attr,
 					void *(*start_routine)(void *), void *arg);
 
