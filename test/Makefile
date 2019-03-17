@@ -8,7 +8,7 @@ CXXFLAGS = -O0 -g -fpermissive -std=c++17 -DDESTROY $(WARNING_FLAGS)
 LIBS = -pthread -lstdc++ -latomic -fPIC
 
 
-all: msqueue_test region_manager_test base_meta_test pmmalloc_test arraystack_test arrayqueue_test
+all: msqueue_test region_manager_test base_meta_test pmmalloc_test arraystack_test arrayqueue_test benchmark_test
 
 trivial_test: trivial_test.cpp
 	$(CXX) -I $(SRC) -o $@ $^ $(CXXFLAGS) $(LIBS)
@@ -37,7 +37,7 @@ arrayqueue_test: arrayqueue_test.cpp libpmmalloc.a
 ../obj/%.o: ../src/%.cpp
 	$(CXX) -I $(SRC) -o $@ -c $^ $(CXXFLAGS)
 
-benchmark_test: threadtest_test sh6bench_test larson_test cache-scratch_test cache-thrash_test
+benchmark_test: threadtest_test sh6bench_test larson_test #cache-scratch_test cache-thrash_test
 
 threadtest_test: ./benchmark/threadtest.cpp libpmmalloc.a
 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
