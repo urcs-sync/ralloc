@@ -1,0 +1,10 @@
+prefix=/u/wcai6/Dropbox/Code/PersistentWordSTM/pstm/src/makalu_alloc/libatomic
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: The atomic_ops library
+Description: Atomic memory update operations portable implementation
+Version: 7.7.0
+Libs: -L${libdir} -latomic_ops
+Cflags: -I${includedir}

@@ -1,0 +1,248 @@
+makalu_base_md.o: src/makalu_base_md.c \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_config.h libatomic/include/atomic_ops.h \
+ libatomic/include/atomic_ops/ao_version.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/x86.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/../test_and_set_t_is_char.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-small.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-arithm.h \
+ libatomic/include/atomic_ops/generalize.h \
+ libatomic/include/atomic_ops/generalize-small.h \
+ libatomic/include/atomic_ops/generalize-arithm.h include/makalu.h \
+ src/internal_include/makalu_util.h src/internal_include/makalu_hdr.h \
+ src/internal_include/makalu_base_md.h \
+ src/internal_include/makalu_transient.h \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_persistent.h \
+ src/internal_include/pfence_util.h src/internal_include/makalu_mark.h \
+ src/internal_include/makalu_init.h src/internal_include/makalu_reclaim.h \
+ src/internal_include/makalu_block.h src/internal_include/makalu_thread.h \
+ src/internal_include/makalu_malloc.h
+makalu_hdr.o: src/makalu_hdr.c src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_config.h libatomic/include/atomic_ops.h \
+ libatomic/include/atomic_ops/ao_version.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/x86.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/../test_and_set_t_is_char.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-small.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-arithm.h \
+ libatomic/include/atomic_ops/generalize.h \
+ libatomic/include/atomic_ops/generalize-small.h \
+ libatomic/include/atomic_ops/generalize-arithm.h include/makalu.h \
+ src/internal_include/makalu_util.h src/internal_include/makalu_hdr.h \
+ src/internal_include/makalu_base_md.h \
+ src/internal_include/makalu_transient.h \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_persistent.h \
+ src/internal_include/pfence_util.h src/internal_include/makalu_mark.h \
+ src/internal_include/makalu_init.h src/internal_include/makalu_reclaim.h \
+ src/internal_include/makalu_block.h src/internal_include/makalu_thread.h \
+ src/internal_include/makalu_malloc.h
+makalu_init.o: src/makalu_init.c src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_config.h libatomic/include/atomic_ops.h \
+ libatomic/include/atomic_ops/ao_version.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/x86.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/../test_and_set_t_is_char.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-small.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-arithm.h \
+ libatomic/include/atomic_ops/generalize.h \
+ libatomic/include/atomic_ops/generalize-small.h \
+ libatomic/include/atomic_ops/generalize-arithm.h include/makalu.h \
+ src/internal_include/makalu_util.h src/internal_include/makalu_hdr.h \
+ src/internal_include/makalu_base_md.h \
+ src/internal_include/makalu_transient.h \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_persistent.h \
+ src/internal_include/pfence_util.h src/internal_include/makalu_mark.h \
+ src/internal_include/makalu_init.h src/internal_include/makalu_reclaim.h \
+ src/internal_include/makalu_block.h src/internal_include/makalu_thread.h \
+ src/internal_include/makalu_malloc.h
+makalu_mark.o: src/makalu_mark.c src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_config.h libatomic/include/atomic_ops.h \
+ libatomic/include/atomic_ops/ao_version.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/x86.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/../test_and_set_t_is_char.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-small.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-arithm.h \
+ libatomic/include/atomic_ops/generalize.h \
+ libatomic/include/atomic_ops/generalize-small.h \
+ libatomic/include/atomic_ops/generalize-arithm.h include/makalu.h \
+ src/internal_include/makalu_util.h src/internal_include/makalu_hdr.h \
+ src/internal_include/makalu_base_md.h \
+ src/internal_include/makalu_transient.h \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_persistent.h \
+ src/internal_include/pfence_util.h src/internal_include/makalu_mark.h \
+ src/internal_include/makalu_init.h src/internal_include/makalu_reclaim.h \
+ src/internal_include/makalu_block.h src/internal_include/makalu_thread.h \
+ src/internal_include/makalu_malloc.h
+makalu_transient.o: src/makalu_transient.c \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_config.h libatomic/include/atomic_ops.h \
+ libatomic/include/atomic_ops/ao_version.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/x86.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/../test_and_set_t_is_char.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-small.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-arithm.h \
+ libatomic/include/atomic_ops/generalize.h \
+ libatomic/include/atomic_ops/generalize-small.h \
+ libatomic/include/atomic_ops/generalize-arithm.h include/makalu.h \
+ src/internal_include/makalu_util.h src/internal_include/makalu_hdr.h \
+ src/internal_include/makalu_base_md.h \
+ src/internal_include/makalu_transient.h \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_persistent.h \
+ src/internal_include/pfence_util.h src/internal_include/makalu_mark.h \
+ src/internal_include/makalu_init.h src/internal_include/makalu_reclaim.h \
+ src/internal_include/makalu_block.h src/internal_include/makalu_thread.h \
+ src/internal_include/makalu_malloc.h
+makalu_persistent.o: src/makalu_persistent.c \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_config.h libatomic/include/atomic_ops.h \
+ libatomic/include/atomic_ops/ao_version.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/x86.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/../test_and_set_t_is_char.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-small.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-arithm.h \
+ libatomic/include/atomic_ops/generalize.h \
+ libatomic/include/atomic_ops/generalize-small.h \
+ libatomic/include/atomic_ops/generalize-arithm.h include/makalu.h \
+ src/internal_include/makalu_util.h src/internal_include/makalu_hdr.h \
+ src/internal_include/makalu_base_md.h \
+ src/internal_include/makalu_transient.h \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_persistent.h \
+ src/internal_include/pfence_util.h src/internal_include/makalu_mark.h \
+ src/internal_include/makalu_init.h src/internal_include/makalu_reclaim.h \
+ src/internal_include/makalu_block.h src/internal_include/makalu_thread.h \
+ src/internal_include/makalu_malloc.h
+makalu_util.o: src/makalu_util.c src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_config.h libatomic/include/atomic_ops.h \
+ libatomic/include/atomic_ops/ao_version.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/x86.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/../test_and_set_t_is_char.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-small.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-arithm.h \
+ libatomic/include/atomic_ops/generalize.h \
+ libatomic/include/atomic_ops/generalize-small.h \
+ libatomic/include/atomic_ops/generalize-arithm.h include/makalu.h \
+ src/internal_include/makalu_util.h src/internal_include/makalu_hdr.h \
+ src/internal_include/makalu_base_md.h \
+ src/internal_include/makalu_transient.h \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_persistent.h \
+ src/internal_include/pfence_util.h src/internal_include/makalu_mark.h \
+ src/internal_include/makalu_init.h src/internal_include/makalu_reclaim.h \
+ src/internal_include/makalu_block.h src/internal_include/makalu_thread.h \
+ src/internal_include/makalu_malloc.h
+makalu_reclaim.o: src/makalu_reclaim.c \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_config.h libatomic/include/atomic_ops.h \
+ libatomic/include/atomic_ops/ao_version.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/x86.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/../test_and_set_t_is_char.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-small.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-arithm.h \
+ libatomic/include/atomic_ops/generalize.h \
+ libatomic/include/atomic_ops/generalize-small.h \
+ libatomic/include/atomic_ops/generalize-arithm.h include/makalu.h \
+ src/internal_include/makalu_util.h src/internal_include/makalu_hdr.h \
+ src/internal_include/makalu_base_md.h \
+ src/internal_include/makalu_transient.h \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_persistent.h \
+ src/internal_include/pfence_util.h src/internal_include/makalu_mark.h \
+ src/internal_include/makalu_init.h src/internal_include/makalu_reclaim.h \
+ src/internal_include/makalu_block.h src/internal_include/makalu_thread.h \
+ src/internal_include/makalu_malloc.h
+makalu_block.o: src/makalu_block.c src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_config.h libatomic/include/atomic_ops.h \
+ libatomic/include/atomic_ops/ao_version.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/x86.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/../test_and_set_t_is_char.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-small.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-arithm.h \
+ libatomic/include/atomic_ops/generalize.h \
+ libatomic/include/atomic_ops/generalize-small.h \
+ libatomic/include/atomic_ops/generalize-arithm.h include/makalu.h \
+ src/internal_include/makalu_util.h src/internal_include/makalu_hdr.h \
+ src/internal_include/makalu_base_md.h \
+ src/internal_include/makalu_transient.h \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_persistent.h \
+ src/internal_include/pfence_util.h src/internal_include/makalu_mark.h \
+ src/internal_include/makalu_init.h src/internal_include/makalu_reclaim.h \
+ src/internal_include/makalu_block.h src/internal_include/makalu_thread.h \
+ src/internal_include/makalu_malloc.h
+makalu_thread.o: src/makalu_thread.c \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_config.h libatomic/include/atomic_ops.h \
+ libatomic/include/atomic_ops/ao_version.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/x86.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/../test_and_set_t_is_char.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-small.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-arithm.h \
+ libatomic/include/atomic_ops/generalize.h \
+ libatomic/include/atomic_ops/generalize-small.h \
+ libatomic/include/atomic_ops/generalize-arithm.h include/makalu.h \
+ src/internal_include/makalu_util.h src/internal_include/makalu_hdr.h \
+ src/internal_include/makalu_base_md.h \
+ src/internal_include/makalu_transient.h \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_persistent.h \
+ src/internal_include/pfence_util.h src/internal_include/makalu_mark.h \
+ src/internal_include/makalu_init.h src/internal_include/makalu_reclaim.h \
+ src/internal_include/makalu_block.h src/internal_include/makalu_thread.h \
+ src/internal_include/makalu_malloc.h \
+ src/internal_include/makalu_local_heap.h
+makalu_local_heap.o: src/makalu_local_heap.c \
+ src/internal_include/makalu_local_heap.h \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_config.h libatomic/include/atomic_ops.h \
+ libatomic/include/atomic_ops/ao_version.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/x86.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/../test_and_set_t_is_char.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-small.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-arithm.h \
+ libatomic/include/atomic_ops/generalize.h \
+ libatomic/include/atomic_ops/generalize-small.h \
+ libatomic/include/atomic_ops/generalize-arithm.h include/makalu.h \
+ src/internal_include/makalu_util.h src/internal_include/makalu_hdr.h \
+ src/internal_include/makalu_base_md.h \
+ src/internal_include/makalu_transient.h \
+ src/internal_include/makalu_persistent.h \
+ src/internal_include/pfence_util.h src/internal_include/makalu_mark.h \
+ src/internal_include/makalu_init.h src/internal_include/makalu_reclaim.h \
+ src/internal_include/makalu_block.h src/internal_include/makalu_thread.h \
+ src/internal_include/makalu_malloc.h
+makalu_malloc.o: src/makalu_malloc.c \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_config.h libatomic/include/atomic_ops.h \
+ libatomic/include/atomic_ops/ao_version.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/x86.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/../test_and_set_t_is_char.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-small.h \
+ libatomic/include/atomic_ops/sysdeps/gcc/generic-arithm.h \
+ libatomic/include/atomic_ops/generalize.h \
+ libatomic/include/atomic_ops/generalize-small.h \
+ libatomic/include/atomic_ops/generalize-arithm.h include/makalu.h \
+ src/internal_include/makalu_util.h src/internal_include/makalu_hdr.h \
+ src/internal_include/makalu_base_md.h \
+ src/internal_include/makalu_transient.h \
+ src/internal_include/makalu_internal.h \
+ src/internal_include/makalu_persistent.h \
+ src/internal_include/pfence_util.h src/internal_include/makalu_mark.h \
+ src/internal_include/makalu_init.h src/internal_include/makalu_reclaim.h \
+ src/internal_include/makalu_block.h src/internal_include/makalu_thread.h \
+ src/internal_include/makalu_malloc.h
