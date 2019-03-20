@@ -442,7 +442,7 @@ static void * exercise_heap( void *pinput)
   if( !stopflag ){
     _beginthread(exercise_heap, 0, pdea) ;
   } else {
-    printf ("thread stopping.\n");
+    // printf ("thread stopping.\n");
   }
   pthread_exit (NULL);
   return 0;
