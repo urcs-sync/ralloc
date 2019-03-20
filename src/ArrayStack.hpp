@@ -2,12 +2,14 @@
 #define _ARRAYSTACK_HPP_
 
 #include "RegionManager.hpp"
+
+#include <atomic>
 #include <cassert>
 #include "optional.hpp"
 #include <iostream>
 /*
  *********class ArrayStack<T>*********
- * This is a nonblocking array-based stack.
+ * This is a nonblocking array-based stack using unbounded counter.
  *
  * I use RegionManager to map the entire stack in a contiguous region
  * in order to share and reuse it in persistent memory.
@@ -52,7 +54,7 @@ class ArrayStack {
 public:
 	ArrayStack(std::string _id):id(_id){
 		if(sizeof(T)>8) assert(0&&"type T larger than one word!");
-		string path = HEAPFILE_PREFIX + string("_stack_")+id;
+		std::string path = HEAPFILE_PREFIX + std::string("_stack_")+id;
 #ifdef GC//we don't need online flush
 		bool persist = false;
 #else//we need eager flush
@@ -111,15 +113,19 @@ public:
 	~_ArrayStack(){};
 	void push(T val){
 		while(true){
-			Top old_top = top.load();
+			Top old_top = top.load(std::memory_order_acquire);
+#ifndef GC//no GC so we need online flush and fence
+			FLUSH(&top);
+#endif
 			finish(old_top.value, old_top.index, old_top.counter);
 			if(old_top.index == size - 1) 
 				assert(0&&"stack is full!");
-			Top new_top(val,old_top.index+1,nodes[old_top.index+1].load().counter+1);
+			Top new_top(val,old_top.index+1,nodes[old_top.index+1].load(std::memory_order_acquire).counter+1);
 #ifndef GC//no GC so we need online flush and fence
+			FLUSH(&nodes[old_top.index+1]);
 			FLUSHFENCE;
 #endif
-			if(top.compare_exchange_weak(old_top,new_top)){
+			if(top.compare_exchange_weak(old_top,new_top,std::memory_order_acq_rel)){
 #ifndef GC//no GC so we need online flush and fence
 				FLUSH(&top);
 				FLUSHFENCE;
@@ -130,16 +136,20 @@ public:
 	}
 	optional<T> pop(){
 		while(true){
-			Top old_top = top.load();
+			Top old_top = top.load(std::memory_order_acquire);
+#ifndef GC//no GC so we need online flush and fence
+			FLUSH(&top);
+#endif
 			finish(old_top.value, old_top.index, old_top.counter);
 			if(old_top.index == 0) 
 				return {};
-			Node below_top = nodes[old_top.index-1].load();
+			Node below_top = nodes[old_top.index-1].load(std::memory_order_acquire);
 			Top new_top(below_top.value,old_top.index-1,below_top.counter+1);
 #ifndef GC//no GC so we need online flush and fence
+			FLUSH(&nodes[old_top.index-1]);
 			FLUSHFENCE;
 #endif
-			if(top.compare_exchange_weak(old_top,new_top)) {
+			if(top.compare_exchange_weak(old_top,new_top,std::memory_order_acq_rel)) {
 #ifndef GC//no GC so we need online flush and fence
 				FLUSH(&top);
 				FLUSHFENCE;
@@ -150,12 +160,13 @@ public:
 	}
 private:
 	void finish(T value, uint32_t index, uint32_t counter){
-		Node old_node(nodes[index].load().value, counter-1);
+		Node old_node(nodes[index].load(std::memory_order_acquire).value, counter-1);
 		Node new_node(value, counter);
 #ifndef GC//no GC so we need online flush and fence
+		FLUSH(&nodes[index]);
 		FLUSHFENCE;
 #endif
-		nodes[index].compare_exchange_strong(old_node,new_node);
+		nodes[index].compare_exchange_strong(old_node,new_node,std::memory_order_acq_rel);
 #ifndef GC//no GC so we need online flush and fence
 		FLUSH(&nodes[index]);
 		FLUSHFENCE;
@@ -178,8 +189,8 @@ private:
 			value(val),
 			counter(a){};
 	};
-	atomic<Top> top;
-	atomic<Node> nodes[size];
+	std::atomic<Top> top;
+	std::atomic<Node> nodes[size];
 };
 
 #endif

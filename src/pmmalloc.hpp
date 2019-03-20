@@ -27,8 +27,6 @@
 #include "RegionManager.hpp"
 #include "BaseMeta.hpp"
 
-using namespace std;
-
 /*
  ************class pmmalloc************
  * This is a persistent lock-free allocator based on 
@@ -76,16 +74,16 @@ using namespace std;
 
 class pmmalloc{
 public:
-	pmmalloc(string id, uint64_t thd_num = MAX_THREADS); // start/restart the heap by the application id.
+	pmmalloc(std::string id, uint64_t thd_num = MAX_THREADS); // start/restart the heap by the application id.
 	~pmmalloc(); // destructor to close the heap
-	void* p_malloc(size_t sz, vector<void*>(*f) = nullptr);
+	void* p_malloc(size_t sz, std::vector<void*>(*f) = nullptr);
 	void p_free(void* ptr);
 	void* set_root(void* ptr, uint64_t i);//return the old i-th root
 	void* get_root(uint64_t i);
 	bool collect();
 
 private:
-	string filepath;
+	std::string filepath;
 	uint64_t thread_num;
 	/* manager to map, remap, and unmap the heap */
 	RegionManager* mgr;//initialized when pmmalloc constructs

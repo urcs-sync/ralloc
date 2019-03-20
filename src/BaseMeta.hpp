@@ -107,8 +107,8 @@ struct Active{
 };
 
 struct Procheap {
-	PM_TRANSIENT atomic<Active> active;			// initially NULL
-	PM_TRANSIENT atomic<Descriptor*> partial;	// initially NULL, pointer to the partially used sb's desc
+	PM_TRANSIENT std::atomic<Active> active;			// initially NULL
+	PM_TRANSIENT std::atomic<Descriptor*> partial;	// initially NULL, pointer to the partially used sb's desc
 	PM_PERSIST Sizeclass* sc;					// pointer to parent sizeclass
 	Procheap(Sizeclass* s = nullptr,
 			uint64_t a = 0,
@@ -131,7 +131,7 @@ struct Anchor{
 };
 
 struct Descriptor{
-	PM_TRANSIENT atomic<Anchor> anchor;
+	PM_TRANSIENT std::atomic<Anchor> anchor;
 	PM_PERSIST void* sb;				// pointer to superblock
 	PM_PERSIST Procheap* heap;			// pointer to owner procheap
 	PM_PERSIST unsigned int sz;			// block size
@@ -194,7 +194,7 @@ public:
 		free_sb = new ArrayStack<void*>("pmmalloc_freesb");
 		for(int i=0;i<MAX_SMALLSIZE/GRANULARITY;i++){
 			sizeclasses[i].partial_desc = 
-				new ArrayQueue<Descriptor*,PARTIAL_CAP>("scpartial"+to_string((i+1)*GRANULARITY));
+				new ArrayQueue<Descriptor*,PARTIAL_CAP>("scpartial"+std::to_string((i+1)*GRANULARITY));
 		}
 	}
 	void cleanup(){

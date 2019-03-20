@@ -29,18 +29,17 @@
 #include <atomic>
 
 #include "pm_config.hpp"
-using namespace std;
 
 class RegionManager{
 	const uint64_t FILESIZE;
-	const string HEAPFILE;
+	const std::string HEAPFILE;
 public:
 	int FD = 0;
 	char *base_addr = nullptr;
-	atomic<char *>* curr_addr_ptr;//this always points to the place of base_addr+1
+	std::atomic<char *>* curr_addr_ptr;//this always points to the place of base_addr+1
 	bool persist;
 
-	RegionManager(const string& file_path, bool p = true, uint64_t size = MAX_FILESIZE):
+	RegionManager(const std::string& file_path, bool p = true, uint64_t size = MAX_FILESIZE):
 		FILESIZE(size+24),
 		HEAPFILE(file_path),
 		curr_addr_ptr(nullptr),
@@ -71,8 +70,8 @@ public:
 	//mmap anynomous, not used by default
 	// void __map_transient_region();
 
-	inline static bool exists_test (const string& name){
-		ifstream f(name.c_str());
+	inline static bool exists_test (const std::string& name){
+		std::ifstream f(name.c_str());
 		return f.good();
 	}
 

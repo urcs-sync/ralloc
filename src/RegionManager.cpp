@@ -74,8 +74,8 @@ void RegionManager::__map_persistent_region(){
 	base_addr = (char*) addr;
 	//adress to remap to, the root pointer to gc metadata, 
 	//and the curr pointer at the end of the day
-	new (((atomic<char *>*) base_addr) + 1) atomic<char *>((char*) ((size_t)addr + 3 * sizeof(intptr_t)));
-	curr_addr_ptr = (atomic<char *>*)(((intptr_t*) base_addr) + 1);
+	new (((std::atomic<char *>*) base_addr) + 1) std::atomic<char *>((char*) ((size_t)addr + 3 * sizeof(intptr_t)));
+	curr_addr_ptr = (std::atomic<char *>*)(((intptr_t*) base_addr) + 1);
 	FLUSH(curr_addr_ptr);
 	FLUSHFENCE;
 #ifdef DEBUG
@@ -115,7 +115,7 @@ void RegionManager::__remap_persistent_region(){
 	assert(forced_addr == (intptr_t) addr);
 
 	base_addr = (char*) addr;
-	curr_addr_ptr = (atomic<char *>*)(((intptr_t*) base_addr) + 1);
+	curr_addr_ptr = (std::atomic<char *>*)(((intptr_t*) base_addr) + 1);
 #ifdef DEBUG
 	printf("Forced Addr: %p\n", (void*) forced_addr);
 	printf("Addr: %p\n", addr);
@@ -146,8 +146,8 @@ void RegionManager::__map_transient_region(){
 	base_addr = (char*) addr;
 	//adress to remap to, the root pointer to gc metadata, 
 	//and the curr pointer at the end of the day
-	new ((atomic<char *>*) base_addr + 1) atomic<char *>((char*) ((size_t)addr + 2*sizeof(intptr_t)));
-	curr_addr_ptr = (atomic<char *>*)((intptr_t*) base_addr + 1);
+	new ((std::atomic<char *>*) base_addr + 1) std::atomic<char *>((char*) ((size_t)addr + 2*sizeof(intptr_t)));
+	curr_addr_ptr = (std::atomic<char *>*)((intptr_t*) base_addr + 1);
 	FLUSH(curr_addr_ptr);
 	FLUSHFENCE;
 #ifdef DEBUG
@@ -179,9 +179,9 @@ void RegionManager::__remap_transient_region(){
 	assert(addr != MAP_FAILED);
 
 	base_addr = (char*) addr;
-	curr_addr_ptr = (atomic<char *>*)(((intptr_t*) base_addr) + 1);
+	curr_addr_ptr = (std::atomic<char *>*)(((intptr_t*) base_addr) + 1);
 	char* offset = curr_addr_ptr->load();
-	bool res = curr_addr_ptr->compare_exchange_strong(offset,(char*)((uint64_t)offset+(uint64_t)base_addr));//recover curr_addr by the offset
+	bool res = curr_addr_ptr->compare_exchange_strong(offset,(char*)((uint64_t)offset+(uint64_t)base_addr),std::memory_order_acq_rel);//recover curr_addr by the offset
 	assert(res&&"something wrong while CASing curr_addr");
 #ifdef DEBUG
 	printf("Addr: %p\n", addr);
@@ -192,6 +192,7 @@ void RegionManager::__remap_transient_region(){
 
 //persist the curr and base address
 void RegionManager::__close_persistent_region(){
+	//TODO： make curr_addr offset like close_transient_region does
 	// *(((intptr_t*) base_addr) + 1) = (intptr_t) curr_addr;
 	FLUSHFENCE;
 	// FLUSH( (((intptr_t*) base_addr) + 1)); 
@@ -213,14 +214,15 @@ void RegionManager::__close_persistent_region(){
 
 //flush transient region back
 void RegionManager::__close_transient_region(){
-	FLUSHFENCE;
 	// FLUSH( (((intptr_t*) base_addr) + 1)); 
 	char* curr_addr = curr_addr_ptr->load();
-	bool res = curr_addr_ptr->compare_exchange_strong(curr_addr,(char*)((uint64_t)curr_addr-(uint64_t)base_addr));// store offset of curr_addr
+	FLUSH(curr_addr_ptr);
+	FLUSHFENCE;
+	bool res = curr_addr_ptr->compare_exchange_strong(curr_addr,(char*)((uint64_t)curr_addr-(uint64_t)base_addr),std::memory_order_acq_rel);// store offset of curr_addr
 	assert(res&&"something wrong while CASing curr_addr");
 	FLUSH(curr_addr_ptr);
 	FLUSHFENCE;
-#ifdef GC
+#ifdef GC//there's GC so we need to flush all back in the end
 	for(uint64_t tmp = (uint64_t)base_addr;
 		tmp<(uint64_t)curr_addr;
 		tmp+=CACHE_LINE_SIZE/8){
@@ -245,7 +247,6 @@ void RegionManager::__close_transient_region(){
 
 //store heap root by offset from base
 void RegionManager::__store_heap_start(void* root){
-	FLUSHFENCE;
 	*(((intptr_t*) base_addr) + 2) = (intptr_t) root - (intptr_t) base_addr;
 	FLUSH( (((intptr_t*) base_addr) + 2)); 
 	FLUSHFENCE;
@@ -263,7 +264,7 @@ bool RegionManager::__nvm_region_allocator(void** memptr, size_t alignment, size
 
 	if (((alignment & (~alignment + 1)) != alignment) ||	//should be multiple of 2
 		(alignment < sizeof(void*))) return false; //should be at least the size of void*
-	char * old_curr_addr = curr_addr_ptr->load();
+	char * old_curr_addr = curr_addr_ptr->load(std::memory_order_acquire);
 	while(true){
 		char * new_curr_addr = old_curr_addr;
 		size_t aln_adj = (size_t) new_curr_addr & (alignment - 1);
@@ -278,11 +279,12 @@ bool RegionManager::__nvm_region_allocator(void** memptr, size_t alignment, size
 			return false;
 		}
 		new_curr_addr = next;
-		if(curr_addr_ptr->compare_exchange_weak(old_curr_addr, new_curr_addr))
+		FLUSH(curr_addr_ptr);
+		FLUSHFENCE;
+		if(curr_addr_ptr->compare_exchange_weak(old_curr_addr, new_curr_addr,std::memory_order_acq_rel))
 			break;
 	}
 	// *(((intptr_t*) base_addr) + 1) = (intptr_t) curr_addr;
-	FLUSHFENCE;
 	// FLUSH( (((intptr_t*) base_addr) + 1)); 
 	FLUSH(curr_addr_ptr);
 	FLUSHFENCE;
@@ -298,7 +300,7 @@ int RegionManager::__try_nvm_region_allocator(void** memptr, size_t alignment, s
 
 	if (((alignment & (~alignment + 1)) != alignment) || //should be multiple of 2
 		(alignment < sizeof(void*))) return -1; //should be at least the size of void*
-	char * old_curr_addr = curr_addr_ptr->load();
+	char * old_curr_addr = curr_addr_ptr->load(std::memory_order_acquire);
 	char * new_curr_addr = old_curr_addr;
 	size_t aln_adj = (size_t) new_curr_addr & (alignment - 1);
 
@@ -312,8 +314,9 @@ int RegionManager::__try_nvm_region_allocator(void** memptr, size_t alignment, s
 		return -1;
 	}
 	new_curr_addr = next;
-	if(curr_addr_ptr->compare_exchange_strong(old_curr_addr, new_curr_addr)) {
-		FLUSHFENCE;
+	FLUSH(curr_addr_ptr);
+	FLUSHFENCE;
+	if(curr_addr_ptr->compare_exchange_strong(old_curr_addr, new_curr_addr,std::memory_order_acq_rel)) {
 		FLUSH(curr_addr_ptr);
 		FLUSHFENCE;
 		*memptr = res;

@@ -30,7 +30,7 @@ using namespace std;
  * if such a heap doesn't exist, create one. aka start.
  * id is the distinguishable identity of applications.
  */
-pmmalloc::pmmalloc(string id, uint64_t thd_num) : 
+pmmalloc::pmmalloc(std::string id, uint64_t thd_num) : 
 	thread_num(thd_num){
 	filepath = HEAPFILE_PREFIX + id;
 	bool restart = RegionManager::exists_test(filepath);
@@ -66,7 +66,7 @@ bool pmmalloc::collect(){
 	return true;
 }
 
-void* pmmalloc::p_malloc(size_t sz, vector<void*>(*f)){
+void* pmmalloc::p_malloc(size_t sz, std::vector<void*>(*f)){
 	//TODO: put f in each block
 	Procheap *heap;
 	void* addr;

@@ -2,14 +2,16 @@
 #define _ARRAYQUEUE_HPP_
 
 #include "RegionManager.hpp"
+
 #include <cassert>
+#include <atomic>
 // optional should be provided by c++17 but for compatibility
 // optional.hpp comes with the library in src
 #include "optional.hpp"
 #include <iostream>
 /*
  *********class ArrayQueue<T>*********
- * This is a nonblocking array-based queue.
+ * This is a nonblocking array-based queue using unbounded counter.
  *
  * I use RegionManager to map the entire queue in a contiguous region
  * in order to share and reuse it in persistent memory.
@@ -54,7 +56,7 @@ class ArrayQueue {
 public:
 	ArrayQueue(std::string _id):id(_id){
 		if(sizeof(T)>8) assert(0&&"type T larger than one word!");
-		string path = HEAPFILE_PREFIX + string("_queue_")+id;
+		std::string path = HEAPFILE_PREFIX + std::string("_queue_")+id;
 #ifdef GC//we don't need online flush
 		bool persist = false;
 #else//we need eager flush
@@ -116,19 +118,23 @@ public:
 			Rear old_rear;
 			Front old_front;
 			while(true){
-				old_rear = rear.load();
-				old_front = front.load();
-				if(old_rear == rear.load())
+				old_rear = rear.load(std::memory_order_acquire);
+				old_front = front.load(std::memory_order_acquire);
+				if(old_rear == rear.load(std::memory_order_acquire))
 					break;
 			}
+#ifndef GC
+			FLUSH(&front);
+			FLUSH(&rear);
+#endif
 			finish_enqueue(old_rear.value, old_rear.index, old_rear.counter);
 			if(old_front.index == (old_rear.index+2)%size)
 				assert(0&&"queue is full!");
-			Rear new_rear( val, (old_rear.index+1)%size, nodes[(old_rear.index+1)%size].load().counter+1 );
+			Rear new_rear( val, (old_rear.index+1)%size, nodes[(old_rear.index+1)%size].load(std::memory_order_acquire).counter+1 );
 #ifndef GC//no GC so we need online flush and fence
 			FLUSHFENCE;
 #endif
-			if(rear.compare_exchange_weak(old_rear,new_rear)){
+			if(rear.compare_exchange_weak(old_rear,new_rear,std::memory_order_acq_rel)){
 #ifndef GC//no GC so we need online flush and fence
 				FLUSH(&rear);
 				FLUSHFENCE;
@@ -142,21 +148,26 @@ public:
 			Front old_front;
 			Rear old_rear;
 			while(true){
-				old_front = front.load();
-				old_rear = rear.load();
-				if(old_front == front.load())
+				old_front = front.load(std::memory_order_acquire);
+				old_rear = rear.load(std::memory_order_acquire);
+				if(old_front == front.load(std::memory_order_acquire))
 					break;
 			}
+#ifndef GC
+			FLUSH(&front);
+			FLUSH(&rear);
+#endif
 			if(old_front.index == old_rear.index)
 				finish_enqueue(old_rear.value, old_rear.index, old_rear.counter);
 			if(old_front.index == (old_rear.index+1)%size)
 				return {};//empty
-			T ret = nodes[old_front.index%size].load().value;
+			T ret = nodes[old_front.index%size].load(std::memory_order_acquire).value;
 			Front new_front((old_front.index+1)%size, old_front.counter+1);
 #ifndef GC//no GC so we need online flush and fence
+			FLUSH(&nodes[old_front.index%size]);
 			FLUSHFENCE;
 #endif
-			if(front.compare_exchange_strong(old_front,new_front)){
+			if(front.compare_exchange_strong(old_front,new_front,std::memory_order_acq_rel)){
 #ifndef GC//no GC so we need online flush and fence
 				FLUSH(&front);
 				FLUSHFENCE;
@@ -167,12 +178,13 @@ public:
 	}
 private:
 	void finish_enqueue(T value, uint32_t index, uint32_t counter){
-		Node old_node(nodes[index].load().value,counter-1);
+		Node old_node(nodes[index].load(std::memory_order_acquire).value,counter-1);
 		Node new_node(value,counter);
 #ifndef GC//no GC so we need online flush and fence
+		FLUSH(&nodes[index]);
 		FLUSHFENCE;
 #endif
-		nodes[index].compare_exchange_strong(old_node,new_node);
+		nodes[index].compare_exchange_strong(old_node,new_node,std::memory_order_acq_rel);
 #ifndef GC//no GC so we need online flush and fence
 		FLUSH(&nodes[index]);
 		FLUSHFENCE;
@@ -208,9 +220,9 @@ private:
 			value(val),
 			counter(a){};
 	};
-	atomic<Rear> rear;
-	atomic<Front> front;
-	atomic<Node> nodes[size];
+	std::atomic<Rear> rear;
+	std::atomic<Front> front;
+	std::atomic<Node> nodes[size];
 };
 
 #endif
