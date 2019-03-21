@@ -69,8 +69,8 @@ public:
    //[[ align(CACHE_LINE_SIZE) ]] T ui;	
 	std::atomic<T> ui;
 private:
-	uint8_t pad[ 0 != sizeof(T)%CACHE_LINE_SIZE
-        ?  CACHE_LINE_SIZE - (sizeof(T)%CACHE_LINE_SIZE)
+	uint8_t pad[ 0 != sizeof(std::atomic<T>)%CACHE_LINE_SIZE
+        ?  CACHE_LINE_SIZE - (sizeof(std::atomic<T>)%CACHE_LINE_SIZE)
         : CACHE_LINE_SIZE ];
 public:
   paddedAtomic<T> ():ui() {}
