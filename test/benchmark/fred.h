@@ -7,7 +7,11 @@
 
 #include <pthread.h>
 #include <unistd.h>
-#include "thread_util.hpp"
+#ifdef PMMALLOC
+  #include "thread_util.hpp"
+#elif defined (MAKALU)
+  #include "makalu.h"
+#endif
 
 typedef void * (*ThreadFunctionType) (void *);
 
@@ -26,7 +30,13 @@ public:
   }
 
   void create (ThreadFunctionType function, void * arg) {
+#ifdef PMMALLOC
     pm_thread_create (&t, &attr, function, arg);
+#elif defined (MAKALU)
+    MAK_pthread_create (&t, &attr, function, arg);
+#else
+    pthread_create (&t, &attr, function, arg);
+#endif
   }
 
   void join (void) {

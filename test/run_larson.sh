@@ -1,3 +1,6 @@
 #!/bin/bash
 
-./larson_test 10 7 8 100 10000 1 4 
+make clean
+make larson_test
+rm -rf /dev/shm/*
+./larson-single.sh 4 

@@ -55,7 +55,84 @@ void QueryPerformanceFrequency(long * x)
 
 #define _REENTRANT 1
 #include <pthread.h>
-#include "thread_util.hpp"
+#ifdef PMMALLOC
+
+  #include "thread_util.hpp"
+  #include "pmmalloc.hpp"
+  pmmalloc* alloc = nullptr;
+  #define pm_malloc(s) alloc->p_malloc(s)
+  #define pm_free(p) alloc->p_free(p)
+
+#elif defined(MAKALU) // PMMALLOC ends
+
+  #include "makalu.h"
+  #include <fcntl.h>
+  #include <sys/mman.h>
+  #define MAKALU_FILESIZE 5*1024*1024*1024ULL + 24
+  #define pm_malloc(s) MAK_malloc(s)
+  #define pm_free(p) MAK_free(p)
+  #define HEAPFILE "/dev/shm/gc_heap_wcai6"
+
+  char *base_addr = NULL;
+  static char *curr_addr = NULL;
+
+  void __map_persistent_region(){
+      int fd; 
+      fd  = open(HEAPFILE, O_RDWR | O_CREAT | O_TRUNC,
+                    S_IRUSR | S_IWUSR);
+
+      off_t offt = lseek(fd, MAKALU_FILESIZE-1, SEEK_SET);
+      assert(offt != -1);
+
+      int result = write(fd, "", 1); 
+      assert(result != -1);
+
+      void * addr =
+          mmap(0, MAKALU_FILESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); 
+      assert(addr != MAP_FAILED);
+
+      *((intptr_t*)addr) = (intptr_t) addr;
+      base_addr = (char*) addr;
+      //adress to remap to, the root pointer to gc metadata, 
+      //and the curr pointer at the end of the day
+      curr_addr = (char*) ((size_t)addr + 3 * sizeof(intptr_t));
+      printf("Addr: %p\n", addr);
+      printf("Base_addr: %p\n", base_addr);
+      printf("Current_addr: %p\n", curr_addr);
+}
+  int __nvm_region_allocator(void** memptr, size_t alignment, size_t size)
+  {   
+      char* next;
+      char* res; 
+      if (size < 0) return 1;
+      
+      if (((alignment & (~alignment + 1)) != alignment)  ||   //should be multiple of 2
+          (alignment < sizeof(void*))) return 1; //should be atleast the size of void*
+      size_t aln_adj = (size_t) curr_addr & (alignment - 1);
+      
+      if (aln_adj != 0)
+          curr_addr += (alignment - aln_adj);
+      
+      res = curr_addr; 
+      next = curr_addr + size;
+      if (next > base_addr + MAKALU_FILESIZE){
+          printf("\n----Ran out of space in mmaped file-----\n");
+          return 1;
+      }
+      curr_addr = next;
+      *memptr = res;
+      //printf("Current NVM Region Addr: %p\n", curr_addr);
+      
+      return 0;
+  }
+
+#else // MAKALU ends
+
+  #define pm_malloc(s) malloc(s)
+  #define pm_free(p) free(p)
+
+#endif //else ends
+
 typedef void * VoidFunction (void *);
 void _beginthread (VoidFunction x, int, void * z)
 {
@@ -68,7 +145,13 @@ void _beginthread (VoidFunction x, int, void * z)
 #endif
 
   //  printf ("creating a thread.\n");
+#ifdef PMMALLOC
   int v = pm_thread_create(&pt, &pa, x, z);
+#elif defined (MAKALU)
+  int v = MAK_pthread_create(&pt, &pa, x, z);
+#else
+  int v = pthread_create(&pt, &pa, x, z);
+#endif
   //  printf ("v = %d\n", v);
 }
 
@@ -136,10 +219,6 @@ extern  int   cFreeChunks ;
 extern  int   cFreeSpace ;
 
 int cChecked=0 ;
-#include "pmmalloc.hpp"
-pmmalloc* alloc = nullptr;
-#define pm_malloc(s) alloc->p_malloc(s)
-#define pm_free(p) alloc->p_free(p)
 
 
 int main (int argc, char *argv[])
@@ -202,9 +281,14 @@ int main (int argc, char *argv[])
 
   lran2_init(&rgen, seed) ;
   // init_space = CountReservedSpace() ;
-
+#ifdef PMMALLOC
   alloc = new pmmalloc("test",max_threads+1);//additional 1 for main thread
   tid = thread_count.fetch_add(1);
+#elif defined (MAKALU)
+  __map_persistent_region();
+  MAK_start(&__nvm_region_allocator);
+#endif
+
 #if defined(_MT) || defined(_REENTRANT)
   //#ifdef _MT
   runthreads(sleep_cnt, min_threads, max_threads, chperthread, num_rounds) ;
@@ -279,7 +363,9 @@ void runloops(long sleep_cnt, int num_chunks )
 
 }
 
-
+#ifndef MAX_THREADS
+  #define MAX_THREADS 512
+#endif
 #if defined(_MT) || defined(_REENTRANT)
 //#ifdef _MT
 void runthreads(long sleep_cnt, int min_threads, int max_threads, int chperthread, int num_rounds)
