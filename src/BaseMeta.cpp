@@ -63,7 +63,7 @@ BaseMeta::BaseMeta(RegionManager* m, uint64_t thd_num) :
 
 	/* processor heap init */
 	for(int t=0;t<PROCHEAP_NUM;t++){
-		for(int i=0;i<MAX_SMALLSIZE/GRANULARITY+1;i++){
+		for(int i=0;i<MAX_SMALLSIZE/GRANULARITY;i++){
 			procheaps[t][i].sc = &sizeclasses[i];
 			FLUSH(&procheaps[t][i]);
 		}
