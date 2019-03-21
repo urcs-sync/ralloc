@@ -7,6 +7,8 @@
 #include <cassert>
 #include "optional.hpp"
 #include <iostream>
+
+#include "concurrentprimitives.hpp"
 /*
  *********class ArrayStack<T>*********
  * This is a nonblocking array-based stack using unbounded counter.
@@ -189,8 +191,8 @@ private:
 			value(val),
 			counter(a){};
 	};
-	std::atomic<Top> top;
-	std::atomic<Node> nodes[size];
+	paddedAtomic<Top> top;
+	paddedAtomic<Node> nodes[size];
 };
 
 #endif

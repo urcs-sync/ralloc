@@ -9,6 +9,8 @@
 // optional.hpp comes with the library in src
 #include "optional.hpp"
 #include <iostream>
+
+#include "concurrentprimitives.hpp"
 /*
  *********class ArrayQueue<T>*********
  * This is a nonblocking array-based queue using unbounded counter.
@@ -220,9 +222,9 @@ private:
 			value(val),
 			counter(a){};
 	};
-	std::atomic<Rear> rear;
-	std::atomic<Front> front;
-	std::atomic<Node> nodes[size];
+	paddedAtomic<Rear> rear;
+	paddedAtomic<Front> front;
+	paddedAtomic<Node> nodes[size];
 };
 
 #endif

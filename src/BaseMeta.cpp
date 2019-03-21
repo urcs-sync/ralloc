@@ -203,10 +203,10 @@ inline void BaseMeta::list_put_partial(Descriptor* desc){
 }
 Descriptor* BaseMeta::heap_get_partial(Procheap* heap){
 	Descriptor* desc = heap->partial.load(std::memory_order_acquire);
-#ifndef GC
-	FLUSH(&heap->partial);
-#endif
 	do{
+#ifndef GC
+		FLUSH(&heap->partial);
+#endif
 		if(desc == nullptr){
 			return list_get_partial(heap->sc);
 		}
@@ -223,11 +223,12 @@ Descriptor* BaseMeta::heap_get_partial(Procheap* heap){
 void BaseMeta::heap_put_partial(Descriptor* desc){
 	//put desc to heap->partial
 	Descriptor* prev = desc->heap->partial.load(std::memory_order_acquire);
+	do{
 #ifndef GC//no GC so we need online flush and fence
-	FLUSH(&desc->heap->partial);
-	FLUSHFENCE;
+		FLUSH(&desc->heap->partial);
+		FLUSHFENCE;
 #endif
-	while(!desc->heap->partial.compare_exchange_weak(prev,desc,std::memory_order_acq_rel));
+	}while(!desc->heap->partial.compare_exchange_weak(prev,desc,std::memory_order_acq_rel));
 #ifndef GC//no GC so we need online flush and fence
 	FLUSH(&desc->heap->partial);
 	FLUSHFENCE;
