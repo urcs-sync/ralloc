@@ -465,7 +465,7 @@ void runthreads(long sleep_cnt, int min_threads, int max_threads, int chperthrea
       used_space = 0;
 
       printf ("Throughput = %8.0f operations per second.\n", sum_allocs / duration);
-      printf(" sum threads: %d\n", sum_threads);
+      // printf(" sum threads: %d\n", sum_threads);
 
       Sleep(5000L) ; // wait 5 sec for old threads to die
 
@@ -485,6 +485,7 @@ static void * exercise_heap( void *pinput)
   long          blk_size ;
   int           range ;
 
+restart:
   if( stopflag ) return 0;
 
   pdea = (thread_data *)pinput ;
@@ -526,7 +527,7 @@ static void * exercise_heap( void *pinput)
   pdea->finished = TRUE ;
 
   if( !stopflag ){
-    _beginthread(exercise_heap, 0, pdea) ;
+    goto restart;
   } else {
     // printf ("thread stopping.\n");
   }

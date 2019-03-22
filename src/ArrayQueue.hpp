@@ -53,7 +53,7 @@
  * 		Wentao Cai (wcai6@cs.rochester.edu)
  */
 template <class T, int size> class _ArrayQueue;
-template <class T, int size=FREELIST_CAP>
+template <class T, int size=FREEQUEUE_CAP>
 class ArrayQueue {
 public:
 	ArrayQueue(std::string _id):id(_id){
@@ -224,7 +224,7 @@ private:
 	};
 	paddedAtomic<Rear> rear;
 	paddedAtomic<Front> front;
-	paddedAtomic<Node> nodes[size];
+	std::atomic<Node> nodes[size];
 };
 
 #endif

@@ -51,7 +51,7 @@
  * 		Wentao Cai (wcai6@cs.rochester.edu)
  */
 template <class T, int size> class _ArrayStack;
-template <class T, int size=FREELIST_CAP>
+template <class T, int size=FREESTACK_CAP>
 class ArrayStack {
 public:
 	ArrayStack(std::string _id):id(_id){
@@ -192,7 +192,7 @@ private:
 			counter(a){};
 	};
 	paddedAtomic<Top> top;
-	paddedAtomic<Node> nodes[size];
+	std::atomic<Node> nodes[size];
 };
 
 #endif

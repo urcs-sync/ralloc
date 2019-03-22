@@ -98,7 +98,7 @@ struct Sizeclass{
 	~Sizeclass(){delete partial_desc;}
 	void init(unsigned int bs);
 	void cleanup(){partial_desc->cleanup();}
-}__attribute__((aligned(CACHE_LINE_SIZE)));
+};//__attribute__((aligned(CACHE_LINE_SIZE)));//dont need alignment since it's rarely changed
 
 struct Active{
 	uint64_t ptr:58, credits:6;
@@ -121,7 +121,7 @@ struct Procheap {
 			FLUSH(&sc);
 			FLUSHFENCE;
 		};
-}__attribute__((aligned(CACHE_LINE_SIZE)));
+};//__attribute__((aligned(CACHE_LINE_SIZE)));//dont need alignment since MAXSMALLSIZE/GRANULARITY usually is the fold of CACHE_LINE_SIZE
 
 struct Anchor{
 	uint64_t avail:24,count:24, state:2, tag:14;

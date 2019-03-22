@@ -34,6 +34,7 @@ pmmalloc::pmmalloc(std::string id, uint64_t thd_num) :
 	thread_num(thd_num){
 	filepath = HEAPFILE_PREFIX + id;
 	bool restart = RegionManager::exists_test(filepath);
+	cout<<"sizeof basemeta:"<<sizeof(BaseMeta)<<endl;
 
 	//TODO: find all heap files with this id to determine the value of restart, and assign appropriate path to filepath
 	if(restart){
