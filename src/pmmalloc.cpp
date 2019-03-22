@@ -148,7 +148,7 @@ void pmmalloc::p_free(void* ptr){
 	desc = *((Descriptor**)((uint64_t)ptr + TYPE_SIZE));
 	
 	sb = desc->sb;
-	oldanchor = desc->anchor;
+	oldanchor = desc->anchor.load(std::memory_order_acquire);
 	do { 
 		newanchor = oldanchor;
 
@@ -178,7 +178,7 @@ void pmmalloc::p_free(void* ptr){
 #ifndef GC//no GC so we need online flush and fence
 		FLUSHFENCE;
 #endif
-	} while (!desc->anchor.compare_exchange_weak(oldanchor, newanchor));
+	} while (!desc->anchor.compare_exchange_strong(oldanchor, newanchor,std::memory_order_acq_rel));
 #ifndef GC//no GC so we need online flush and fence
 	FLUSH(&desc->anchor);
 	FLUSHFENCE;

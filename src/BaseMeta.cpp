@@ -213,7 +213,7 @@ Descriptor* BaseMeta::heap_get_partial(Procheap* heap){
 #ifndef GC//no GC so we need online flush and fence
 		FLUSHFENCE;
 #endif
-	}while(!heap->partial.compare_exchange_weak(desc,nullptr,std::memory_order_acq_rel));
+	}while(!heap->partial.compare_exchange_strong(desc,nullptr,std::memory_order_acq_rel));
 #ifndef GC//no GC so we need online flush and fence
 	FLUSH(&heap->partial);
 	FLUSHFENCE;
@@ -228,7 +228,7 @@ void BaseMeta::heap_put_partial(Descriptor* desc){
 		FLUSH(&desc->heap->partial);
 		FLUSHFENCE;
 #endif
-	}while(!desc->heap->partial.compare_exchange_weak(prev,desc,std::memory_order_acq_rel));
+	}while(!desc->heap->partial.compare_exchange_strong(prev,desc,std::memory_order_acq_rel));
 #ifndef GC//no GC so we need online flush and fence
 	FLUSH(&desc->heap->partial);
 	FLUSHFENCE;
@@ -299,7 +299,7 @@ void BaseMeta::update_active(Procheap* heap, Descriptor* desc, uint64_t morecred
 #ifndef GC//no GC so we need online flush and fence
 		FLUSHFENCE;
 #endif
-	}while(!desc->anchor.compare_exchange_weak(oldanchor,newanchor,std::memory_order_acq_rel));
+	}while(!desc->anchor.compare_exchange_strong(oldanchor,newanchor,std::memory_order_acq_rel));
 #ifndef GC//no GC so we need online flush and fence
 	FLUSH(&desc->anchor);
 	FLUSHFENCE;
@@ -345,7 +345,7 @@ void* BaseMeta::malloc_from_active(Procheap* heap){
 #ifndef GC//no GC so we need online flush and fence
 		FLUSHFENCE;
 #endif
-	} while(!heap->active.compare_exchange_weak(oldactive,newactive,std::memory_order_acq_rel));
+	} while(!heap->active.compare_exchange_strong(oldactive,newactive,std::memory_order_acq_rel));
 #ifndef GC//no GC so we need online flush and fence
 	FLUSH(&heap->active);
 	FLUSHFENCE;
@@ -378,7 +378,7 @@ void* BaseMeta::malloc_from_active(Procheap* heap){
 #ifndef GC//no GC so we need online flush and fence
 		FLUSHFENCE;
 #endif
-	} while(!desc->anchor.compare_exchange_weak(oldanchor,newanchor,std::memory_order_acq_rel));
+	} while(!desc->anchor.compare_exchange_strong(oldanchor,newanchor,std::memory_order_acq_rel));
 #ifndef GC//no GC so we need online flush and fence
 	FLUSH(&desc->anchor);
 	FLUSHFENCE;
@@ -427,7 +427,7 @@ retry:
 #ifndef GC//no GC so we need online flush and fence
 		FLUSHFENCE;
 #endif
-	}while(!desc->anchor.compare_exchange_weak(oldanchor,newanchor,std::memory_order_acq_rel));
+	}while(!desc->anchor.compare_exchange_strong(oldanchor,newanchor,std::memory_order_acq_rel));
 #ifndef GC//no GC so we need online flush and fence
 	FLUSH(&desc->anchor);
 	FLUSHFENCE;
@@ -446,7 +446,7 @@ retry:
 #ifndef GC//no GC so we need online flush and fence
 		FLUSHFENCE;
 #endif
-	}while(!desc->anchor.compare_exchange_weak(oldanchor,newanchor,std::memory_order_acq_rel));
+	}while(!desc->anchor.compare_exchange_strong(oldanchor,newanchor,std::memory_order_acq_rel));
 #ifndef GC//no GC so we need online flush and fence
 	FLUSH(&desc->anchor);
 	FLUSHFENCE;
