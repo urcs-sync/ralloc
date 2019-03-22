@@ -217,7 +217,7 @@ private:
 	};
 	struct Node{
 		T value;
-		uint64_t counter;
+		uint64_t counter;//This must be 64bit, or CAS will spuriously fail.
 		Node(T val = (T)0, uint32_t a = 0) noexcept:
 			value(val),
 			counter(a){};
