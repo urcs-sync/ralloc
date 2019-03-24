@@ -71,46 +71,31 @@ void* pmmalloc::p_malloc(size_t sz, std::vector<void*>(*f)){
 	//TODO: put f in each block
 	Procheap *heap;
 	void* addr;
-#ifdef DEBUG
-	fprintf(stderr, "malloc() sz %lu\n", sz);
-	fflush(stderr);
-#endif
+	DBG_PRINT("malloc() sz %lu\n", sz);
 	// Use sz and thread id to find heap.
 	heap = base_md->find_heap(sz);
 
 	if (!heap) {
 		// Large block
 		addr = base_md->alloc_large_block(sz);
-#ifdef DEBUG
-		fprintf(stderr, "Large block allocation: %p\n", addr);
-		fflush(stderr);
-#endif
+		DBG_PRINT("Large block allocation: %p\n", addr);
 		return addr;
 	}
 
 	while(1) { 
 		addr = base_md->malloc_from_active(heap);
 		if (addr) {
-#ifdef DEBUG
-			fprintf(stderr, "malloc() return MallocFromActive %p\n", addr);
-			fflush(stderr);
-#endif
+			DBG_PRINT("malloc() return MallocFromActive %p\n", addr);
 			return addr;
 		}
 		addr = base_md->malloc_from_partial(heap);
 		if (addr) {
-#ifdef DEBUG
-			fprintf(stderr, "malloc() return MallocFromPartial %p\n", addr);
-			fflush(stderr);
-#endif
+			DBG_PRINT("malloc() return MallocFromPartial %p\n", addr);
 			return addr;
 		}
 		addr = base_md->malloc_from_newsb(heap);
 		if (addr) {
-#ifdef DEBUG
-			fprintf(stderr, "malloc() return MallocFromNewSB %p\n", addr);
-			fflush(stderr);
-#endif
+			DBG_PRINT("malloc() return MallocFromNewSB %p\n", addr);
 			return addr;
 		}
 	} 
@@ -121,10 +106,7 @@ void pmmalloc::p_free(void* ptr){
 	void* sb;
 	Anchor oldanchor, newanchor;
 	Procheap* heap = NULL;
-#ifdef DEBUG
-	fprintf(stderr, "Calling my free %p\n", ptr);
-	fflush(stderr);
-#endif
+	DBG_PRINT("Calling my free %p\n", ptr);
 
 	if (!ptr) {
 		return;
@@ -138,10 +120,7 @@ void pmmalloc::p_free(void* ptr){
 	// get prefix
 	ptr = (void*)((uint64_t)ptr - HEADER_SIZE);  
 	if (*((char*)ptr) == (char)LARGE) {
-#ifdef DEBUG
-		fprintf(stderr, "Freeing large block\n");
-		fflush(stderr);
-#endif
+		DBG_PRINT("Freeing large block\n");
 		base_md->large_sb_retire(ptr, *((uint64_t *)(ptr + TYPE_SIZE)));
 		return;
 	}
@@ -156,47 +135,31 @@ void pmmalloc::p_free(void* ptr){
 		newanchor.avail = ((uint64_t)ptr - (uint64_t)sb) / desc->sz;
 
 		if (oldanchor.state == FULL) {
-#ifdef DEBUG
-			fprintf(stderr, "Marking superblock %p as PARTIAL\n", sb);
-			fflush(stderr);
-#endif
+			DBG_PRINT("Marking superblock %p as PARTIAL\n", sb);
 			newanchor.state = PARTIAL;
 		}
 
 		if (oldanchor.count == desc->maxcount - 1) {
 			heap = desc->heap;
 			INSTRFENCE;// instruction fence.
-#ifdef DEBUG
-			fprintf(stderr, "Marking superblock %p as EMPTY; count %d\n", sb, oldanchor.count);
-			fflush(stderr);
-#endif
+			DBG_PRINT("Marking superblock %p as EMPTY; count %d\n", sb, oldanchor.count);
 			newanchor.state = EMPTY;
 		} 
 		else {
 			++newanchor.count;
 		}
-#ifndef GC//no GC so we need online flush and fence
-		FLUSHFENCE;
-#endif
+		TFLUSHFENCE;
 	} while (!desc->anchor.compare_exchange_strong(oldanchor, newanchor,std::memory_order_acq_rel));
-#ifndef GC//no GC so we need online flush and fence
-	FLUSH(&desc->anchor);
-	FLUSHFENCE;
-#endif
+	TFLUSH(&desc->anchor);
+	TFLUSHFENCE;
 	if (newanchor.state == EMPTY) {
-#ifdef DEBUG
-		fprintf(stderr, "Freeing superblock %p with desc %p (count %hu)\n", sb, desc, desc->anchor.load().count);
-		fflush(stderr);
-#endif
+		DBG_PRINT("Freeing superblock %p with desc %p (count %hu)\n", sb, desc, desc->anchor.load().count);
 
 		base_md->small_sb_retire(sb);
 		base_md->remove_empty_desc(heap, desc);
 	} 
 	else if (oldanchor.state == FULL) {
-#ifdef DEBUG
-		fprintf(stderr, "Puting superblock %p to PARTIAL heap\n", sb);
-		fflush(stderr);
-#endif
+		DBG_PRINT("Puting superblock %p to PARTIAL heap\n", sb);
 		base_md->heap_put_partial(desc);
 	}
 }

@@ -12,6 +12,14 @@
 // transient data in pmmalloc
 #define PM_TRANSIENT
 
+#ifdef DEBUG
+  #define DBG_PRINT(msg, ...) \
+    fprintf(stderr, "%s:%d %s " msg "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
+    fflush(stderr);
+#else
+  #define DBG_PRINT(msg, ...)
+#endif
+
 /* user customized macros */
 #define HEAPFILE_PREFIX "/dev/shm/"
 #define ENABLE_FILTER_FUNC 1

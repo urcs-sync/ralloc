@@ -163,10 +163,8 @@ void BaseMeta::organize_blk_list(void* start, uint64_t count, uint64_t stride){
 	for (uint64_t i = 1; i < count - 1; i++) {
 		ptr += stride;
 		*((uint64_t*)ptr) = i + 1;
-#ifndef GC//no GC so we need online flush and fence
-		FLUSH(ptr);
-		FLUSHFENCE;
-#endif
+		TFLUSH(ptr);
+		TFLUSHFENCE;
 	}
 }
 
@@ -204,35 +202,25 @@ inline void BaseMeta::list_put_partial(Descriptor* desc){
 Descriptor* BaseMeta::heap_get_partial(Procheap* heap){
 	Descriptor* desc = heap->partial.load(std::memory_order_acquire);
 	do{
-#ifndef GC
-		FLUSH(&heap->partial);
-#endif
+		TFLUSH(&heap->partial);
 		if(desc == nullptr){
 			return list_get_partial(heap->sc);
 		}
-#ifndef GC//no GC so we need online flush and fence
-		FLUSHFENCE;
-#endif
+		TFLUSHFENCE;
 	}while(!heap->partial.compare_exchange_strong(desc,nullptr,std::memory_order_acq_rel));
-#ifndef GC//no GC so we need online flush and fence
-	FLUSH(&heap->partial);
-	FLUSHFENCE;
-#endif
+	TFLUSH(&heap->partial);
+	TFLUSHFENCE;
 	return desc;
 }
 void BaseMeta::heap_put_partial(Descriptor* desc){
 	//put desc to heap->partial
 	Descriptor* prev = desc->heap->partial.load(std::memory_order_acquire);
 	do{
-#ifndef GC//no GC so we need online flush and fence
-		FLUSH(&desc->heap->partial);
-		FLUSHFENCE;
-#endif
+		TFLUSH(&desc->heap->partial);
+		TFLUSHFENCE;
 	}while(!desc->heap->partial.compare_exchange_strong(prev,desc,std::memory_order_acq_rel));
-#ifndef GC//no GC so we need online flush and fence
-	FLUSH(&desc->heap->partial);
-	FLUSHFENCE;
-#endif
+	TFLUSH(&desc->heap->partial);
+	TFLUSHFENCE;
 	if(prev){
 		//put replaced partial desc to sizeclass partial desc queue
 		list_put_partial(prev);
@@ -255,14 +243,10 @@ void BaseMeta::list_remove_empty_desc(Sizeclass* sc){
 }
 void BaseMeta::remove_empty_desc(Procheap* heap, Descriptor* desc){
 	//remove the empty desc from heap->partial, or run list_remove_empty_desc on heap->sc
-#ifndef GC//no GC so we need online flush and fence
-	FLUSHFENCE;
-#endif
+	TFLUSHFENCE;
 	if(heap->partial.compare_exchange_strong(desc,nullptr,std::memory_order_acq_rel)) {
-#ifndef GC//no GC so we need online flush and fence
-		FLUSH(&heap->partial);
-		FLUSHFENCE;
-#endif
+		TFLUSH(&heap->partial);
+		TFLUSHFENCE;
 		desc_retire(desc);
 	}
 	else {
@@ -276,34 +260,24 @@ void BaseMeta::update_active(Procheap* heap, Descriptor* desc, uint64_t morecred
 	*((uint64_t*)&oldactive) = 0;
 	newactive.ptr = (uint64_t)desc>>6;
 	newactive.credits = morecredits - 1;
-#ifndef GC//no GC so we need online flush and fence
-	FLUSHFENCE;
-#endif
+	TFLUSHFENCE;
 	if(heap->active.compare_exchange_strong(oldactive,newactive,std::memory_order_acq_rel)){
 		//heap->active was NULL and is replaced by new one
-#ifndef GC//no GC so we need online flush and fence
-		FLUSH(&heap->active);
-		FLUSHFENCE;
-#endif
+		TFLUSH(&heap->active);
+		TFLUSHFENCE;
 		return;
 	}
 	oldanchor = desc->anchor.load(std::memory_order_acquire);
-#ifndef GC
-	FLUSH(&desc->anchor);
-#endif
+	TFLUSH(&desc->anchor);
 	do{
 		//return reserved morecredits to desc
 		newanchor = oldanchor;
 		newanchor.count += morecredits;
 		newanchor.state = PARTIAL;
-#ifndef GC//no GC so we need online flush and fence
-		FLUSHFENCE;
-#endif
+		TFLUSHFENCE;
 	}while(!desc->anchor.compare_exchange_strong(oldanchor,newanchor,std::memory_order_acq_rel));
-#ifndef GC//no GC so we need online flush and fence
-	FLUSH(&desc->anchor);
-	FLUSHFENCE;
-#endif
+	TFLUSH(&desc->anchor);
+	TFLUSHFENCE;
 	//replace heap->partial by desc
 	heap_put_partial(desc);
 }
@@ -325,9 +299,7 @@ Procheap* BaseMeta::find_heap(size_t sz){
 void* BaseMeta::malloc_from_active(Procheap* heap){
 	Active newactive, oldactive;
 	oldactive = heap->active.load(std::memory_order_acquire);
-#ifndef GC
-	FLUSH(&heap->active);
-#endif
+	TFLUSH(&heap->active);
 	void* addr = nullptr;
 	//1. deduce credit if non-zero
 	do{
@@ -342,21 +314,15 @@ void* BaseMeta::malloc_from_active(Procheap* heap){
 		else {
 			--newactive.credits;
 		}
-#ifndef GC//no GC so we need online flush and fence
-		FLUSHFENCE;
-#endif
+		TFLUSHFENCE;
 	} while(!heap->active.compare_exchange_strong(oldactive,newactive,std::memory_order_acq_rel));
-#ifndef GC//no GC so we need online flush and fence
-	FLUSH(&heap->active);
-	FLUSHFENCE;
-#endif
+	TFLUSH(&heap->active);
+	TFLUSHFENCE;
 	//2. get the block of corresponding credit
 	Descriptor* desc = mask_credits(oldactive);
 	Anchor oldanchor,newanchor;
 	oldanchor = desc->anchor.load(std::memory_order_acquire);
-#ifndef GC
-	FLUSH(&desc->anchor);
-#endif
+	TFLUSH(&desc->anchor);
 	uint64_t morecredits = 0;
 	do{
 		newanchor = oldanchor;
@@ -375,14 +341,10 @@ void* BaseMeta::malloc_from_active(Procheap* heap){
 				newanchor.count -= morecredits;
 			}
 		}
-#ifndef GC//no GC so we need online flush and fence
-		FLUSHFENCE;
-#endif
+		TFLUSHFENCE;
 	} while(!desc->anchor.compare_exchange_strong(oldanchor,newanchor,std::memory_order_acq_rel));
-#ifndef GC//no GC so we need online flush and fence
-	FLUSH(&desc->anchor);
-	FLUSHFENCE;
-#endif
+	TFLUSH(&desc->anchor);
+	TFLUSHFENCE;
 	if(oldactive.credits == 0 && oldanchor.count > 0){
 		//old active desc runs out but the desc has more credits to reserve
 		update_active(heap,desc,morecredits);
@@ -410,9 +372,7 @@ retry:
 	desc->heap = heap;
 	FLUSH(&desc->heap);
 	oldanchor = desc->anchor.load(std::memory_order_acquire);
-#ifndef GC
-	FLUSH(&desc->anchor);
-#endif
+	TFLUSH(&desc->anchor);
 	do{
 		//reserve blocks
 		newanchor = oldanchor;
@@ -424,33 +384,23 @@ retry:
 		morecredits = min(oldanchor.count - 1, MAXCREDITS);
 		newanchor.count -= morecredits + 1;
 		newanchor.state = (morecredits>0)?ACTIVE:FULL;
-#ifndef GC//no GC so we need online flush and fence
-		FLUSHFENCE;
-#endif
+		TFLUSHFENCE;
 	}while(!desc->anchor.compare_exchange_strong(oldanchor,newanchor,std::memory_order_acq_rel));
-#ifndef GC//no GC so we need online flush and fence
-	FLUSH(&desc->anchor);
-	FLUSHFENCE;
-#endif
+	TFLUSH(&desc->anchor);
+	TFLUSHFENCE;
 
 	oldanchor = desc->anchor.load(std::memory_order_acquire);
-#ifndef GC
-	FLUSH(&desc->anchor);
-#endif
+	TFLUSH(&desc->anchor);
 	do{
 		//pop reserved block
 		newanchor = oldanchor;
 		addr = (void*)((uint64_t)desc->sb + oldanchor.avail * desc->sz);
 		newanchor.avail = *(uint64_t*)addr;
 		newanchor.tag++;
-#ifndef GC//no GC so we need online flush and fence
-		FLUSHFENCE;
-#endif
+		TFLUSHFENCE;
 	}while(!desc->anchor.compare_exchange_strong(oldanchor,newanchor,std::memory_order_acq_rel));
-#ifndef GC//no GC so we need online flush and fence
-	FLUSH(&desc->anchor);
-	FLUSHFENCE;
-#endif
+	TFLUSH(&desc->anchor);
+	TFLUSHFENCE;
 
 	if(morecredits > 0){
 		update_active(heap, desc, morecredits);
@@ -485,23 +435,15 @@ void* BaseMeta::malloc_from_newsb(Procheap* heap){
 	newactive.credits = min(desc->maxcount - 1, MAXCREDITS)-1;
 	newanchor.count = max(((int)desc->maxcount - 1)-((int)newactive.credits + 1), 0);
 	newanchor.state = ACTIVE;
-#ifndef GC//no GC so we need online flush and fence
-	FLUSHFENCE;
-#endif
+	TFLUSHFENCE;
 	desc->anchor.store(newanchor,std::memory_order_release);
-#ifndef GC//no GC so we need online flush and fence
-	FLUSH(&desc->anchor);
-#endif
+	TFLUSH(&desc->anchor);
 
 	*((uint64_t*)(&oldactive)) = 0;
 
-#ifndef GC//no GC so we need online flush and fence
-	FLUSHFENCE;
-#endif
+	TFLUSHFENCE;
 	if(heap->active.compare_exchange_strong(oldactive,newactive,std::memory_order_acq_rel)){
-#ifndef GC//no GC so we need online flush and fence
-		FLUSH(&heap->active);
-#endif
+		TFLUSH(&heap->active);
 		addr = desc->sb;
 		*((char*)addr) = (char)SMALL;
 		addr += TYPE_SIZE;

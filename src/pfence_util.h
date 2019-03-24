@@ -24,6 +24,16 @@
     #define FLUSHFENCE 
 #endif
 
+//flush and flushfence for transient data
+//transient data gets flushed only in non-GC version
+#ifndef GC
+  #define TFLUSH(addr) FLUSH(addr)
+  #define TFLUSHFENCE FLUSHFENCE
+#else
+  #define TFLUSH(addr)
+  #define TFLUSHFENCE
+#endif
+
 #define INSTRFENCE asm volatile ("" ::: "memory")
 
 /*

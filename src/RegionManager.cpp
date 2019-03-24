@@ -50,9 +50,7 @@
 
 //mmap file
 void RegionManager::__map_persistent_region(){
-#ifdef DEBUG
-	printf("Creating a new persistent region...\n");
-#endif
+	DBG_PRINT("Creating a new persistent region...\n");
 	int fd;
 	fd  = open(HEAPFILE.c_str(), O_RDWR | O_CREAT | O_TRUNC,
 				S_IRUSR | S_IWUSR);
@@ -78,16 +76,12 @@ void RegionManager::__map_persistent_region(){
 	curr_addr_ptr = (std::atomic<char *>*)(((intptr_t*) base_addr) + 1);
 	FLUSH(curr_addr_ptr);
 	FLUSHFENCE;
-#ifdef DEBUG
-	printf("Addr: %p\n", addr);
-	printf("Base_addr: %p\n", base_addr);
-	printf("Current_addr: %p\n", curr_addr_ptr->load());
-#endif
+	DBG_PRINT("Addr: %p\n", addr);
+	DBG_PRINT("Base_addr: %p\n", base_addr);
+	DBG_PRINT("Current_addr: %p\n", curr_addr_ptr->load());
 }
 void RegionManager::__remap_persistent_region(){
-#ifdef DEBUG
-	printf("Remapping the persistent region...\n");
-#endif
+	DBG_PRINT("Remapping the persistent region...\n");
 	int fd;
 	fd = open(HEAPFILE.c_str(), O_RDWR,
 				S_IRUSR | S_IWUSR);
@@ -116,18 +110,14 @@ void RegionManager::__remap_persistent_region(){
 
 	base_addr = (char*) addr;
 	curr_addr_ptr = (std::atomic<char *>*)(((intptr_t*) base_addr) + 1);
-#ifdef DEBUG
-	printf("Forced Addr: %p\n", (void*) forced_addr);
-	printf("Addr: %p\n", addr);
-	printf("Base_addr: %p\n", base_addr);
-	printf("Curr_addr: %p\n", curr_addr_ptr->load());
-#endif
+	DBG_PRINT("Forced Addr: %p\n", (void*) forced_addr);
+	DBG_PRINT("Addr: %p\n", addr);
+	DBG_PRINT("Base_addr: %p\n", base_addr);
+	DBG_PRINT("Curr_addr: %p\n", curr_addr_ptr->load());
 }
 
 void RegionManager::__map_transient_region(){
-#ifdef DEBUG
-	printf("Creating a new transient region...\n");
-#endif
+	DBG_PRINT("Creating a new transient region...\n");
 	int fd;
 	fd  = open(HEAPFILE.c_str(), O_RDWR | O_CREAT | O_TRUNC,
 				S_IRUSR | S_IWUSR);
@@ -150,16 +140,12 @@ void RegionManager::__map_transient_region(){
 	curr_addr_ptr = (std::atomic<char *>*)((intptr_t*) base_addr + 1);
 	FLUSH(curr_addr_ptr);
 	FLUSHFENCE;
-#ifdef DEBUG
-	printf("Addr: %p\n", addr);
-	printf("Base_addr: %p\n", base_addr);
-	printf("Current_addr: %p\n", curr_addr_ptr->load());
-#endif
+	DBG_PRINT("Addr: %p\n", addr);
+	DBG_PRINT("Base_addr: %p\n", base_addr);
+	DBG_PRINT("Current_addr: %p\n", curr_addr_ptr->load());
 }
 void RegionManager::__remap_transient_region(){
-#ifdef DEBUG
-	printf("Remapping the transient region...\n");
-#endif
+	DBG_PRINT("Remapping the transient region...\n");
 	int fd;
 	fd = open(HEAPFILE.c_str(), O_RDWR,
 				S_IRUSR | S_IWUSR);
@@ -183,11 +169,9 @@ void RegionManager::__remap_transient_region(){
 	char* offset = curr_addr_ptr->load();
 	bool res = curr_addr_ptr->compare_exchange_strong(offset,(char*)((uint64_t)offset+(uint64_t)base_addr),std::memory_order_acq_rel);//recover curr_addr by the offset
 	assert(res&&"something wrong while CASing curr_addr");
-#ifdef DEBUG
-	printf("Addr: %p\n", addr);
-	printf("Base_addr: %p\n", base_addr);
-	printf("Curr_addr: %p\n", curr_addr_ptr->load());
-#endif
+	DBG_PRINT("Addr: %p\n", addr);
+	DBG_PRINT("Base_addr: %p\n", base_addr);
+	DBG_PRINT("Curr_addr: %p\n", curr_addr_ptr->load());
 }
 
 //persist the curr and base address
@@ -198,16 +182,14 @@ void RegionManager::__close_persistent_region(){
 	// FLUSH( (((intptr_t*) base_addr) + 1)); 
 	FLUSH(curr_addr_ptr); 
 	FLUSHFENCE;
-#ifdef DEBUG
-	printf("At the end current addr: %p\n", curr_addr_ptr->load());
+	DBG_PRINT("At the end current addr: %p\n", curr_addr_ptr->load());
 
 	unsigned long space_used = ((unsigned long) curr_addr_ptr->load() 
 		 - (unsigned long) base_addr);
 	unsigned long remaining_space = 
 		 ((unsigned long) FILESIZE - space_used) / (1024 * 1024);
-	printf("Space Used(rounded down to MiB): %ld, Remaining(MiB): %ld\n", 
+	DBG_PRINT("Space Used(rounded down to MiB): %ld, Remaining(MiB): %ld\n", 
 			space_used / (1024 * 1024), remaining_space);
-#endif
 	munmap((void*)base_addr, FILESIZE);
 	close(FD);
 }
@@ -231,16 +213,14 @@ void RegionManager::__close_transient_region(){
 	FLUSHFENCE;
 #endif
 
-#ifdef DEBUG
-	printf("At the end current addr: %p\n", curr_addr);
+	DBG_PRINT("At the end current addr: %p\n", curr_addr);
 
 	unsigned long space_used = ((unsigned long) curr_addr 
 		 - (unsigned long) base_addr);
 	unsigned long remaining_space = 
 		 ((unsigned long) FILESIZE - space_used) / (1024 * 1024);
-	printf("Space Used(rounded down to MiB): %ld, Remaining(MiB): %ld\n", 
+	DBG_PRINT("Space Used(rounded down to MiB): %ld, Remaining(MiB): %ld\n", 
 			space_used / (1024 * 1024), remaining_space);
-#endif
 	munmap((void*)base_addr, FILESIZE);
 	close(FD);
 }

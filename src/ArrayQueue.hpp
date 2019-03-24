@@ -125,22 +125,18 @@ public:
 				if(old_rear == rear.load(std::memory_order_acquire))
 					break;
 			}
-#ifndef GC
-			FLUSH(&front);
-			FLUSH(&rear);
-#endif
+			TFLUSH(&front);
+			TFLUSH(&rear);
+
 			finish_enqueue(old_rear.value, old_rear.index, old_rear.counter);
 			if(old_front.index == (old_rear.index+2)%size)
 				assert(0&&"queue is full!");
 			Rear new_rear( val, (old_rear.index+1)%size, nodes[(old_rear.index+1)%size].load(std::memory_order_acquire).counter+1 );
-#ifndef GC//no GC so we need online flush and fence
-			FLUSHFENCE;
-#endif
+			TFLUSHFENCE;
+
 			if(rear.compare_exchange_weak(old_rear,new_rear,std::memory_order_acq_rel)){
-#ifndef GC//no GC so we need online flush and fence
-				FLUSH(&rear);
-				FLUSHFENCE;
-#endif
+				TFLUSH(&rear);
+				TFLUSHFENCE;
 				return;
 			}
 		}
@@ -155,25 +151,21 @@ public:
 				if(old_front == front.load(std::memory_order_acquire))
 					break;
 			}
-#ifndef GC
-			FLUSH(&front);
-			FLUSH(&rear);
-#endif
+			TFLUSH(&front);
+			TFLUSH(&rear);
+
 			if(old_front.index == old_rear.index)
 				finish_enqueue(old_rear.value, old_rear.index, old_rear.counter);
 			if(old_front.index == (old_rear.index+1)%size)
 				return {};//empty
 			T ret = nodes[old_front.index%size].load(std::memory_order_acquire).value;
 			Front new_front((old_front.index+1)%size, old_front.counter+1);
-#ifndef GC//no GC so we need online flush and fence
-			FLUSH(&nodes[old_front.index%size]);
-			FLUSHFENCE;
-#endif
+			TFLUSH(&nodes[old_front.index%size]);
+			TFLUSHFENCE;
+
 			if(front.compare_exchange_strong(old_front,new_front,std::memory_order_acq_rel)){
-#ifndef GC//no GC so we need online flush and fence
-				FLUSH(&front);
-				FLUSHFENCE;
-#endif
+				TFLUSH(&front);
+				TFLUSHFENCE;
 				return ret;
 			}
 		}
@@ -182,15 +174,13 @@ private:
 	void finish_enqueue(T value, uint32_t index, uint32_t counter){
 		Node old_node(nodes[index].load(std::memory_order_acquire).value,counter-1);
 		Node new_node(value,counter);
-#ifndef GC//no GC so we need online flush and fence
-		FLUSH(&nodes[index]);
-		FLUSHFENCE;
-#endif
+
+		TFLUSH(&nodes[index]);
+		TFLUSHFENCE;
 		nodes[index].compare_exchange_strong(old_node,new_node,std::memory_order_acq_rel);
-#ifndef GC//no GC so we need online flush and fence
-		FLUSH(&nodes[index]);
-		FLUSHFENCE;
-#endif
+		TFLUSH(&nodes[index]);
+		TFLUSHFENCE;
+
 		return;
 	}
 	struct Rear{
