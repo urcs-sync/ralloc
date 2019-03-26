@@ -26,6 +26,16 @@
 
 #include "RegionManager.hpp"
 #include "BaseMeta.hpp"
+#include "thread_util.hpp"
+
+#define PM_init(id, thd_num) pmmalloc::_init(id, thd_num)
+#define PM_malloc(sz) pmmalloc::_p_malloc(sz)
+#define PM_free(ptr) pmmalloc::_p_free(ptr)
+#define PM_set_root(ptr, i) pmmalloc::_set_root(ptr, i)
+#define PM_get_root(i) pmmalloc::_get_root(i)
+#define PM_collect() pmmalloc::_collect()
+#define PM_close() pmmalloc::_close()
+#define PM_pthread_create(thd, attr, f, arg) pm_thread_create(thd, attr, f, arg)
 
 /*
  ************class pmmalloc************
@@ -74,15 +84,42 @@
 
 class pmmalloc{
 public:
-	pmmalloc(std::string id, uint64_t thd_num = MAX_THREADS); // start/restart the heap by the application id.
-	~pmmalloc(); // destructor to close the heap
-	void* p_malloc(size_t sz, std::vector<void*>(*f) = nullptr);
-	void p_free(void* ptr);
-	void* set_root(void* ptr, uint64_t i);//return the old i-th root
-	void* get_root(uint64_t i);
-	bool collect();
+	static inline void _init(std::string id, uint64_t thd_num = MAX_THREADS){
+		obj = new pmmalloc(id, thd_num); 
+	}
+	static inline void* _p_malloc(size_t sz){
+		assert(obj!=nullptr&&"pmmalloc isn't initialized!");
+		return obj->__p_malloc(sz);
+	}
+	static inline void _p_free(void* ptr){
+		assert(obj!=nullptr&&"pmmalloc isn't initialized!");
+		obj->__p_free(ptr);
+	}
+	static inline void* _set_root(void* ptr, uint64_t i){
+		assert(obj!=nullptr&&"pmmalloc isn't initialized!");
+		return obj->__set_root(ptr,i);
+	}
+	static inline void* _get_root(uint64_t i){
+		assert(obj!=nullptr&&"pmmalloc isn't initialized!");
+		return obj->__get_root(i);
+	}
+	static inline bool _collect(){
+		assert(obj!=nullptr&&"pmmalloc isn't initialized!");
+		return obj->__collect();
+	}
+	static inline void _close(){
+		delete obj;obj = nullptr; 
+	}
 
 private:
+	static pmmalloc* obj; // singleton
+	pmmalloc(std::string id, uint64_t thd_num); // start/restart the heap by the application id.
+	~pmmalloc(); // destructor to close the heap
+	void* __p_malloc(size_t sz);
+	void __p_free(void* ptr);
+	void* __set_root(void* ptr, uint64_t i);//return the old i-th root
+	void* __get_root(uint64_t i);
+	bool __collect();
 	std::string filepath;
 	uint64_t thread_num;
 	/* manager to map, remap, and unmap the heap */

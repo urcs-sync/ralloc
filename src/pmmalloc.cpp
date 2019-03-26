@@ -24,6 +24,8 @@
 
 using namespace std;
 
+pmmalloc* pmmalloc::obj = nullptr;
+
 /* 
  * mmap the existing heap file corresponding to id. aka restart,
  * 		and if multiple heaps exist, print out and let user select;
@@ -62,12 +64,12 @@ pmmalloc::~pmmalloc(){
 }
 
 //manually request to collect garbage
-bool pmmalloc::collect(){
+bool pmmalloc::__collect(){
 	//TODO
 	return true;
 }
 
-void* pmmalloc::p_malloc(size_t sz, std::vector<void*>(*f)){
+void* pmmalloc::__p_malloc(size_t sz){
 	//TODO: put f in each block
 	Procheap *heap;
 	void* addr;
@@ -101,7 +103,7 @@ void* pmmalloc::p_malloc(size_t sz, std::vector<void*>(*f)){
 	} 
 }
 
-void pmmalloc::p_free(void* ptr){
+void pmmalloc::__p_free(void* ptr){
 	Descriptor* desc;
 	void* sb;
 	Anchor oldanchor, newanchor;
@@ -165,11 +167,11 @@ void pmmalloc::p_free(void* ptr){
 }
 
 //return the old i-th root, if exists.
-void* pmmalloc::set_root(void* ptr, uint64_t i){
+void* pmmalloc::__set_root(void* ptr, uint64_t i){
 	return base_md->set_root(ptr,i);
 }
 
 //return the current i-th root, or nullptr if not exist.
-void* pmmalloc::get_root(uint64_t i){
+void* pmmalloc::__get_root(uint64_t i){
 	return base_md->get_root(i);
 }

@@ -28,6 +28,7 @@ const uint64_t MAX_FILESIZE = 16*1024*1024*1024ULL;
 const uint64_t MAX_THREADS = 512;
 const int MAX_ROOTS = 1024;
 const int MAX_SECTION = 10;
+const uint64_t MAX_BLOCK_NUM = (2 << 31);//max number of blocks per sb
 const int DESC_SPACE_CAP = 128;//number of desc sbs per desc space
 const uint64_t SB_SPACE_SIZE = 1*1024*1024*1024ULL;
 const int PAGESIZE = 4096;
@@ -52,7 +53,7 @@ const int EMPTY = 3;
 
 const int MAXCREDITS = 64; // 2^(bits for credits in active)
 const int GRANULARITY = 16; // granularity of sizeclass size in byte
-const int MAX_SMALLSIZE = 2048; // largest size of a small object im byte
+const int MAX_SMALLSIZE = 2048; // largest size of a small object in byte
 const int PROCHEAP_NUM = MAX_THREADS; // number of processor heap
 
 const uint64_t FREELIST_CAP = 10*1024*1024ULL; //largest amount of nodes in freelist
