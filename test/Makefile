@@ -10,7 +10,7 @@ PMMALLOC_GC_FLAGS = $(FLAGS) -DGC -DPMMALLOC -L. -lpmmalloc
 MAKALU_FLAGS = $(FLAGS) -I../ext/makalu_alloc/include -DMAKALU -L../ext/makalu_alloc/lib -lmakalu -L~/.local/lib/
 CXXFLAGS = $(PMMALLOC_GC_FLAGS)
 # CXXFLAGS = $(MAKALU_FLAGS)
-# CXXFLAGS = $(FLAGS) # for built-in malloc
+# CXXFLAGS = $(FLAGS) #-L../../lrmalloc -l:lrmalloc.a # for built-in malloc
 LIBS = -pthread -lstdc++ -latomic -fPIC -ljemalloc 
 
 
