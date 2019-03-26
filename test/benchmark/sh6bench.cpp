@@ -69,11 +69,9 @@ int thread_specific;
 #ifdef PMMALLOC
 
   #include "pmmalloc.hpp"
-  #include "thread_util.hpp"
-  pmmalloc* alloc = nullptr;
 
-  #define pm_malloc(s) alloc->p_malloc(s)
-  #define pm_free(p) alloc->p_free(p)
+  #define pm_malloc(s) PM_malloc(s)
+  #define pm_free(p) PM_free(p)
 
 #elif defined (MAKALU)
 
@@ -223,7 +221,7 @@ int main(int argc, char *argv[])
 
 	uThreadCount = (int)promptAndRead("threads", GetNumProcessors(), 'u');
 #ifdef PMMALLOC
-	alloc = new pmmalloc("test",uThreadCount);
+	PM_init("test",uThreadCount);
 #elif defined (MAKALU)
 	__map_persistent_region();
 	MAK_start(&__nvm_region_allocator);
@@ -268,7 +266,7 @@ int main(int argc, char *argv[])
 	if (fout != stdout)
 		fclose(fout);
 #ifdef PMMALLOC
-	delete alloc;
+	PM_close();
 #elif defined (MAKALU)
 	MAK_close();
 #endif
@@ -376,7 +374,7 @@ ThreadID RunThread(void (*fn)(void *), void *arg)
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
 #ifdef PMMALLOC
-	if (pm_thread_create(&result, &attr, (void *(*)(void *))fn, arg) == -1)
+	if (PM_pthread_create(&result, &attr, (void *(*)(void *))fn, arg) == -1)
 #elif defined (MAKALU)
 	if (MAK_pthread_create(&result, &attr, (void *(*)(void *))fn, arg) == -1)
 #else

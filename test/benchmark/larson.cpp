@@ -57,11 +57,10 @@ void QueryPerformanceFrequency(long * x)
 #include <pthread.h>
 #ifdef PMMALLOC
 
-  #include "thread_util.hpp"
   #include "pmmalloc.hpp"
   pmmalloc* alloc = nullptr;
-  #define pm_malloc(s) alloc->p_malloc(s)
-  #define pm_free(p) alloc->p_free(p)
+  #define pm_malloc(s) PM_malloc(s)
+  #define pm_free(p) PM_free(p)
 
 #elif defined(MAKALU) // PMMALLOC ends
 
@@ -146,7 +145,7 @@ void _beginthread (VoidFunction x, int, void * z)
 
   //  printf ("creating a thread.\n");
 #ifdef PMMALLOC
-  int v = pm_thread_create(&pt, &pa, x, z);
+  int v = PM_pthread_create(&pt, &pa, x, z);
 #elif defined (MAKALU)
   int v = MAK_pthread_create(&pt, &pa, x, z);
 #else
@@ -282,7 +281,7 @@ int main (int argc, char *argv[])
   lran2_init(&rgen, seed) ;
   // init_space = CountReservedSpace() ;
 #ifdef PMMALLOC
-  alloc = new pmmalloc("test",max_threads+1);//additional 1 for main thread
+  PM_init("test",max_threads+1);//additional 1 for main thread
   tid = thread_count.fetch_add(1);
 #elif defined (MAKALU)
   __map_persistent_region();
@@ -299,7 +298,11 @@ int main (int argc, char *argv[])
 #ifdef _DEBUG
   _cputs("Hit any key to exit...") ;	(void)_getch() ;
 #endif
-
+#ifdef PMMALLOC
+  PM_close();
+#elif defined (MAKALU)
+  MAK_close();
+#endif
   return(0) ;
 
 } /* main */
