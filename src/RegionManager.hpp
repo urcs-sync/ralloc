@@ -40,7 +40,7 @@ public:
 	bool persist;
 
 	RegionManager(const std::string& file_path, bool p = true, uint64_t size = MAX_FILESIZE):
-		FILESIZE(size+24),
+		FILESIZE(size+PAGESIZE),
 		HEAPFILE(file_path),
 		curr_addr_ptr(nullptr),
 		persist(p){

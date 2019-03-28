@@ -4,13 +4,13 @@ CXX = g++
 WARNING_FLAGS:=-ftrapv -Wreturn-type -W -Wall \
 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-parameter
 
-FLAGS = -O0 -g -fpermissive -std=c++17 -DDESTROY $(WARNING_FLAGS)
+FLAGS = -O2 -g -fpermissive -std=c++17 -DDESTROY $(WARNING_FLAGS)
 PMMALLOC_FLAGS = $(FLAGS) -DPMMALLOC -L. -lpmmalloc
 PMMALLOC_GC_FLAGS = $(FLAGS) -DGC -DPMMALLOC -L. -lpmmalloc
 MAKALU_FLAGS = $(FLAGS) -I../ext/makalu_alloc/include -DMAKALU -L../ext/makalu_alloc/lib -lmakalu -L~/.local/lib/
 CXXFLAGS = $(PMMALLOC_GC_FLAGS)
 # CXXFLAGS = $(MAKALU_FLAGS)
-# CXXFLAGS = $(FLAGS) #-L../../lrmalloc -l:lrmalloc.a # for built-in malloc
+# CXXFLAGS = $(FLAGS) #-L../../lrmalloc -l:lrmalloc.a -ldl# for built-in malloc
 LIBS = -pthread -lstdc++ -latomic -fPIC -ljemalloc 
 
 
@@ -54,7 +54,7 @@ sh6bench_test: ./benchmark/sh6bench.cpp libpmmalloc.a
 larson_test: ./benchmark/larson.cpp libpmmalloc.a
 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
 
-libpmmalloc.a:../obj/pmmalloc.o ../obj/BaseMeta.o ../obj/RegionManager.o ../obj/thread_util.o
+libpmmalloc.a:../obj/pmmalloc.o ../obj/BaseMeta.o ../obj/RegionManager.o ../obj/thread_util.o ../obj/PageMap.o ../obj/SizeClass.o 
 	ar -rcs $@ $^
 
 clean:

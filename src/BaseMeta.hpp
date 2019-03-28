@@ -28,6 +28,9 @@
 #include "RegionManager.hpp"
 #include "ArrayStack.hpp"
 #include "ArrayQueue.hpp"
+#include "SizeClass.hpp"
+#include "TCache.hpp"
+#include "PageMap.hpp"
 
 /********class BaseMeta********
  * This is the file where meta data structures of
@@ -87,57 +90,98 @@
  * 		Wentao Cai (wcai6@cs.rochester.edu)
  */
 
+// superblock states
+// used in Anchor::state
+enum SuperblockState
+{
+	// all blocks allocated or reserved
+	SB_FULL     = 0,
+	// has unreserved available blocks
+	SB_PARTIAL  = 1,
+	// all blocks are free
+	SB_EMPTY    = 2,
+};
+
+struct Anchor;
+struct DescriptorNode;
 struct Descriptor;
+struct ProcHeap;
 
 /* data structures */
-struct Sizeclass{
-	PM_TRANSIENT ArrayQueue<Descriptor*,PARTIAL_CAP>* partial_desc;
-	PM_PERSIST unsigned int sz; // block size in byte
-	PM_PERSIST unsigned int sbsize; // superblock size in byte
-	Sizeclass(unsigned int sbs = SBSIZE);
-	~Sizeclass(){delete partial_desc;}
-	void init(unsigned int bs);
-	void cleanup(){partial_desc->cleanup();}
-};//__attribute__((aligned(CACHE_LINE_SIZE)));//dont need alignment since it's rarely changed
-
-struct Active{
-	uint64_t ptr:58, credits:6;
-	Active(){ptr=0;credits=0;}
-	Active(uint64_t in){ptr=in>>6;credits=in&0x3f;}
-};
-
-struct Procheap {
-	PM_TRANSIENT std::atomic<Active> active;			// initially NULL
-	PM_TRANSIENT std::atomic<Descriptor*> partial;	// initially NULL, pointer to the partially used sb's desc
-	PM_PERSIST Sizeclass* sc;					// pointer to parent sizeclass
-	Procheap(Sizeclass* s = nullptr,
-			uint64_t a = 0,
-			Descriptor* p = nullptr):
-		active(a),
-		partial(p),
-		sc(s) {
-			FLUSH(&active);
-			FLUSH(&partial);
-			FLUSH(&sc);
-			FLUSHFENCE;
-		};
-};//__attribute__((aligned(CACHE_LINE_SIZE)));//dont need alignment since MAXSMALLSIZE/GRANULARITY usually is the fold of CACHE_LINE_SIZE
-
 struct Anchor{
-	uint64_t avail:24,count:24, state:2, tag:14;
+	uint64_t avail:31,count:31, state:2;
 	Anchor(uint64_t a = 0){(*(uint64_t*)this) = a;}
-	Anchor(unsigned a, unsigned c, unsigned s, unsigned t):
-		avail(a),count(c),state(s),tag(t){};
+	Anchor(unsigned a, unsigned c, unsigned s):
+		avail(a),count(c),state(s){};
+};
+static_assert(sizeof(Anchor) == sizeof(uint64_t), "Invalid anchor size");
+
+#define CACHELINE_MASK ((size_t)(CACHE_LINE_SIZE) - 1)
+
+struct DescriptorNode
+{
+public:
+	// ptr
+	Descriptor* _desc = nullptr;
+	// aba counter
+
+public:
+	void Set(Descriptor* desc, uint64_t counter)
+	{
+		// desc must be cacheline aligned
+		ASSERT(((uint64_t)desc & CACHELINE_MASK) == 0);
+		// counter may be incremented but will always be stored in
+		//  LG_CACHELINE bits
+		_desc = (Descriptor*)((uint64_t)desc | (counter & CACHELINE_MASK));
+	}
+
+	Descriptor* GetDesc() const
+	{
+		return (Descriptor*)((uint64_t)_desc & ~CACHELINE_MASK);
+	}
+
+	uint64_t GetCounter() const
+	{
+		return (uint64_t)((uint64_t)_desc & CACHELINE_MASK);
+	}
+
 };
 
-struct Descriptor{
-	PM_TRANSIENT std::atomic<Anchor> anchor;
-	PM_PERSIST void* sb;				// pointer to superblock
-	PM_PERSIST Procheap* heap;			// pointer to owner procheap
-	PM_PERSIST unsigned int sz;			// block size
-	PM_PERSIST unsigned int maxcount;	// superblock size / sz
-}__attribute__ ((aligned (64))); //align to 64 so that last 6 of active can use for credits
+STATIC_ASSERT(sizeof(DescriptorNode) == sizeof(uint64_t), "Invalid descriptor node size");
 
+// Superblock descriptor
+// needs to be cache-line aligned
+// descriptors are allocated and *never* freed
+struct Descriptor
+{
+	// list node pointers
+	// used in free descriptor list
+	std::atomic<DescriptorNode> next_free;
+	// used in partial descriptor list
+	std::atomic<DescriptorNode> next_partial;
+	// anchor
+	std::atomic<Anchor> anchor;
+
+	char* superblock;
+	ProcHeap* heap;
+	uint32_t blockSize; // block size
+	uint32_t maxcount;
+}__attribute__((aligned(CACHE_LINE_SIZE)));
+
+// at least one ProcHeap instance exists for each sizeclass
+struct ProcHeap
+{
+public:
+	// ptr to descriptor, head of partial descriptor list
+	std::atomic<DescriptorNode> partial_list;
+	// size class index
+	size_t sc_idx;
+
+	size_t get_sc_idx() const { return sc_idx; }
+
+}__attribute__((aligned(CACHE_LINE_SIZE)));
+
+//persistent sections
 struct Section {
 	PM_PERSIST void* sec_start;
 	// PM_PERSIST std::atomic<void*> sec_curr;
@@ -147,19 +191,25 @@ struct Section {
 class BaseMeta{
 	/* transient metadata and tools */
 	PM_TRANSIENT RegionManager* mgr;//assigned when BaseMeta constructs
-	PM_TRANSIENT ArrayQueue<Descriptor*>* free_desc;
-	//todo: make free_sb FILO to mitigate page fault
-	PM_TRANSIENT ArrayStack<void*>* free_sb;//unused small sb
+	//unused small sb
+	PM_TRANSIENT ArrayStack<void*>* free_sb;
+	// descriptor recycle list
+	PM_TRANSIENT std::atomic<DescriptorNode> avail_desc;
+	// metadata for pagemap
+	PM_TRANSIENT PageMap pagemap;
+	/* sizeclass data for lookup. It's determined statically so we make it transient */
+	PM_TRANSIENT SizeClass sizeclass;
+	/* thread-local cache */
+	PM_TRANSIENT static __thread TCacheBin TCache[MAX_SZ_IDX]
+		__attribute__((aligned(CACHE_LINE_SIZE)));
 
 	/* persistent metadata defined here */
 	//base metadata
 	PM_PERSIST uint64_t thread_num;
-	//TODO: other metadata
 
-	PM_PERSIST void* roots[MAX_ROOTS];//persistent root
-	PM_PERSIST Sizeclass sizeclasses[MAX_SMALLSIZE/GRANULARITY];
-	PM_PERSIST Procheap procheaps[PROCHEAP_NUM][MAX_SMALLSIZE/GRANULARITY];
+	PM_PERSIST ProcHeap heaps[MAX_SZ_IDX];
 
+	PM_PERSIST void* roots[MAX_ROOTS] = {nullptr};//persistent root
 	PM_PERSIST std::atomic<uint64_t> space_num[3];//0:desc, 1:small sb, 2: large sb
 	PM_PERSIST Section spaces[3][MAX_SECTION];//0:desc, 1:small sb, 2: large sb
 	/* persistent metadata ends here */
@@ -170,10 +220,11 @@ public:
 		std::cout<<"Warning: BaseMeta is being destructed!\n";
 		cleanup();
 	}
+	void* do_malloc(size_t size);
+	void* do_free(void* ptr);
+	inline void set_mgr(RegionManager* m){mgr = m;}
 	inline uint64_t min(uint64_t a, uint64_t b){return a>b?b:a;}
 	inline uint64_t max(uint64_t a, uint64_t b){return a>b?a:b;}
-	inline void set_mgr(RegionManager* m){mgr = m;}
-	uint64_t new_space(int i);//i=0:desc, i=1:small sb, i=2:large sb. return index of allocated space.
 	inline void* set_root(void* ptr, uint64_t i){
 		//this is sequential
 		assert(i<MAX_ROOTS);
@@ -206,30 +257,31 @@ public:
 		}
 	}
 
-	void* small_sb_alloc();
-	void small_sb_retire(void* sb);
-	void* large_sb_alloc(size_t size, uint64_t alignement);
-	void large_sb_retire(void* sb, size_t size);
-	void organize_desc_list(Descriptor* start, uint64_t count, uint64_t stride);// put new descs to free_desc queue
-	void organize_sb_list(void* start, uint64_t count, uint64_t stride);// put new sbs to free_sb queue
-	void organize_blk_list(void* start, uint64_t count, uint64_t stride);//create linked freelist of blocks in the sb
-	
+private:
+	uint64_t new_space(int i);//i=0:desc, i=1:small sb, i=2:large sb. return index of allocated space.
+
+	// func on size class
+	size_t get_sizeclass(size_t size);
+	SizeClassData get_sizeclass_by_idx(size_t idx);
+	uint32_t compute_idx(char* superblock, char* block, size_t sc_idx);
+
+	// func on cache
+	void fill_cache(size_t sc_idx, TCacheBin* cache);
+	void flush_cache(size_t sc_idx, TCacheBin* cache);
+
+	// func on page map
+	void update_pagemap(ProcHeap* heap, char* ptr, Descriptor* desc, size_t sc_idx);
+	void register_desc(Descriptor* desc);
+	void unregister_desc(ProcHeap* heap, char* superblock);
+	PageInfo get_page_info_for_ptr(void* ptr);
+
+	// helper func
+	void heap_push_partial(Descriptor* desc);
+	Descriptor* heap_pop_partial(ProcHeap* heap);
+	void malloc_from_partial(size_t sc_idx, TCacheBin* cache, size_t& block_num);
+	void malloc_from_newSB(size_t sc_idx, TCacheBin* cache, size_t& block_num);
 	Descriptor* desc_alloc();
 	void desc_retire(Descriptor* desc);
-	Descriptor* list_get_partial(Sizeclass* sc);//get a partial desc
-	void list_put_partial(Descriptor* desc);//put a partial desc to partial_desc
-	Descriptor* heap_get_partial(Procheap* heap);
-	void heap_put_partial(Descriptor* desc);
-	void list_remove_empty_desc(Sizeclass* sc);//try to retire an empty desc from sc->partial_desc
-	void remove_empty_desc(Procheap* heap, Descriptor* desc);//remove the empty desc from heap->partial, or run list_remove_empty_desc on heap->sc
-	void update_active(Procheap* heap, Descriptor* desc, uint64_t morecredits);
-	Descriptor* mask_credits(Active oldactive);
-
-	Procheap* find_heap(size_t sz);
-	void* malloc_from_active(Procheap* heap);
-	void* malloc_from_partial(Procheap* heap);
-	void* malloc_from_newsb(Procheap* heap);
-	void* alloc_large_block(size_t sz);
 };
 
 

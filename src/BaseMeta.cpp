@@ -21,33 +21,26 @@
 
 #include "BaseMeta.hpp"
 
-using namespace std;
-Sizeclass::Sizeclass(unsigned int sbs):
-	partial_desc(nullptr),
-	sz(0), 
-	sbsize(sbs) {
-	// FLUSH(&partial_desc);
-	FLUSH(&sz);
-	FLUSH(&sbsize);
-	FLUSHFENCE;
-}
+// some metadata from LRMalloc
+__thread TCacheBin BaseMeta::TCache[MAX_SZ_IDX];
 
-void Sizeclass::init(unsigned int bs){
-	sz = bs;
-	partial_desc = new ArrayQueue<Descriptor*,PARTIAL_CAP>("scpartial"+to_string(sz));
-	FLUSH(&sz);
-	// FLUSH(&partial_desc);
-	FLUSHFENCE;
-}
+using namespace std;
 
 BaseMeta::BaseMeta(RegionManager* m, uint64_t thd_num) : 
 	mgr(m),
 	thread_num(thd_num) {
 	FLUSH(&thread_num);
-	free_desc = new ArrayQueue<Descriptor*>("pmmalloc_freedesc");
+	// free_desc = new ArrayQueue<Descriptor*>("pmmalloc_freedesc");
 	free_sb = new ArrayStack<void*>("pmmalloc_freesb");
 	/* allocate these persistent data into specific memory address */
-	/* TODO: metadata init */
+
+	/* heaps init */
+	for (size_t idx = 0; idx < MAX_SZ_IDX; ++idx){
+		ProcHeap& heap = Heaps[idx];
+		heap.partialList.store({ nullptr });
+		heap.scIdx = idx;
+		FLUSH(&Heaps[idx]);
+	}
 
 	/* persistent roots init */
 	for(int i=0;i<MAX_ROOTS;i++){
@@ -55,19 +48,6 @@ BaseMeta::BaseMeta(RegionManager* m, uint64_t thd_num) :
 		FLUSH(&roots[i]);
 	}
 
-	/* sizeclass init */
-	for(int i=0;i<MAX_SMALLSIZE/GRANULARITY;i++){
-		sizeclasses[i].init((i+1)*GRANULARITY);
-		FLUSH(&sizeclasses[i]);
-	}
-
-	/* processor heap init */
-	for(int t=0;t<PROCHEAP_NUM;t++){
-		for(int i=0;i<MAX_SMALLSIZE/GRANULARITY;i++){
-			procheaps[t][i].sc = &sizeclasses[i];
-			FLUSH(&procheaps[t][i]);
-		}
-	}
 	FLUSHFENCE;
 }
 
@@ -90,6 +70,73 @@ uint64_t BaseMeta::new_space(int i){//i=0:desc, i=1:small sb, i=2:large sb
 	FLUSHFENCE;
 	return my_space_num;
 }
+
+inline size_t BaseMeta::get_sizeclass(size_t size){
+	return sizeclass.GetSizeClass(size);
+}
+
+inline SizeClassData BaseMeta::get_sizeclass_by_idx(size_t idx) { 
+	return sizeclass.GetSizeClassByIdx(idx);
+}
+
+// compute block index in superblock by addr to sb, block, and sc index
+uint32_t BaseMeta::compute_idx(char* superblock, char* block, size_t sc_idx)
+{
+	SizeClassData sc = get_sizeclass_by_idx(sc_idx);
+	uint32_t sc_block_size = sc.blockSize;
+	(void)sc_block_size; // suppress unused var warning
+
+	assert(block >= superblock);
+	assert(block < superblock + sc.sbSize);
+	// optimize integer division by allowing the compiler to create 
+	//  a jump table using size class index
+	// compiler can then optimize integer div due to known divisor
+	uint32_t diff = uint32_t(block - superblock);
+	uint32_t idx = 0;
+	switch (sc_idx)
+	{
+#define SIZE_CLASS_bin_yes(index, block_size)		\
+		case index:									\
+			assert(sc_block_size == block_size);	\
+			idx = diff / block_size;				\
+			break;
+#define SIZE_CLASS_bin_no(index, block_size)
+#define SC(index, lg_grp, lg_delta, ndelta, psz, bin, pgs, lg_delta_lookup) \
+		SIZE_CLASS_bin_##bin((index + 1), ((1U << lg_grp) + (ndelta << lg_delta)))
+		SIZE_CLASSES
+		default:
+			assert(false);
+			break;
+	}
+#undef SIZE_CLASS_bin_yes
+#undef SIZE_CLASS_bin_no
+#undef SC
+
+	assert(diff / sc_block_size == idx);
+	return idx;
+}
+
+void fill_cache(size_t sc_idx, TCacheBin* cache)
+{
+	// at most cache will be filled with number of blocks equal to superblock
+	size_t blockNum = 0;
+	// use a *SINGLE* partial superblock to try to fill cache
+	malloc_from_partial(scIdx, cache, blockNum);
+	// if we obtain no blocks from partial superblocks, create a new superblock
+	if (blockNum == 0)
+		malloc_from_newSB(scIdx, cache, blockNum);
+
+	SizeClassData* sc = &SizeClasses[scIdx];
+	(void)sc;
+	ASSERT(blockNum > 0);
+	ASSERT(blockNum <= sc->cacheBlockNum);
+}
+
+
+
+
+
+
 
 
 void* BaseMeta::small_sb_alloc(){
@@ -140,223 +187,7 @@ void BaseMeta::large_sb_retire(void* sb, size_t size){
 	// assert(0&"not persistently implemented yet!");
 	munmap(sb, size);
 }
-void BaseMeta::organize_desc_list(Descriptor* start, uint64_t count, uint64_t stride){
-	// put new descs to free_desc queue
-	uint64_t ptr = (uint64_t)start;
-	for(uint64_t i = 1; i < count; i++){
-		ptr += stride;
-		free_desc->push((Descriptor*)ptr);
-	}
 
-}
-void BaseMeta::organize_sb_list(void* start, uint64_t count, uint64_t stride){
-	// put new sbs to free_sb queue
-	uint64_t ptr = (uint64_t)start;
-	for(uint64_t i = 1; i < count; i++){
-		ptr += stride;
-		free_sb->push((void*)ptr);
-	}
-}
-void BaseMeta::organize_blk_list(void* start, uint64_t count, uint64_t stride){
-//create linked freelist of blocks in the sb
-	uint64_t ptr = (uint64_t)start; 
-	for (uint64_t i = 1; i < count - 1; i++) {
-		ptr += stride;
-		*((uint64_t*)ptr) = i + 1;
-		TFLUSH(ptr);
-		TFLUSHFENCE;
-	}
-}
-
-
-Descriptor* BaseMeta::desc_alloc(){
-	Descriptor* desc = nullptr;
-	if(auto tmp = free_desc->pop()){
-		desc = tmp.value();
-	}
-	else {
-		uint64_t space_num = new_space(0);
-		// cout<<"allocate desc space "<<space_num<<endl;
-		// spaces[0][space_num].sec_curr.store((void*)((size_t)spaces[0][space_num].sec_start+spaces[0][space_num].sec_bytes));
-		desc = (Descriptor*)spaces[0][space_num].sec_start;
-		organize_desc_list(desc, DESC_SPACE_SIZE/sizeof(Descriptor), sizeof(Descriptor));
-
-		// desc = (Descriptor*)sb_alloc(DESCSBSIZE, sizeof(Descriptor));
-		// organize_desc_list(desc, DESCSBSIZE/sizeof(Descriptor), sizeof(Descriptor));
-	}
-	return desc;
-}
-inline void BaseMeta::desc_retire(Descriptor* desc){
-	free_desc->push(desc);
-}
-Descriptor* BaseMeta::list_get_partial(Sizeclass* sc){
-	//get a partial desc from sizeclass partial_desc queue
-	auto res = sc->partial_desc->pop();
-	if(res) return res.value();
-	else return nullptr;
-}
-inline void BaseMeta::list_put_partial(Descriptor* desc){
-	//put a partial desc to sizeclass partial_desc queue
-	desc->heap->sc->partial_desc->push(desc);
-}
-Descriptor* BaseMeta::heap_get_partial(Procheap* heap){
-	Descriptor* desc = heap->partial.load(std::memory_order_acquire);
-	do{
-		TFLUSH(&heap->partial);
-		if(desc == nullptr){
-			return list_get_partial(heap->sc);
-		}
-		TFLUSHFENCE;
-	}while(!heap->partial.compare_exchange_strong(desc,nullptr,std::memory_order_acq_rel));
-	TFLUSH(&heap->partial);
-	TFLUSHFENCE;
-	return desc;
-}
-void BaseMeta::heap_put_partial(Descriptor* desc){
-	//put desc to heap->partial
-	Descriptor* prev = desc->heap->partial.load(std::memory_order_acquire);
-	do{
-		TFLUSH(&desc->heap->partial);
-		TFLUSHFENCE;
-	}while(!desc->heap->partial.compare_exchange_strong(prev,desc,std::memory_order_acq_rel));
-	TFLUSH(&desc->heap->partial);
-	TFLUSHFENCE;
-	if(prev){
-		//put replaced partial desc to sizeclass partial desc queue
-		list_put_partial(prev);
-	}
-}
-void BaseMeta::list_remove_empty_desc(Sizeclass* sc){
-	//try to retire empty descs from sc->partial_desc until reaches nonempty
-	Descriptor* desc;
-	int num_non_empty = 0;
-	while(auto tmp = sc->partial_desc->pop()){
-		desc = tmp.value();
-		if(desc->sb == nullptr){
-			desc_retire(desc);
-		}
-		else {
-			sc->partial_desc->push(desc);
-			if(++num_non_empty >= 2) break;
-		}
-	}
-}
-void BaseMeta::remove_empty_desc(Procheap* heap, Descriptor* desc){
-	//remove the empty desc from heap->partial, or run list_remove_empty_desc on heap->sc
-	TFLUSHFENCE;
-	if(heap->partial.compare_exchange_strong(desc,nullptr,std::memory_order_acq_rel)) {
-		TFLUSH(&heap->partial);
-		TFLUSHFENCE;
-		desc_retire(desc);
-	}
-	else {
-		list_remove_empty_desc(heap->sc);
-	}
-}
-void BaseMeta::update_active(Procheap* heap, Descriptor* desc, uint64_t morecredits){
-	Active oldactive, newactive;
-	Anchor oldanchor, newanchor;
-	
-	*((uint64_t*)&oldactive) = 0;
-	newactive.ptr = (uint64_t)desc>>6;
-	newactive.credits = morecredits - 1;
-	TFLUSHFENCE;
-	if(heap->active.compare_exchange_strong(oldactive,newactive,std::memory_order_acq_rel)){
-		//heap->active was NULL and is replaced by new one
-		TFLUSH(&heap->active);
-		TFLUSHFENCE;
-		return;
-	}
-	oldanchor = desc->anchor.load(std::memory_order_acquire);
-	TFLUSH(&desc->anchor);
-	do{
-		//return reserved morecredits to desc
-		newanchor = oldanchor;
-		newanchor.count += morecredits;
-		newanchor.state = PARTIAL;
-		TFLUSHFENCE;
-	}while(!desc->anchor.compare_exchange_strong(oldanchor,newanchor,std::memory_order_acq_rel));
-	TFLUSH(&desc->anchor);
-	TFLUSHFENCE;
-	//replace heap->partial by desc
-	heap_put_partial(desc);
-}
-inline Descriptor* BaseMeta::mask_credits(Active oldactive){
-	uint64_t ret = oldactive.ptr;
-	return (Descriptor*)(ret<<6);
-}
-
-
-Procheap* BaseMeta::find_heap(size_t sz){
-	// We need to fit both the object and the descriptor in a single block
-	sz += HEADER_SIZE;
-	if (sz > MAX_SMALLSIZE) {
-		return nullptr;
-	}
-	int tid = get_thread_id();
-	return &procheaps[tid][sz / GRANULARITY];
-}
-void* BaseMeta::malloc_from_active(Procheap* heap){
-	Active newactive, oldactive;
-	oldactive = heap->active.load(std::memory_order_acquire);
-	TFLUSH(&heap->active);
-	void* addr = nullptr;
-	//1. deduce credit if non-zero
-	do{
-		newactive = oldactive;
-		if(!(*((uint64_t*)(&oldactive)))){//oldactive is NULL
-			return nullptr;
-		}
-		if(oldactive.credits == 0){
-			//only one reserved block left, set heap->active to NULL
-			*((uint64_t*)(&newactive)) = 0;
-		}
-		else {
-			--newactive.credits;
-		}
-		TFLUSHFENCE;
-	} while(!heap->active.compare_exchange_strong(oldactive,newactive,std::memory_order_acq_rel));
-	TFLUSH(&heap->active);
-	TFLUSHFENCE;
-	//2. get the block of corresponding credit
-	Descriptor* desc = mask_credits(oldactive);
-	Anchor oldanchor,newanchor;
-	oldanchor = desc->anchor.load(std::memory_order_acquire);
-	TFLUSH(&desc->anchor);
-	uint64_t morecredits = 0;
-	do{
-		newanchor = oldanchor;
-		addr = (void*) ((uint64_t)desc->sb + oldanchor.avail * desc->sz);
-		uint64_t next = *(uint64_t*)addr;
-		newanchor.avail = next;
-		newanchor.tag++;
-		if(oldactive.credits == 0){
-			//this is the last reserved block in oldactive
-			if(oldanchor.count == 0){
-				newanchor.state = FULL;
-			}
-			else{
-				//reserve more for active desc
-				morecredits = min(oldanchor.count,MAXCREDITS);
-				newanchor.count -= morecredits;
-			}
-		}
-		TFLUSHFENCE;
-	} while(!desc->anchor.compare_exchange_strong(oldanchor,newanchor,std::memory_order_acq_rel));
-	TFLUSH(&desc->anchor);
-	TFLUSHFENCE;
-	if(oldactive.credits == 0 && oldanchor.count > 0){
-		//old active desc runs out but the desc has more credits to reserve
-		update_active(heap,desc,morecredits);
-	}
-	*((char*)addr) = (char)SMALL;
-	addr += TYPE_SIZE;
-	*((Descriptor**)addr) = desc;
-	FLUSH(addr - TYPE_SIZE);
-	FLUSH(addr);
-	FLUSHFENCE;
-	return ((void*)((uint64_t)addr + PTR_SIZE));
-}
 void* BaseMeta::malloc_from_partial(Procheap* heap){
 	Descriptor* desc = nullptr;
 	Anchor oldanchor,newanchor;

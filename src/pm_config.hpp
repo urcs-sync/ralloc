@@ -12,6 +12,9 @@
 // transient data in pmmalloc
 #define PM_TRANSIENT
 
+#define LIKELY(x) __builtin_expect((x), 1)
+#define UNLIKELY(x) __builtin_expect((x), 0)
+
 #ifdef DEBUG
   #define DBG_PRINT(msg, ...) \
     fprintf(stderr, "%s:%d %s " msg "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
