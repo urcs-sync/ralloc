@@ -8,6 +8,21 @@
 #include "pfence_util.h"
 #include "SizeClass.hpp"
 #include "RegionManager.hpp"
+
+/*
+ * This is the transient pagemap to speed up lookup for 
+ * descriptor of each page.
+ *
+ * During recovery one scan through desc space is enough
+ * to reconstruct the entire pagemap
+ *
+ * It doesn't do any flush at all. For a fast restart from
+ * graceful exit, you should do a whole cache flush or flush
+ * all used pages mapped as PageMap.
+ *
+ */
+
+
 // assuming x86-64, for now
 // which uses 48 bits for addressing (e.g high 16 bits ignored)
 // can ignore the bottom 12 bits (lg of page)

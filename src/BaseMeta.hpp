@@ -29,7 +29,7 @@
 #include "ArrayStack.hpp"
 #include "ArrayQueue.hpp"
 #include "SizeClass.hpp"
-#include "t_cache.hpp"
+#include "TCache.hpp"
 #include "PageMap.hpp"
 
 /********class BaseMeta********
@@ -147,9 +147,14 @@ public:
 
 static_assert(sizeof(DescriptorNode) == sizeof(uint64_t), "Invalid descriptor node size");
 
-// Superblock descriptor
-// needs to be cache-line aligned
-// descriptors are allocated and *never* freed
+/* Superblock descriptor
+ * needs to be cache-line aligned
+ * descriptors are allocated and *never* freed
+ * 
+ * During recovery desc space will be scanned and
+ * all desc whose in_use is true will be added
+ * to pagemap again.
+ */
 struct Descriptor
 {
 	// list node pointers
@@ -164,6 +169,7 @@ struct Descriptor
 	ProcHeap* heap;
 	uint32_t block_size; // block size
 	uint32_t maxcount;
+	bool in_use; // false if it's free, true if it's in use
 }__attribute__((aligned(CACHELINE_SIZE)));
 
 // at least one ProcHeap instance exists for each sizeclass
@@ -216,7 +222,7 @@ public:
 		cleanup();
 	}
 	void* do_malloc(size_t size);
-	void* do_free(void* ptr);
+	void do_free(void* ptr);
 	inline void set_mgr(RegionManager* m){mgr = m;}
 	inline uint64_t min(uint64_t a, uint64_t b){return a>b?b:a;}
 	inline uint64_t max(uint64_t a, uint64_t b){return a>b?a:b;}
@@ -236,29 +242,27 @@ public:
 		return roots[i];
 	}
 	void restart(){
-		free_desc = new ArrayQueue<Descriptor*>("pmmalloc_freedesc");
+		// free_desc = new ArrayQueue<Descriptor*>("pmmalloc_freedesc");
 		free_sb = new ArrayStack<void*>("pmmalloc_freesb");
-		for(int i=0;i<MAX_SMALLSIZE/GRANULARITY;i++){
-			sizeclasses[i].partial_desc = 
-				new ArrayQueue<Descriptor*,PARTIAL_CAP>("scpartial"+std::to_string((i+1)*GRANULARITY));
-		}
 	}
 	void cleanup(){
 		//flush everything before exit
-		delete free_desc;
+		// delete free_desc;
 		delete free_sb;
-		for(int i=0;i<MAX_SMALLSIZE/GRANULARITY;i++){
-			sizeclasses[i].cleanup();
-		}
 	}
 
 private:
 	//i=0:desc, i=1:small sb, i=2:large sb. return index of allocated space
 	uint64_t new_space(int i);
-	// returns a set of continous pages, totaling to size bytes
-	void* page_alloc(size_t size);
-	// free a set of continous pages, totaling to size bytes
-	void page_free(void* ptr, size_t size);
+	// get one free sb or allocate a new space for sbs
+	void* small_sb_alloc(size_t size);
+	// free the superblock sb points to
+	void small_sb_retire(void* sb, size_t size);
+	// add all newly allocated sbs to free_sb
+	void organize_sb_list(void* start, uint64_t count, uint64_t stride);
+	void* large_sb_alloc(size_t size, uint64_t alignement);
+	void large_sb_retire(void* sb, size_t size);
+	void* alloc_large_block(size_t sz);
 
 	// func on size class
 	size_t get_sizeclass(size_t size);

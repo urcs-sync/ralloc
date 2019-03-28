@@ -84,32 +84,13 @@
 
 class pmmalloc{
 public:
-	static inline void _init(std::string id, uint64_t thd_num = MAX_THREADS){
-		obj = new pmmalloc(id, thd_num); 
-	}
-	static inline void* _p_malloc(size_t sz){
-		assert(obj!=nullptr&&"pmmalloc isn't initialized!");
-		return obj->__p_malloc(sz);
-	}
-	static inline void _p_free(void* ptr){
-		assert(obj!=nullptr&&"pmmalloc isn't initialized!");
-		obj->__p_free(ptr);
-	}
-	static inline void* _set_root(void* ptr, uint64_t i){
-		assert(obj!=nullptr&&"pmmalloc isn't initialized!");
-		return obj->__set_root(ptr,i);
-	}
-	static inline void* _get_root(uint64_t i){
-		assert(obj!=nullptr&&"pmmalloc isn't initialized!");
-		return obj->__get_root(i);
-	}
-	static inline bool _collect(){
-		assert(obj!=nullptr&&"pmmalloc isn't initialized!");
-		return obj->__collect();
-	}
-	static inline void _close(){
-		delete obj;obj = nullptr; 
-	}
+	static void _init(std::string id, uint64_t thd_num = MAX_THREADS);
+	static void* _p_malloc(size_t sz);
+	static void _p_free(void* ptr);
+	static void* _set_root(void* ptr, uint64_t i);
+	static void* _get_root(uint64_t i);
+	static bool _collect();
+	static void _close();
 
 private:
 	static pmmalloc* obj; // singleton

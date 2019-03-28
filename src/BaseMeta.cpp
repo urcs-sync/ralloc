@@ -80,7 +80,7 @@ inline SizeClassData* BaseMeta::get_sizeclass(ProcHeap* h){
 }
 
 inline SizeClassData* BaseMeta::get_sizeclass_by_idx(size_t idx) { 
-	return &sizeclass.get_sizeclass_by_idx(idx);
+	return sizeclass.get_sizeclass_by_idx(idx);
 }
 
 // compute block index in superblock by addr to sb, block, and sc index
@@ -212,7 +212,7 @@ void BaseMeta::flush_cache(size_t sc_idx, TCacheBin* cache) {
 			unregister_desc(heap, superblock);
 
 			// free superblock
-			page_free(superblock, heap->get_sizeclass()->sb_size);
+			small_sb_retire(superblock, get_sizeclass(heap)->sb_size);
 		}
 		else if (oldanchor.state == SB_FULL)
 			heap_push_partial(desc);
@@ -271,7 +271,7 @@ inline void BaseMeta::unregister_desc(ProcHeap* heap, char* superblock)
 
 inline PageInfo BaseMeta::get_page_info_for_ptr(void* ptr)
 {
-	return paegmap.get_page_info((char*)ptr);
+	return pagemap.get_page_info((char*)ptr);
 }
 
 //todo after this point: understand func impl.
@@ -312,7 +312,7 @@ Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap)
 	return oldhead.get_desc();
 }
 
-void malloc_from_partial(size_t sc_idx, TCacheBin* cache, size_t& block_num)
+void BaseMeta::malloc_from_partial(size_t sc_idx, TCacheBin* cache, size_t& block_num)
 {
 	ProcHeap* heap = &heaps[sc_idx];
 
@@ -374,7 +374,7 @@ retry:
 	block_num += block_take;
 }
 
-void malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_num)
+void BaseMeta::malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_num)
 {
 	ProcHeap* heap = &heaps[sc_idx];
 	SizeClassData* sc = get_sizeclass_by_idx(sc_idx);
@@ -388,7 +388,7 @@ void malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_num)
 	desc->heap = heap;
 	desc->block_size = block_size;
 	desc->maxcount = maxcount;
-	desc->superblock = (char*)page_alloc(sc->sb_size);
+	desc->superblock = (char*)small_sb_alloc(sc->sb_size);
 
 	// prepare block list
 	char* superblock = desc->superblock;
@@ -497,13 +497,21 @@ inline void BaseMeta::desc_retire(Descriptor* desc){
 	while (!avail_desc.compare_exchange_weak(oldhead, newhead));
 }
 
+inline void BaseMeta::organize_sb_list(void* start, uint64_t count, uint64_t stride){
+	// put new sbs to free_sb queue
+	uint64_t ptr = (uint64_t)start;
+	for(uint64_t i = 1; i < count; i++){
+		ptr += stride;
+		free_sb->push((void*)ptr);
+	}
+}
 
+void* BaseMeta::small_sb_alloc(size_t size){
+	if(size != SBSIZE){
+		std::cout<<"desired size: "<<size<<std::endl;
+		assert(0);
+	}
 
-
-
-
-
-void* BaseMeta::small_sb_alloc(){
 	void* sb = nullptr;
 	if(auto tmp = free_sb->pop()){
 		sb = tmp.value();
@@ -516,7 +524,9 @@ void* BaseMeta::small_sb_alloc(){
 	}
 	return sb;
 }
-void BaseMeta::small_sb_retire(void* sb){
+inline void BaseMeta::small_sb_retire(void* sb, size_t size){
+	assert(size == SBSIZE);
+
 	free_sb->push(sb);
 }
 //todo
@@ -546,114 +556,13 @@ void* BaseMeta::large_sb_alloc(size_t size, uint64_t alignement){
 	}
 	return addr;
 }
+
 //todo
 void BaseMeta::large_sb_retire(void* sb, size_t size){
 	// assert(0&"not persistently implemented yet!");
 	munmap(sb, size);
 }
 
-void* BaseMeta::malloc_from_partial(Procheap* heap){
-	Descriptor* desc = nullptr;
-	Anchor oldanchor,newanchor;
-	uint64_t morecredits = 0;
-	void* addr;
-
-retry:
-	//grab the partial desc from heap or sizeclass (exclusively)
-	desc = heap_get_partial(heap);
-	if(!desc){
-		return nullptr;
-	}
-	desc->heap = heap;
-	FLUSH(&desc->heap);
-	oldanchor = desc->anchor.load(std::memory_order_acquire);
-	TFLUSH(&desc->anchor);
-	do{
-		//reserve blocks
-		newanchor = oldanchor;
-		if(oldanchor.state == EMPTY){
-			desc_retire(desc);
-			goto retry;
-		}
-		//oldanchor state must be PARTIAL, and count must > 0
-		morecredits = min(oldanchor.count - 1, MAXCREDITS);
-		newanchor.count -= morecredits + 1;
-		newanchor.state = (morecredits>0)?ACTIVE:FULL;
-		TFLUSHFENCE;
-	}while(!desc->anchor.compare_exchange_strong(oldanchor,newanchor,std::memory_order_acq_rel));
-	TFLUSH(&desc->anchor);
-	TFLUSHFENCE;
-
-	oldanchor = desc->anchor.load(std::memory_order_acquire);
-	TFLUSH(&desc->anchor);
-	do{
-		//pop reserved block
-		newanchor = oldanchor;
-		addr = (void*)((uint64_t)desc->sb + oldanchor.avail * desc->sz);
-		newanchor.avail = *(uint64_t*)addr;
-		newanchor.tag++;
-		TFLUSHFENCE;
-	}while(!desc->anchor.compare_exchange_strong(oldanchor,newanchor,std::memory_order_acq_rel));
-	TFLUSH(&desc->anchor);
-	TFLUSHFENCE;
-
-	if(morecredits > 0){
-		update_active(heap, desc, morecredits);
-	}
-	*((char*)addr) = (char)SMALL;
-	addr += TYPE_SIZE;
-	*((Descriptor**)addr) = desc;
-	FLUSH(addr-TYPE_SIZE);
-	FLUSH(addr);
-	FLUSHFENCE;
-	return ((void *)((uint64_t)addr + PTR_SIZE));
-
-}
-void* BaseMeta::malloc_from_newsb(Procheap* heap){
-	Active oldactive,newactive;
-	Anchor newanchor;
-	void* addr = nullptr;
-
-	Descriptor* desc = desc_alloc();
-	desc->sb = small_sb_alloc();
-	desc->heap = heap;
-	newanchor.avail = 1;
-	desc->sz = heap->sc->sz;
-	desc->maxcount = heap->sc->sbsize / desc->sz;
-	FLUSH(&desc->sb);
-	FLUSH(&desc->heap);
-	FLUSH(&desc->sz);
-	FLUSH(&desc->maxcount);
-	organize_blk_list(desc->sb, desc->maxcount, desc->sz);
-
-	newactive.ptr = (uint64_t)desc>>6;
-	newactive.credits = min(desc->maxcount - 1, MAXCREDITS)-1;
-	newanchor.count = max(((int)desc->maxcount - 1)-((int)newactive.credits + 1), 0);
-	newanchor.state = ACTIVE;
-	TFLUSHFENCE;
-	desc->anchor.store(newanchor,std::memory_order_release);
-	TFLUSH(&desc->anchor);
-
-	*((uint64_t*)(&oldactive)) = 0;
-
-	TFLUSHFENCE;
-	if(heap->active.compare_exchange_strong(oldactive,newactive,std::memory_order_acq_rel)){
-		TFLUSH(&heap->active);
-		addr = desc->sb;
-		*((char*)addr) = (char)SMALL;
-		addr += TYPE_SIZE;
-		*((Descriptor**)addr) = desc;
-		FLUSH(addr-TYPE_SIZE);
-		FLUSH(addr);
-		FLUSHFENCE;
-		return (void*)((uint64_t)addr + PTR_SIZE);
-	}
-	else {
-		small_sb_retire(desc->sb);
-		desc_retire(desc);
-		return nullptr;
-	}
-}
 void* BaseMeta::alloc_large_block(size_t sz){
 	void* addr = large_sb_alloc(sz + HEADER_SIZE, SBSIZE);
 	*((char*)addr) = (char)LARGE;
@@ -663,4 +572,82 @@ void* BaseMeta::alloc_large_block(size_t sz){
 	FLUSH(addr);
 	FLUSHFENCE;
 	return (void*)(addr + PTR_SIZE);
+}
+
+void* BaseMeta::do_malloc(size_t size){
+	// large block allocation
+	if (UNLIKELY(size > MAX_SZ))
+	{
+		size_t pages = PAGE_CEILING(size);
+		Descriptor* desc = desc_alloc();
+		assert(desc);
+
+		desc->heap = nullptr;
+		desc->block_size = pages;
+		desc->maxcount = 1;
+		desc->superblock = (char*)alloc_large_block(pages);
+
+		Anchor anchor;
+		anchor.avail = 0;
+		anchor.count = 0;
+		anchor.state = SB_FULL;
+
+		desc->anchor.store(anchor);
+
+		register_desc(desc);
+
+		char* ptr = desc->superblock;
+		DBG_PRINT("large, ptr: %p", ptr);
+		return (void*)ptr;
+	}
+
+	// size class calculation
+	size_t sc_idx = get_sizeclass(size);
+
+	TCacheBin* cache = &t_cache[sc_idx];
+	// fill cache if needed
+	if (UNLIKELY(cache->get_block_num() == 0))
+		fill_cache(sc_idx, cache);
+
+	return cache->pop_block();
+}
+void BaseMeta::do_free(void* ptr){
+	PageInfo info = get_page_info_for_ptr(ptr);
+	Descriptor* desc = info.get_desc();
+	// @todo: this can happen with dynamic loading
+	// need to print correct message
+	assert(desc);
+
+	size_t sc_idx = info.get_sc_idx();
+ 
+	DBG_PRINT("Heap %p, Desc %p, ptr %p", heap, desc, ptr);
+
+	// large allocation case
+	if (UNLIKELY(!sc_idx))
+	{
+		char* superblock = desc->superblock;
+
+		// unregister descriptor
+		unregister_desc(nullptr, superblock);
+		// aligned large allocation case
+		if (UNLIKELY((char*)ptr != superblock))
+			unregister_desc(nullptr, (char*)ptr);
+
+		// free superblock
+		large_sb_retire(superblock, desc->block_size);
+
+		// desc cannot be in any partial list, so it can be
+		//  immediately reused
+		desc_retire(desc);
+		return;
+	}
+
+	TCacheBin* cache = &t_cache[sc_idx];
+	SizeClassData* sc = get_sizeclass_by_idx(sc_idx);
+
+	// flush cache if need
+	if (UNLIKELY(cache->get_block_num() >= sc->cache_block_num))
+		flush_cache(sc_idx, cache);
+
+	cache->push_block((char*)ptr);
 }

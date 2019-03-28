@@ -2,8 +2,12 @@
 #include "pm_config.hpp"
 #include "SizeClass.hpp"
 
+// here we use same size for sbs in different sizeclass for easy management
 #define SIZE_CLASS_bin_yes(block_size, pages) \
-	{ block_size, pages * PAGESIZE, 0, 0 },
+	{ block_size, SBSIZE, 0, 0 },
+/* #define SIZE_CLASS_bin_yes(block_size, pages) \
+ 	{ block_size, pages * PAGESIZE, 0, 0 },
+ 	*/
 #define SIZE_CLASS_bin_no(block_size, pages)
 
 #define SC(index, lg_grp, lg_delta, ndelta, psz, bin, pgs, lg_delta_lookup) \
@@ -16,36 +20,36 @@ SizeClass::SizeClass():
 		SIZE_CLASSES
 	},
 	sizeclass_lookup{0} {
-	// each superblock has to contain several blocks
-	// and it has to contain blocks *perfectly*
-	//  e.g no space left after last block
-	for (size_t sc_idx = 1; sc_idx < MAX_SZ_IDX; ++sc_idx)
-	{
-		SizeClassData& sc = sizeclasses[sc_idx];
-		size_t block_size = sc.block_size;
-		size_t sb_size = sc.sb_size;
-		// size class large enough to store several elements
-		if (sb_size > block_size && (sb_size % block_size) == 0)
-			continue; // skip
+	// // each superblock has to contain several blocks
+	// // and it has to contain blocks *perfectly*
+	// //  e.g no space left after last block
+	// for (size_t sc_idx = 1; sc_idx < MAX_SZ_IDX; ++sc_idx)
+	// {
+	// 	SizeClassData& sc = sizeclasses[sc_idx];
+	// 	size_t block_size = sc.block_size;
+	// 	size_t sb_size = sc.sb_size;
+	// 	// size class large enough to store several elements
+	// 	if (sb_size > block_size && (sb_size % block_size) == 0)
+	// 		continue; // skip
 
-		// increase superblock size so it can hold >1 elements
-		while (block_size >= sb_size)
-			sb_size += sc.sb_size;
+	// 	// increase superblock size so it can hold >1 elements
+	// 	while (block_size >= sb_size)
+	// 		sb_size += sc.sb_size;
 
-		sc.sb_size = sb_size;
-	}
+	// 	sc.sb_size = sb_size;
+	// }
 
-	// increase superblock size if need
-	for (size_t sc_idx = 1; sc_idx < MAX_SZ_IDX; ++sc_idx)
-	{
-		SizeClassData& sc = sizeclasses[sc_idx];
-		size_t sb_size = sc.sb_size;
-		// 2MB
-		while (sb_size < (PAGESIZE * PAGESIZE))
-			sb_size += sc.sb_size;
+	// // increase superblock size if need
+	// for (size_t sc_idx = 1; sc_idx < MAX_SZ_IDX; ++sc_idx)
+	// {
+	// 	SizeClassData& sc = sizeclasses[sc_idx];
+	// 	size_t sb_size = sc.sb_size;
+	// 	// 2MB
+	// 	while (sb_size < (PAGESIZE * PAGESIZE))
+	// 		sb_size += sc.sb_size;
 
-		sc.sb_size = sb_size;
-	}
+	// 	sc.sb_size = sb_size;
+	// }
 
 	// fill block_num and cache_block_num
 	for (size_t sc_idx = 1; sc_idx < MAX_SZ_IDX; ++sc_idx)

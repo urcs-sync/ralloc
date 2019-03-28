@@ -26,6 +26,33 @@ using namespace std;
 
 //required by linker
 pmmalloc* pmmalloc::obj = nullptr;
+void pmmalloc::_init(std::string id, uint64_t thd_num){
+	obj = new pmmalloc(id, thd_num); 
+}
+void* pmmalloc::_p_malloc(size_t sz){
+	assert(obj!=nullptr&&"pmmalloc isn't initialized!");
+	return obj->__p_malloc(sz);
+}
+void pmmalloc::_p_free(void* ptr){
+	assert(obj!=nullptr&&"pmmalloc isn't initialized!");
+	obj->__p_free(ptr);
+}
+void* pmmalloc::_set_root(void* ptr, uint64_t i){
+	assert(obj!=nullptr&&"pmmalloc isn't initialized!");
+	return obj->__set_root(ptr,i);
+}
+void* pmmalloc::_get_root(uint64_t i){
+	assert(obj!=nullptr&&"pmmalloc isn't initialized!");
+	return obj->__get_root(i);
+}
+bool pmmalloc::_collect(){
+	assert(obj!=nullptr&&"pmmalloc isn't initialized!");
+	return obj->__collect();
+}
+void pmmalloc::_close(){
+	delete obj;obj = nullptr; 
+}
+
 /* 
  * mmap the existing heap file corresponding to id. aka restart,
  * 		and if multiple heaps exist, print out and let user select;

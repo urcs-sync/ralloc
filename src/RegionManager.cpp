@@ -206,14 +206,6 @@ void RegionManager::__close_transient_region(){
 	assert(res&&"something wrong while CASing curr_addr");
 	FLUSH(curr_addr_ptr);
 	FLUSHFENCE;
-#ifdef GC//there's GC so we need to flush all back in the end
-	for(uint64_t tmp = (uint64_t)base_addr;
-		tmp<(uint64_t)curr_addr;
-		tmp+=CACHELINE_SIZE/8){
-		FLUSH((void*)tmp);
-	}
-	FLUSHFENCE;
-#endif
 
 	DBG_PRINT("At the end current addr: %p\n", curr_addr);
 
