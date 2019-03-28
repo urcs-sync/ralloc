@@ -1,7 +1,7 @@
 #include "PageMap.hpp"
 
 #include "RegionManager.hpp"
-inline void PageInfo::Set(Descriptor* desc, size_t sc_idx)
+inline void PageInfo::set(Descriptor* desc, size_t sc_idx)
 {
 	assert(((size_t)desc & SC_MASK) == 0);
 	assert(sc_idx < MAX_SZ_IDX);

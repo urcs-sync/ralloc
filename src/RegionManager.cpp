@@ -209,7 +209,7 @@ void RegionManager::__close_transient_region(){
 #ifdef GC//there's GC so we need to flush all back in the end
 	for(uint64_t tmp = (uint64_t)base_addr;
 		tmp<(uint64_t)curr_addr;
-		tmp+=CACHE_LINE_SIZE/8){
+		tmp+=CACHELINE_SIZE/8){
 		FLUSH((void*)tmp);
 	}
 	FLUSHFENCE;

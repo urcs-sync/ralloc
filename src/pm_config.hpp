@@ -15,6 +15,17 @@
 #define LIKELY(x) __builtin_expect((x), 1)
 #define UNLIKELY(x) __builtin_expect((x), 0)
 
+// returns smallest value >= value with alignment align
+#define ALIGN_VAL(val, align) \
+    ( __typeof__ (val))(((size_t)(val) + (align - 1)) & ((~(align)) + 1))
+
+// returns smallest address >= addr with alignment align
+#define ALIGN_ADDR(addr, align) ALIGN_VAL(addr, align)
+
+// return smallest page size multiple that is >= s
+#define PAGE_CEILING(s) \
+    (((s) + (PAGESIZE - 1)) & ~(PAGESIZE - 1))
+
 #ifdef DEBUG
   #define DBG_PRINT(msg, ...) \
     fprintf(stderr, "%s:%d %s " msg "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
@@ -45,21 +56,15 @@ const int DESC_SPACE_SIZE = DESC_SPACE_CAP * DESCSBSIZE;
 const int TYPE_SIZE = 4;
 const int PTR_SIZE = sizeof(void*);
 const int HEADER_SIZE = (TYPE_SIZE + PTR_SIZE);
-const int CACHE_LINE_SIZE = 64;
-const size_t CACHELINE_MASK = (size_t)(CACHE_LINE_SIZE) - 1;
+const int CACHELINE_SIZE = 64;
+const size_t CACHELINE_MASK = (size_t)(CACHELINE_SIZE) - 1;
 
 const int LARGE = 249; // tag indicating the block is large
 const int SMALL = 250; // tag indicating the block is small
 
-const int ACTIVE = 0; // 4 status of a superblock
-const int FULL = 1;
-const int PARTIAL = 2;
-const int EMPTY = 3;
-
-const int MAXCREDITS = 64; // 2^(bits for credits in active)
-
 // number of size classes; idx 0 reserved for large size classes
 const int MAX_SZ_IDX = 40;
+const uint64_t SC_MASK = (1ULL << 6) - 1;
 // last size covered by a size class
 // allocations with size > MAX_SZ are not covered by a size class
 const int MAX_SZ = ((1 << 13) + (1 << 11) * 3);

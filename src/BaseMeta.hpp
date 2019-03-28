@@ -127,7 +127,7 @@ public:
 	void set(Descriptor* desc, uint64_t counter)
 	{
 		// desc must be cacheline aligned
-		ASSERT(((uint64_t)desc & CACHELINE_MASK) == 0);
+		assert(((uint64_t)desc & CACHELINE_MASK) == 0);
 		// counter may be incremented but will always be stored in
 		//  LG_CACHELINE bits
 		_desc = (Descriptor*)((uint64_t)desc | (counter & CACHELINE_MASK));
@@ -145,7 +145,7 @@ public:
 
 };
 
-STATIC_ASSERT(sizeof(DescriptorNode) == sizeof(uint64_t), "Invalid descriptor node size");
+static_assert(sizeof(DescriptorNode) == sizeof(uint64_t), "Invalid descriptor node size");
 
 // Superblock descriptor
 // needs to be cache-line aligned
@@ -164,7 +164,7 @@ struct Descriptor
 	ProcHeap* heap;
 	uint32_t block_size; // block size
 	uint32_t maxcount;
-}__attribute__((aligned(CACHE_LINE_SIZE)));
+}__attribute__((aligned(CACHELINE_SIZE)));
 
 // at least one ProcHeap instance exists for each sizeclass
 struct ProcHeap
@@ -174,14 +174,14 @@ public:
 	std::atomic<DescriptorNode> partial_list;
 	// size class index
 	size_t sc_idx;
-}__attribute__((aligned(CACHE_LINE_SIZE)));
+}__attribute__((aligned(CACHELINE_SIZE)));
 
 //persistent sections
 struct Section {
 	PM_PERSIST void* sec_start;
 	// PM_PERSIST std::atomic<void*> sec_curr;
 	PM_PERSIST size_t sec_bytes;
-}__attribute__((aligned(CACHE_LINE_SIZE)));
+}__attribute__((aligned(CACHELINE_SIZE)));
 
 class BaseMeta{
 	/* transient metadata and tools */
@@ -196,7 +196,7 @@ class BaseMeta{
 	PM_TRANSIENT SizeClass sizeclass;
 	/* thread-local cache */
 	PM_TRANSIENT static __thread TCacheBin t_cache[MAX_SZ_IDX]
-		__attribute__((aligned(CACHE_LINE_SIZE)));
+		__attribute__((aligned(CACHELINE_SIZE)));
 
 	/* persistent metadata defined here */
 	//base metadata

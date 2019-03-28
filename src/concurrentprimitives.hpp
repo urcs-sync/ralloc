@@ -31,8 +31,8 @@ limitations under the License.
 #define LEVEL1_DCACHE_LINESIZE 64
 #endif
 
-#ifndef CACHE_LINE_SIZE
-#define CACHE_LINE_SIZE LEVEL1_DCACHE_LINESIZE
+#ifndef CACHELINE_SIZE
+#define CACHELINE_SIZE LEVEL1_DCACHE_LINESIZE
 #endif
 
 // Possibly helpful concurrent data structure primitives
@@ -43,15 +43,15 @@ limitations under the License.
 template<typename T>
 class padded {
 public:
-   //[[ align(CACHE_LINE_SIZE) ]] T ui;	
+   //[[ align(CACHELINE_SIZE) ]] T ui;	
 	T ui;
 private:
-   /*uint8_t pad[ CACHE_LINE_SIZE > sizeof(T)
-        ? CACHE_LINE_SIZE - sizeof(T)
+   /*uint8_t pad[ CACHELINE_SIZE > sizeof(T)
+        ? CACHELINE_SIZE - sizeof(T)
         : 1 ];*/
-	uint8_t pad[ 0 != sizeof(T)%CACHE_LINE_SIZE
-        ?  CACHE_LINE_SIZE - (sizeof(T)%CACHE_LINE_SIZE)
-        : CACHE_LINE_SIZE ];
+	uint8_t pad[ 0 != sizeof(T)%CACHELINE_SIZE
+        ?  CACHELINE_SIZE - (sizeof(T)%CACHELINE_SIZE)
+        : CACHELINE_SIZE ];
 public:
   padded<T> ():ui() {};
   // conversion from T (constructor):
@@ -60,18 +60,18 @@ public:
   padded<T>& operator= (const T& val) {ui = val; return *this;}
   // conversion to A (type-cast operator)
   operator T() {return T(ui);}
-};//__attribute__(( aligned(CACHE_LINE_SIZE) )); // alignment confuses valgrind by shifting bits
+};//__attribute__(( aligned(CACHELINE_SIZE) )); // alignment confuses valgrind by shifting bits
 
 
 template<typename T>
 class paddedAtomic {
 public:
-   //[[ align(CACHE_LINE_SIZE) ]] T ui;	
+   //[[ align(CACHELINE_SIZE) ]] T ui;	
 	std::atomic<T> ui;
 private:
-	uint8_t pad[ 0 != sizeof(std::atomic<T>)%CACHE_LINE_SIZE
-        ?  CACHE_LINE_SIZE - (sizeof(std::atomic<T>)%CACHE_LINE_SIZE)
-        : CACHE_LINE_SIZE ];
+	uint8_t pad[ 0 != sizeof(std::atomic<T>)%CACHELINE_SIZE
+        ?  CACHELINE_SIZE - (sizeof(std::atomic<T>)%CACHELINE_SIZE)
+        : CACHELINE_SIZE ];
 public:
   paddedAtomic<T> ():ui() {}
   // conversion from T (constructor):
@@ -95,18 +95,18 @@ public:
            std::memory_order sync = std::memory_order_seq_cst) noexcept{
     return ui.compare_exchange_strong(expected,val,sync);
   }
-};//__attribute__(( aligned(CACHE_LINE_SIZE) )); // alignment confuses valgrind by shifting bits
+};//__attribute__(( aligned(CACHELINE_SIZE) )); // alignment confuses valgrind by shifting bits
 
 
 
 template<typename T>
 class volatile_padded {
 public:
-   //[[ align(CACHE_LINE_SIZE) ]] volatile T ui;	
+   //[[ align(CACHELINE_SIZE) ]] volatile T ui;	
 	volatile T ui;
 private:
-   uint8_t pad[ CACHE_LINE_SIZE > sizeof(T)
-        ? CACHE_LINE_SIZE - sizeof(T)
+   uint8_t pad[ CACHELINE_SIZE > sizeof(T)
+        ? CACHELINE_SIZE - sizeof(T)
         : 1 ];
 public:
   volatile_padded<T> ():ui() {}
@@ -116,7 +116,7 @@ public:
   volatile_padded<T>& operator= (const T& val) {ui = val; return *this;}
   // conversion to T (type-cast operator)
   operator T() {return T(ui);}
-}__attribute__(( aligned(CACHE_LINE_SIZE) ));
+}__attribute__(( aligned(CACHELINE_SIZE) ));
 
 
 

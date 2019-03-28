@@ -424,7 +424,78 @@ void malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_num)
 	block_num += maxcount;
 }
 
+Descriptor* BaseMeta::desc_alloc(){
+	DescriptorNode oldhead = avail_desc.load();
+	while(true){
+		Descriptor* desc = oldhead.get_desc();
+		if (desc) {
+			DescriptorNode newhead = desc->next_free.load();
+			newhead.set(newhead.get_desc(), oldhead.get_counter());
+			if (avail_desc.compare_exchange_weak(oldhead, newhead)) {
+				assert(desc->block_size == 0);
+				return desc;
+			}
+		}
+		else {
+			// allocate several pages
+			// get first descriptor, this is returned to caller
+			uint64_t space_num = new_space(0);
+			// cout<<"allocate desc space "<<space_num<<endl;
+			// spaces[0][space_num].sec_curr.store((void*)((size_t)spaces[0][space_num].sec_start+spaces[0][space_num].sec_bytes));
+			char* ptr = (char*)spaces[0][space_num].sec_start;
+			Descriptor* ret = (Descriptor*)ptr;
+			// organize list with the rest of descriptors
+			// and add to available descriptors
+			{
+				Descriptor* first = nullptr;
+				Descriptor* prev = nullptr;
 
+				char* curr_ptr = ptr + sizeof(Descriptor);
+				curr_ptr = ALIGN_ADDR(curr_ptr, CACHELINE_SIZE);
+				first = (Descriptor*)curr_ptr;
+				while (curr_ptr + sizeof(Descriptor) <
+						ptr + DESC_SPACE_SIZE)
+				{
+					Descriptor* curr = (Descriptor*)curr_ptr;
+					if (prev)
+						prev->next_free.store({ curr });
+
+					prev = curr;
+					curr_ptr = curr_ptr + sizeof(Descriptor);
+					curr_ptr = ALIGN_ADDR(curr_ptr, CACHELINE_SIZE);
+				}
+
+				prev->next_free.store({ nullptr });
+
+				// add list to available descriptors
+				DescriptorNode oldhead = avail_desc.load();
+				DescriptorNode newhead;
+				do
+				{
+					prev->next_free.store(oldhead);
+					newhead.set(first, oldhead.get_counter() + 1);
+				}
+				while (!avail_desc.compare_exchange_weak(oldhead, newhead));
+			}
+
+			return ret;
+		}
+	}
+}
+
+
+inline void BaseMeta::desc_retire(Descriptor* desc){
+	desc->block_size = 0;
+	DescriptorNode oldhead = avail_desc.load();
+	DescriptorNode newhead;
+	do
+	{
+		desc->next_free.store(oldhead);
+
+		newhead.set(desc, oldhead.get_counter() + 1);
+	}
+	while (!avail_desc.compare_exchange_weak(oldhead, newhead));
+}
 
 
 

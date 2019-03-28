@@ -28,8 +28,6 @@ struct Descriptor;
 // implemented with a static array, but can also be implemented
 //  with a multi-level radix tree
 
-#define SC_MASK ((1ULL << 6) - 1)
-
 // contains metadata per page
 // *has* to be the size of a single word
 struct PageInfo
