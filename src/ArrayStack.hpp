@@ -63,7 +63,7 @@ public:
 		bool persist = true;
 #endif
 		if(RegionManager::exists_test(path)){
-			mgr = new RegionManager(path,persist,sizeof(_ArrayStack<T,size>));
+			mgr = new RegionManager(path,persist,2*sizeof(_ArrayStack<T,size>));
 			void* hstart = mgr->__fetch_heap_start();
 			_stack = (_ArrayStack<T,size>*) hstart;
 #ifdef GC//we call GC to bring dirty queue back to life
@@ -74,7 +74,7 @@ public:
 #endif
 		} else {
 			//doesn't exist. create a new one
-			mgr = new RegionManager(path,persist,sizeof(_ArrayStack<T,size>));
+			mgr = new RegionManager(path,persist,2*sizeof(_ArrayStack<T,size>));
 			bool res = mgr->__nvm_region_allocator((void**)&_stack,PAGESIZE,sizeof(_ArrayStack<T,size>));
 			if(!res) assert(0&&"mgr allocation fails!");
 			mgr->__store_heap_start(_stack);

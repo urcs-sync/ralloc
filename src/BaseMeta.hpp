@@ -116,8 +116,6 @@ struct Anchor{
 };
 static_assert(sizeof(Anchor) == sizeof(uint64_t), "Invalid anchor size");
 
-#define CACHELINE_MASK ((size_t)(CACHE_LINE_SIZE) - 1)
-
 struct DescriptorNode
 {
 public:
@@ -176,9 +174,6 @@ public:
 	std::atomic<DescriptorNode> partial_list;
 	// size class index
 	size_t sc_idx;
-
-	size_t get_sc_idx() const { return sc_idx; }
-
 }__attribute__((aligned(CACHE_LINE_SIZE)));
 
 //persistent sections
@@ -262,7 +257,8 @@ private:
 
 	// func on size class
 	size_t get_sizeclass(size_t size);
-	SizeClassData get_sizeclass_by_idx(size_t idx);
+	SizeClassData* get_sizeclass(ProcHeap* h);
+	SizeClassData* get_sizeclass_by_idx(size_t idx);
 	uint32_t compute_idx(char* superblock, char* block, size_t sc_idx);
 
 	// func on cache

@@ -36,10 +36,10 @@ BaseMeta::BaseMeta(RegionManager* m, uint64_t thd_num) :
 
 	/* heaps init */
 	for (size_t idx = 0; idx < MAX_SZ_IDX; ++idx){
-		ProcHeap& heap = Heaps[idx];
-		heap.partialList.store({ nullptr });
-		heap.scIdx = idx;
-		FLUSH(&Heaps[idx]);
+		ProcHeap& heap = heaps[idx];
+		heap.partial_list.store({ nullptr });
+		heap.sc_idx = idx;
+		FLUSH(&heaps[idx]);
 	}
 
 	/* persistent roots init */
@@ -75,26 +75,28 @@ inline size_t BaseMeta::get_sizeclass(size_t size){
 	return sizeclass.GetSizeClass(size);
 }
 
-inline SizeClassData BaseMeta::get_sizeclass_by_idx(size_t idx) { 
-	return sizeclass.GetSizeClassByIdx(idx);
+inline SizeClassData* BaseMeta::get_sizeclass(ProcHeap* h){
+	return get_sizeclass_by_idx(h->sc_idx);
+}
+
+inline SizeClassData* BaseMeta::get_sizeclass_by_idx(size_t idx) { 
+	return &sizeclass.GetSizeClassByIdx(idx);
 }
 
 // compute block index in superblock by addr to sb, block, and sc index
-uint32_t BaseMeta::compute_idx(char* superblock, char* block, size_t sc_idx)
-{
-	SizeClassData sc = get_sizeclass_by_idx(sc_idx);
-	uint32_t sc_block_size = sc.blockSize;
+uint32_t BaseMeta::compute_idx(char* superblock, char* block, size_t sc_idx) {
+	SizeClassData* sc = get_sizeclass_by_idx(sc_idx);
+	uint32_t sc_block_size = sc->blockSize;
 	(void)sc_block_size; // suppress unused var warning
 
 	assert(block >= superblock);
-	assert(block < superblock + sc.sbSize);
+	assert(block < superblock + sc->sbSize);
 	// optimize integer division by allowing the compiler to create 
 	//  a jump table using size class index
 	// compiler can then optimize integer div due to known divisor
 	uint32_t diff = uint32_t(block - superblock);
 	uint32_t idx = 0;
-	switch (sc_idx)
-	{
+	switch (sc_idx) {
 #define SIZE_CLASS_bin_yes(index, block_size)		\
 		case index:									\
 			assert(sc_block_size == block_size);	\
@@ -116,26 +118,199 @@ uint32_t BaseMeta::compute_idx(char* superblock, char* block, size_t sc_idx)
 	return idx;
 }
 
-void fill_cache(size_t sc_idx, TCacheBin* cache)
-{
+void BaseMeta::fill_cache(size_t sc_idx, TCacheBin* cache) {
 	// at most cache will be filled with number of blocks equal to superblock
-	size_t blockNum = 0;
+	size_t block_num = 0;
 	// use a *SINGLE* partial superblock to try to fill cache
-	malloc_from_partial(scIdx, cache, blockNum);
+	malloc_from_partial(sc_idx, cache, block_num);
 	// if we obtain no blocks from partial superblocks, create a new superblock
-	if (blockNum == 0)
-		malloc_from_newSB(scIdx, cache, blockNum);
+	if (block_num == 0)
+		malloc_from_newSB(sc_idx, cache, block_num);
 
-	SizeClassData* sc = &SizeClasses[scIdx];
-	(void)sc;
-	ASSERT(blockNum > 0);
-	ASSERT(blockNum <= sc->cacheBlockNum);
+	SizeClassData* sc = get_sizeclass_by_idx(sc_idx);
+	assert(block_num > 0);
+	assert(block_num <= sc->cacheBlockNum);
 }
 
+//todo: persist
+void BaseMeta::flush_cache(size_t sc_idx, TCacheBin* cache) {
+	ProcHeap* heap = &heaps[sc_idx];
+	SizeClassData* sc = get_sizeclass_by_idx(sc_idx);
+	uint32_t const sb_size = sc->sbSize;
+	uint32_t const blockSize = sc->blockSize;
+	// after CAS, desc might become empty and
+	//  concurrently reused, so store maxcount
+	uint32_t const maxcount = sc->GetBlockNum();
+	(void)maxcount; // suppress unused warning
 
+	// @todo: optimize
+	// in the normal case, we should be able to return several
+	//  blocks with a single CAS
+	while (cache->GetBlockNum() > 0) {
+		char* head = cache->PeekBlock();
+		char* tail = head;
+		PageInfo info = GetPageInfoForPtr(head);
+		Descriptor* desc = info.GetDesc();
+		char* superblock = desc->superblock;
 
+		// cache is a linked list of blocks
+		// superblock free list is also a linked list of blocks
+		// can optimize transfers of blocks between these 2 entities
+		//  by exploiting existing structure
+		uint32_t block_count = 1;
+		// check if next cache blocks are in the same superblock
+		// same superblock, same descriptor
+		while (cache->GetBlockNum() > block_count) {
+			char* ptr = *(char**)tail;
+			if (ptr < superblock || ptr >= superblock + sb_size)
+				break; // ptr not in superblock
 
+			// ptr in superblock, add to "list"
+			++block_count;
+			tail = ptr;
+		}
 
+		cache->PopList(*(char**)tail, block_count);
+
+		// add list to desc, update anchor
+		uint32_t idx = ComputeIdx(superblock, head, sc_idx);
+
+		Anchor oldanchor = desc->anchor.load();
+		Anchor newanchor;
+		do {
+			// update anchor.avail
+			char* next = (char*)(superblock + oldanchor.avail * blockSize);
+			*(char**)tail = next;
+
+			newanchor = oldanchor;
+			newanchor.avail = idx;
+			// state updates
+			// don't set SB_PARTIAL if state == SB_ACTIVE
+			if (oldanchor.state == SB_FULL)
+				newanchor.state = SB_PARTIAL;
+			// this can't happen with SB_ACTIVE
+			// because of reserved blocks
+			assert(oldanchor.count < desc->maxcount);
+			if (oldanchor.count + block_count == desc->maxcount) {
+				newanchor.count = desc->maxcount - 1;
+				newanchor.state = SB_EMPTY; // can free superblock
+			}
+			else
+				newanchor.count += block_count;
+		}
+		while (!desc->anchor.compare_exchange_weak(oldanchor, newanchor));
+
+		// after last CAS, can't reliably read any desc fields
+		// as desc might have become empty and been concurrently reused
+		assert(oldanchor.avail < maxcount || oldanchor.state == SB_FULL);
+		assert(newanchor.avail < maxcount);
+		assert(newanchor.count < maxcount);
+
+		// CAS success, can free block
+		if (newanchor.state == SB_EMPTY) {
+			// unregister descriptor
+			unregister_desc(heap, superblock);
+
+			// free superblock
+			page_free(superblock, heap->GetSizeClass()->sbSize);
+		}
+		else if (oldanchor.state == SB_FULL)
+			heap_push_partial(desc);
+	}
+}
+
+// (un)register descriptor pages with pagemap
+// all pages used by the descriptor will point to desc in
+//  the pagemap
+// for (unaligned) large allocations, only first page points to desc
+// aligned large allocations get the corresponding page pointing to desc
+void BaseMeta::update_pagemap(ProcHeap* heap, char* ptr, Descriptor* desc, size_t sc_idx) {
+	assert(ptr);
+
+	PageInfo info;
+	info.Set(desc, sc_idx);
+
+	// large allocation, don't need to (un)register every page
+	// just first
+	if (!heap)
+	{
+		pagemap.SetPageInfo(ptr, info);
+		return;
+	}
+
+	// only need to worry about alignment for large allocations
+	// assert(ptr == superblock);
+
+	// small allocation, (un)register every page
+	// could *technically* optimize if blockSize >>> page, 
+	//  but let's not worry about that
+	size_t sb_size = GetSizeClass(heap)->sbSize;
+	// sbSize is a multiple of page
+	assert((sb_size & PAGE_MASK) == 0);
+	for (size_t idx = 0; idx < sb_size; idx += PAGESIZE)
+		pagemap.SetPageInfo(ptr + idx, info); 
+}
+
+void BaseMeta::register_desc(Descriptor* desc)
+{
+	ProcHeap* heap = desc->heap;
+	char* ptr = desc->superblock;
+	size_t sc_idx = 0;
+	if (LIKELY(heap != nullptr))
+		sc_idx = heap->sc_idx;
+
+	update_pagemap(heap, ptr, desc, sc_idx);
+}
+
+// unregister descriptor before superblock deletion
+// can only be done when superblock is about to be free'd to OS
+inline void BaseMeta::unregister_desc(ProcHeap* heap, char* superblock)
+{
+	update_pagemap(heap, superblock, nullptr, 0L);
+}
+
+inline PageInfo BaseMeta::get_page_info_for_ptr(void* ptr)
+{
+	return paegmap.GetPageInfo((char*)ptr);
+}
+
+//todo: understand push and pop func
+void BaseMeta::heap_push_partial(Descriptor* desc)
+{
+	ProcHeap* heap = desc->heap;
+	std::atomic<DescriptorNode>& list = heap->partial_list;
+
+	DescriptorNode oldhead = list.load();
+	DescriptorNode newhead;
+	newhead.Set(desc, oldhead.GetCounter() + 1);
+	do
+	{
+		ASSERT(oldhead.GetDesc() != newhead.GetDesc());
+		newhead.GetDesc()->next_partial.store(oldhead); 
+	}
+	while (!list.compare_exchange_weak(oldhead, newhead));
+}
+
+Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap)
+{
+	std::atomic<DescriptorNode>& list = heap->partial_list;
+	DescriptorNode oldhead = list.load();
+	DescriptorNode newhead;
+	do
+	{
+		Descriptor* olddesc = oldhead.GetDesc();
+		if (!olddesc)
+			return nullptr;
+
+		newhead = olddesc->next_partial.load();
+		Descriptor* desc = newhead.GetDesc();
+		uint64_t counter = oldhead.GetCounter();
+		newhead.Set(desc, counter);
+	}
+	while (!list.compare_exchange_weak(oldhead, newhead));
+
+	return oldhead.GetDesc();
+}
 
 
 
