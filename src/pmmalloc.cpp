@@ -64,11 +64,11 @@ pmmalloc::~pmmalloc(){
 }
 
 inline void* pmmalloc::__p_malloc(size_t sz){
-	return obj->do_malloc(sz);
+	return base_md->do_malloc(sz);
 }
 
 inline void pmmalloc::__p_free(void* ptr){
-	obj->do_free(ptr);
+	base_md->do_free(ptr);
 }
 
 //manually request to collect garbage

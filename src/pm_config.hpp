@@ -57,8 +57,12 @@ const int PARTIAL = 2;
 const int EMPTY = 3;
 
 const int MAXCREDITS = 64; // 2^(bits for credits in active)
-const int GRANULARITY = 16; // granularity of sizeclass size in byte
-const int MAX_SMALLSIZE = 2048; // largest size of a small object in byte
+
+// number of size classes; idx 0 reserved for large size classes
+const int MAX_SZ_IDX = 40;
+// last size covered by a size class
+// allocations with size > MAX_SZ are not covered by a size class
+const int MAX_SZ = ((1 << 13) + (1 << 11) * 3);
 const int PROCHEAP_NUM = MAX_THREADS; // number of processor heap
 
 const uint64_t FREELIST_CAP = 10*1024*1024ULL; //largest amount of nodes in freelist

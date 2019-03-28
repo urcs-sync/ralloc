@@ -40,13 +40,12 @@ private:
 	// size class
 	// stealing bits from desc to store size class
 	// desc is aligned to at least 64 bytes, so 6 bits to steal
-	// which is the same as LG_MAX_SIZE_IDX
-	// size_t scIdx : LG_MAX_SIZE_IDX;
+	// which is the same as bits for sizeclass idx
 
 public:
-	void Set(Descriptor* desc, size_t scIdx);
-	Descriptor* GetDesc() const;
-	size_t GetScIdx() const;
+	void set(Descriptor* desc, size_t sc_idx);
+	Descriptor* get_desc() const;
+	size_t get_sc_idx() const;
 };
 
 #define PM_SZ ((1ULL << PM_SB) * sizeof(PageInfo))
@@ -59,11 +58,11 @@ class PageMap
 public:
 	PageMap();
 	~PageMap();
-	PageInfo GetPageInfo(char* ptr);
-	void SetPageInfo(char* ptr, PageInfo info);
+	PageInfo get_page_info(char* ptr);
+	void set_page_info(char* ptr, PageInfo info);
 
 private:
-	size_t AddrToKey(char* ptr) const;
+	size_t addr_to_key(char* ptr) const;
 
 	// array based impl
 	std::atomic<PageInfo>* _pagemap = { nullptr };

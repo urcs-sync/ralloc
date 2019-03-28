@@ -1,20 +1,20 @@
 #include "PageMap.hpp"
 
 #include "RegionManager.hpp"
-inline void PageInfo::Set(Descriptor* desc, size_t scIdx)
+inline void PageInfo::Set(Descriptor* desc, size_t sc_idx)
 {
 	assert(((size_t)desc & SC_MASK) == 0);
-	assert(scIdx < MAX_SZ_IDX);
+	assert(sc_idx < MAX_SZ_IDX);
 
-	_desc = (Descriptor*)((size_t)desc | scIdx);
+	_desc = (Descriptor*)((size_t)desc | sc_idx);
 }
 
-inline Descriptor* PageInfo::GetDesc() const
+inline Descriptor* PageInfo::get_desc() const
 {
 	return (Descriptor*)((size_t)_desc & ~SC_MASK);
 }
 
-inline size_t PageInfo::GetScIdx() const
+inline size_t PageInfo::get_sc_idx() const
 {
 	return ((size_t)_desc & SC_MASK);
 }
@@ -41,24 +41,24 @@ PageMap::~PageMap(){
 	delete mgr;
 }
 
-inline size_t PageMap::AddrToKey(char* ptr) const
+inline size_t PageMap::addr_to_key(char* ptr) const
 {
 	size_t key = ((size_t)ptr >> PM_KEY_SHIFT) & PM_KEY_MASK;
 	return key;
 }
 
-inline PageInfo PageMap::GetPageInfo(char* ptr)
+inline PageInfo PageMap::get_page_info(char* ptr)
 {
-	size_t key = AddrToKey(ptr);
+	size_t key = addr_to_key(ptr);
 	PageInfo ret = _pagemap[key].load();
 	FLUSH(&_pagemap[key]);
 	FLUSHFENCE;
 	return ret;
 }
 
-inline void PageMap::SetPageInfo(char* ptr, PageInfo info)
+inline void PageMap::set_page_info(char* ptr, PageInfo info)
 {
-	size_t key = AddrToKey(ptr);
+	size_t key = addr_to_key(ptr);
 	FLUSHFENCE;
 	_pagemap[key].store(info);
 	FLUSH(&_pagemap[key]);

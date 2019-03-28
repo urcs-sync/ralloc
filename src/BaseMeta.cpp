@@ -22,7 +22,7 @@
 #include "BaseMeta.hpp"
 
 // some metadata from LRMalloc
-__thread TCacheBin BaseMeta::TCache[MAX_SZ_IDX];
+__thread TCacheBin BaseMeta::t_cache[MAX_SZ_IDX];
 
 using namespace std;
 
@@ -72,7 +72,7 @@ uint64_t BaseMeta::new_space(int i){//i=0:desc, i=1:small sb, i=2:large sb
 }
 
 inline size_t BaseMeta::get_sizeclass(size_t size){
-	return sizeclass.GetSizeClass(size);
+	return sizeclass.get_sizeclass(size);
 }
 
 inline SizeClassData* BaseMeta::get_sizeclass(ProcHeap* h){
@@ -80,17 +80,17 @@ inline SizeClassData* BaseMeta::get_sizeclass(ProcHeap* h){
 }
 
 inline SizeClassData* BaseMeta::get_sizeclass_by_idx(size_t idx) { 
-	return &sizeclass.GetSizeClassByIdx(idx);
+	return &sizeclass.get_sizeclass_by_idx(idx);
 }
 
 // compute block index in superblock by addr to sb, block, and sc index
 uint32_t BaseMeta::compute_idx(char* superblock, char* block, size_t sc_idx) {
 	SizeClassData* sc = get_sizeclass_by_idx(sc_idx);
-	uint32_t sc_block_size = sc->blockSize;
+	uint32_t sc_block_size = sc->block_size;
 	(void)sc_block_size; // suppress unused var warning
 
 	assert(block >= superblock);
-	assert(block < superblock + sc->sbSize);
+	assert(block < superblock + sc->sb_size);
 	// optimize integer division by allowing the compiler to create 
 	//  a jump table using size class index
 	// compiler can then optimize integer div due to known divisor
@@ -125,32 +125,32 @@ void BaseMeta::fill_cache(size_t sc_idx, TCacheBin* cache) {
 	malloc_from_partial(sc_idx, cache, block_num);
 	// if we obtain no blocks from partial superblocks, create a new superblock
 	if (block_num == 0)
-		malloc_from_newSB(sc_idx, cache, block_num);
+		malloc_from_newsb(sc_idx, cache, block_num);
 
 	SizeClassData* sc = get_sizeclass_by_idx(sc_idx);
 	assert(block_num > 0);
-	assert(block_num <= sc->cacheBlockNum);
+	assert(block_num <= sc->cache_block_num);
 }
 
-//todo: persist
+//todo after this point: persist
 void BaseMeta::flush_cache(size_t sc_idx, TCacheBin* cache) {
 	ProcHeap* heap = &heaps[sc_idx];
 	SizeClassData* sc = get_sizeclass_by_idx(sc_idx);
-	uint32_t const sb_size = sc->sbSize;
-	uint32_t const blockSize = sc->blockSize;
+	uint32_t const sb_size = sc->sb_size;
+	uint32_t const block_size = sc->block_size;
 	// after CAS, desc might become empty and
 	//  concurrently reused, so store maxcount
-	uint32_t const maxcount = sc->GetBlockNum();
+	uint32_t const maxcount = sc->get_block_num();
 	(void)maxcount; // suppress unused warning
 
 	// @todo: optimize
 	// in the normal case, we should be able to return several
 	//  blocks with a single CAS
-	while (cache->GetBlockNum() > 0) {
-		char* head = cache->PeekBlock();
+	while (cache->get_block_num() > 0) {
+		char* head = cache->peek_block();
 		char* tail = head;
-		PageInfo info = GetPageInfoForPtr(head);
-		Descriptor* desc = info.GetDesc();
+		PageInfo info = get_page_info_for_ptr(head);
+		Descriptor* desc = info.get_desc();
 		char* superblock = desc->superblock;
 
 		// cache is a linked list of blocks
@@ -160,7 +160,7 @@ void BaseMeta::flush_cache(size_t sc_idx, TCacheBin* cache) {
 		uint32_t block_count = 1;
 		// check if next cache blocks are in the same superblock
 		// same superblock, same descriptor
-		while (cache->GetBlockNum() > block_count) {
+		while (cache->get_block_num() > block_count) {
 			char* ptr = *(char**)tail;
 			if (ptr < superblock || ptr >= superblock + sb_size)
 				break; // ptr not in superblock
@@ -170,16 +170,16 @@ void BaseMeta::flush_cache(size_t sc_idx, TCacheBin* cache) {
 			tail = ptr;
 		}
 
-		cache->PopList(*(char**)tail, block_count);
+		cache->pop_list(*(char**)tail, block_count);
 
 		// add list to desc, update anchor
-		uint32_t idx = ComputeIdx(superblock, head, sc_idx);
+		uint32_t idx = compute_idx(superblock, head, sc_idx);
 
 		Anchor oldanchor = desc->anchor.load();
 		Anchor newanchor;
 		do {
 			// update anchor.avail
-			char* next = (char*)(superblock + oldanchor.avail * blockSize);
+			char* next = (char*)(superblock + oldanchor.avail * block_size);
 			*(char**)tail = next;
 
 			newanchor = oldanchor;
@@ -212,7 +212,7 @@ void BaseMeta::flush_cache(size_t sc_idx, TCacheBin* cache) {
 			unregister_desc(heap, superblock);
 
 			// free superblock
-			page_free(superblock, heap->GetSizeClass()->sbSize);
+			page_free(superblock, heap->get_sizeclass()->sb_size);
 		}
 		else if (oldanchor.state == SB_FULL)
 			heap_push_partial(desc);
@@ -228,13 +228,13 @@ void BaseMeta::update_pagemap(ProcHeap* heap, char* ptr, Descriptor* desc, size_
 	assert(ptr);
 
 	PageInfo info;
-	info.Set(desc, sc_idx);
+	info.set(desc, sc_idx);
 
 	// large allocation, don't need to (un)register every page
 	// just first
 	if (!heap)
 	{
-		pagemap.SetPageInfo(ptr, info);
+		pagemap.set_page_info(ptr, info);
 		return;
 	}
 
@@ -242,13 +242,13 @@ void BaseMeta::update_pagemap(ProcHeap* heap, char* ptr, Descriptor* desc, size_
 	// assert(ptr == superblock);
 
 	// small allocation, (un)register every page
-	// could *technically* optimize if blockSize >>> page, 
+	// could *technically* optimize if block_size >>> page, 
 	//  but let's not worry about that
-	size_t sb_size = GetSizeClass(heap)->sbSize;
-	// sbSize is a multiple of page
+	size_t sb_size = get_sizeclass(heap)->sb_size;
+	// sb_size is a multiple of page
 	assert((sb_size & PAGE_MASK) == 0);
 	for (size_t idx = 0; idx < sb_size; idx += PAGESIZE)
-		pagemap.SetPageInfo(ptr + idx, info); 
+		pagemap.set_page_info(ptr + idx, info); 
 }
 
 void BaseMeta::register_desc(Descriptor* desc)
@@ -271,10 +271,10 @@ inline void BaseMeta::unregister_desc(ProcHeap* heap, char* superblock)
 
 inline PageInfo BaseMeta::get_page_info_for_ptr(void* ptr)
 {
-	return paegmap.GetPageInfo((char*)ptr);
+	return paegmap.get_page_info((char*)ptr);
 }
 
-//todo: understand push and pop func
+//todo after this point: understand func impl.
 void BaseMeta::heap_push_partial(Descriptor* desc)
 {
 	ProcHeap* heap = desc->heap;
@@ -282,11 +282,11 @@ void BaseMeta::heap_push_partial(Descriptor* desc)
 
 	DescriptorNode oldhead = list.load();
 	DescriptorNode newhead;
-	newhead.Set(desc, oldhead.GetCounter() + 1);
+	newhead.set(desc, oldhead.get_counter() + 1);
 	do
 	{
-		ASSERT(oldhead.GetDesc() != newhead.GetDesc());
-		newhead.GetDesc()->next_partial.store(oldhead); 
+		assert(oldhead.get_desc() != newhead.get_desc());
+		newhead.get_desc()->next_partial.store(oldhead); 
 	}
 	while (!list.compare_exchange_weak(oldhead, newhead));
 }
@@ -298,19 +298,137 @@ Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap)
 	DescriptorNode newhead;
 	do
 	{
-		Descriptor* olddesc = oldhead.GetDesc();
+		Descriptor* olddesc = oldhead.get_desc();
 		if (!olddesc)
 			return nullptr;
 
 		newhead = olddesc->next_partial.load();
-		Descriptor* desc = newhead.GetDesc();
-		uint64_t counter = oldhead.GetCounter();
-		newhead.Set(desc, counter);
+		Descriptor* desc = newhead.get_desc();
+		uint64_t counter = oldhead.get_counter();
+		newhead.set(desc, counter);
 	}
 	while (!list.compare_exchange_weak(oldhead, newhead));
 
-	return oldhead.GetDesc();
+	return oldhead.get_desc();
 }
+
+void malloc_from_partial(size_t sc_idx, TCacheBin* cache, size_t& block_num)
+{
+	ProcHeap* heap = &heaps[sc_idx];
+
+retry:
+	Descriptor* desc = heap_pop_partial(heap);
+	if (!desc)
+		return;
+
+	// reserve block(s)
+	Anchor oldanchor = desc->anchor.load();
+	Anchor newanchor;
+	uint32_t maxcount = desc->maxcount;
+	uint32_t block_size = desc->block_size;
+	char* superblock = desc->superblock;
+
+	// we have "ownership" of block, but anchor can still change
+	// due to free()
+	do
+	{
+		if (oldanchor.state == SB_EMPTY)
+		{
+			desc_retire(desc);
+			goto retry;
+		}
+
+		// oldanchor must be SB_PARTIAL
+		// can't be SB_FULL because we *own* the block now
+		// and it came from heap_pop_partial
+		// can't be SB_EMPTY, we already checked
+		// obviously can't be SB_ACTIVE
+		assert(oldanchor.state == SB_PARTIAL);
+
+		newanchor = oldanchor;
+		newanchor.count = 0;
+		// avail value doesn't actually matter
+		newanchor.avail = maxcount;
+		newanchor.state = SB_FULL;
+	}
+	while (!desc->anchor.compare_exchange_weak(
+				oldanchor, newanchor));
+
+	// will take as many blocks as available from superblock
+	// *AND* no thread can do malloc() using this superblock, we
+	//  exclusively own it
+	// if CAS fails, it just means another thread added more available blocks
+	//  through FlushCache, which we can then use
+	uint32_t block_take = oldanchor.count;
+	uint32_t avail = oldanchor.avail;
+
+	assert(avail < maxcount);
+	char* block = superblock + avail * block_size;
+
+	// cache must be empty at this point
+	// and the blocks are already organized as a list
+	// so all we need do is "push" that list, a constant time op
+	assert(cache->get_block_num() == 0);
+	cache->push_list(block, block_take);
+
+	block_num += block_take;
+}
+
+void malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_num)
+{
+	ProcHeap* heap = &heaps[sc_idx];
+	SizeClassData* sc = get_sizeclass_by_idx(sc_idx);
+
+	Descriptor* desc = desc_alloc();
+	assert(desc);
+
+	uint32_t const block_size = sc->block_size;
+	uint32_t const maxcount = sc->get_block_num();
+
+	desc->heap = heap;
+	desc->block_size = block_size;
+	desc->maxcount = maxcount;
+	desc->superblock = (char*)page_alloc(sc->sb_size);
+
+	// prepare block list
+	char* superblock = desc->superblock;
+	for (uint32_t idx = 0; idx < maxcount - 1; ++idx)
+	{
+		char* block = superblock + idx * block_size;
+		char* next = superblock + (idx + 1) * block_size;
+		*(char**)block = next;
+	}
+
+	// push blocks to cache
+	char* block = superblock; // first block
+	cache->push_list(block, maxcount);
+
+	Anchor anchor;
+	anchor.avail = maxcount;
+	anchor.count = 0;
+	anchor.state = SB_FULL;
+
+	desc->anchor.store(anchor);
+
+	assert(anchor.avail < maxcount || anchor.state == SB_FULL);
+	assert(anchor.count < maxcount);
+
+	// register new descriptor
+	// must be done before setting superblock as active
+	// or leaving superblock as available in a partial list
+	register_desc(desc);
+
+	// if state changes to SB_PARTIAL, desc must be added to partial list
+	assert(anchor.state == SB_FULL);
+
+	block_num += maxcount;
+}
+
+
+
+
+
+
 
 
 

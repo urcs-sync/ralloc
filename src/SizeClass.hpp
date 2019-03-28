@@ -15,53 +15,39 @@
  * As a result, we don't have to persist it.
  *
  * The API is in the class SizeClass, it contains constructor
- * and GetSizeClass. To use, just instantiate SizeClass and call 
- * GetSizeClass(size). Safe to instantiate multiple times.
+ * and get_sizeclass. To use, just instantiate SizeClass and call 
+ * get_sizeclass(size). Safe to instantiate multiple times.
  *
  * Note by Wentao Cai (wcai6@cs.rochester.edu)
  */
-
-// number of size classes
-// idx 0 reserved for large size classes
-#define MAX_SZ_IDX 40
-#define LG_MAX_SIZE_IDX 6
-// last size covered by a size class
-// allocations with size > MAX_SZ are not covered by a size class
-#define MAX_SZ ((1 << 13) + (1 << 11) * 3)
 
 // contains size classes
 struct SizeClassData
 {
 public:
 	// size of block
-	uint32_t blockSize;
+	uint32_t block_size;
 	// superblock size
 	// always a multiple of page size
-	uint32_t sbSize;
-	// cached number of blocks, equal to sbSize / blockSize
-	uint32_t blockNum;
+	uint32_t sb_size;
+	// cached number of blocks, equal to sb_size / block_size
+	uint32_t block_num;
 	// number of blocks held by thread-specific caches
-	uint32_t cacheBlockNum;
+	uint32_t cache_block_num;
 
 public:
-	size_t GetBlockNum() const { return blockNum; }
+	size_t get_block_num() const { return block_num; }
 };
 
 class SizeClass{
 private:
-	SizeClassData SizeClasses[MAX_SZ_IDX];
-	size_t SizeClassLookup[MAX_SZ + 1];
+	SizeClassData sizeclasses[MAX_SZ_IDX];
+	size_t sizeclass_lookup[MAX_SZ + 1];
 public:
 	SizeClass();
-	inline size_t GetSizeClass(size_t size){return SizeClassLookup[size];}
-	inline SizeClassData GetSizeClassByIdx(size_t idx){return SizeClasses[idx];}
+	inline size_t get_sizeclass(size_t size){return sizeclass_lookup[size];}
+	inline SizeClassData get_sizeclass_by_idx(size_t idx){return sizeclasses[idx];}
 };
-// extern SizeClassData SizeClasses[MAX_SZ_IDX];
-// *not* initialized at compile time, needs InitSizeClass() call
-// extern size_t SizeClassLookup[MAX_SZ + 1];
-
-// // must be called before GetSizeClass
-// void InitSizeClass();
 
 // size class data, from jemalloc 5.0
 #define SIZE_CLASSES \

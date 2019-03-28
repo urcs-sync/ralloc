@@ -19,73 +19,73 @@ struct TCacheBin
 {
 private:
 	char* _block = nullptr;
-	uint32_t _blockNum = 0;
+	uint32_t _block_num = 0;
 
 public:
 	// common, fast ops
-	void PushBlock(char* block);
+	void push_block(char* block);
 	// push block list, cache *must* be empty
-	void PushList(char* block, uint32_t length);
+	void push_list(char* block, uint32_t length);
 
-	char* PopBlock(); // can return nullptr
+	char* pop_block(); // can return nullptr
 	// manually popped list of blocks and now need to update cache
 	// `block` is the new head
-	void PopList(char* block, uint32_t length);
-	char* PeekBlock() const { return _block; }
+	void pop_list(char* block, uint32_t length);
+	char* peek_block() const { return _block; }
 
-	uint32_t GetBlockNum() const { return _blockNum; }
+	uint32_t get_block_num() const { return _block_num; }
 
 	// slow operations like fill/flush handled in cache user
 };
 
-inline void TCacheBin::PushBlock(char* block)
+inline void TCacheBin::push_block(char* block)
 {
 	// block has at least sizeof(char*)
 	*(char**)block = _block;
 	TFLUSH(block);
 	TFLUSHFENCE;
 	_block = block;
-	_blockNum++;
+	_block_num++;
 	TFLUSH(&_block);
-	TFLUSH(&_blockNum);
+	TFLUSH(&_block_num);
 	TFLUSHFENCE;
 }
 
-inline void TCacheBin::PushList(char* block, uint32_t length)
+inline void TCacheBin::push_list(char* block, uint32_t length)
 {
 	// caller must ensure there's no available block
 	// this op is only used to fill empty cache
-	assert(_blockNum == 0);
+	assert(_block_num == 0);
 
 	_block = block;
-	_blockNum = length;
+	_block_num = length;
 	TFLUSH(&_block);
-	TFLUSH(&_blockNum);
+	TFLUSH(&_block_num);
 	TFLUSHFENCE;
 }
 
-inline char* TCacheBin::PopBlock()
+inline char* TCacheBin::pop_block()
 {
 	// caller must ensure there's an available block
-	assert(_blockNum > 0);
+	assert(_block_num > 0);
 
 	char* ret = _block;
 	_block = *(char**)_block;
-	_blockNum--;
+	_block_num--;
 	TFLUSH(&_block);
-	TFLUSH(&_blockNum);
+	TFLUSH(&_block_num);
 	TFLUSHFENCE;
 	return ret;
 }
 
-inline void TCacheBin::PopList(char* block, uint32_t length)
+inline void TCacheBin::pop_list(char* block, uint32_t length)
 {
-	assert(_blockNum >= length);
+	assert(_block_num >= length);
 
 	_block = block;
-	_blockNum -= length;
+	_block_num -= length;
 	TFLUSH(&_block);
-	TFLUSH(&_blockNum);
+	TFLUSH(&_block_num);
 	TFLUSHFENCE;
 }
 

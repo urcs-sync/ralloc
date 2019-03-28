@@ -29,7 +29,7 @@
 #include "ArrayStack.hpp"
 #include "ArrayQueue.hpp"
 #include "SizeClass.hpp"
-#include "TCache.hpp"
+#include "t_cache.hpp"
 #include "PageMap.hpp"
 
 /********class BaseMeta********
@@ -95,11 +95,11 @@
 enum SuperblockState
 {
 	// all blocks allocated or reserved
-	SB_FULL     = 0,
+	SB_FULL		= 0,
 	// has unreserved available blocks
-	SB_PARTIAL  = 1,
+	SB_PARTIAL	= 1,
 	// all blocks are free
-	SB_EMPTY    = 2,
+	SB_EMPTY	= 2,
 };
 
 struct Anchor;
@@ -124,7 +124,7 @@ public:
 	// aba counter
 
 public:
-	void Set(Descriptor* desc, uint64_t counter)
+	void set(Descriptor* desc, uint64_t counter)
 	{
 		// desc must be cacheline aligned
 		ASSERT(((uint64_t)desc & CACHELINE_MASK) == 0);
@@ -133,12 +133,12 @@ public:
 		_desc = (Descriptor*)((uint64_t)desc | (counter & CACHELINE_MASK));
 	}
 
-	Descriptor* GetDesc() const
+	Descriptor* get_desc() const
 	{
 		return (Descriptor*)((uint64_t)_desc & ~CACHELINE_MASK);
 	}
 
-	uint64_t GetCounter() const
+	uint64_t get_counter() const
 	{
 		return (uint64_t)((uint64_t)_desc & CACHELINE_MASK);
 	}
@@ -162,7 +162,7 @@ struct Descriptor
 
 	char* superblock;
 	ProcHeap* heap;
-	uint32_t blockSize; // block size
+	uint32_t block_size; // block size
 	uint32_t maxcount;
 }__attribute__((aligned(CACHE_LINE_SIZE)));
 
@@ -195,7 +195,7 @@ class BaseMeta{
 	/* sizeclass data for lookup. It's determined statically so we make it transient */
 	PM_TRANSIENT SizeClass sizeclass;
 	/* thread-local cache */
-	PM_TRANSIENT static __thread TCacheBin TCache[MAX_SZ_IDX]
+	PM_TRANSIENT static __thread TCacheBin t_cache[MAX_SZ_IDX]
 		__attribute__((aligned(CACHE_LINE_SIZE)));
 
 	/* persistent metadata defined here */
@@ -253,7 +253,12 @@ public:
 	}
 
 private:
-	uint64_t new_space(int i);//i=0:desc, i=1:small sb, i=2:large sb. return index of allocated space.
+	//i=0:desc, i=1:small sb, i=2:large sb. return index of allocated space
+	uint64_t new_space(int i);
+	// returns a set of continous pages, totaling to size bytes
+	void* page_alloc(size_t size);
+	// free a set of continous pages, totaling to size bytes
+	void page_free(void* ptr, size_t size);
 
 	// func on size class
 	size_t get_sizeclass(size_t size);
@@ -275,7 +280,7 @@ private:
 	void heap_push_partial(Descriptor* desc);
 	Descriptor* heap_pop_partial(ProcHeap* heap);
 	void malloc_from_partial(size_t sc_idx, TCacheBin* cache, size_t& block_num);
-	void malloc_from_newSB(size_t sc_idx, TCacheBin* cache, size_t& block_num);
+	void malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_num);
 	Descriptor* desc_alloc();
 	void desc_retire(Descriptor* desc);
 };
