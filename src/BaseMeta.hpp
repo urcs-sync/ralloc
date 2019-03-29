@@ -225,8 +225,8 @@ public:
 		// free_desc = new ArrayQueue<Descriptor*>("pmmalloc_freedesc");
 		free_sb = new ArrayStack<void*>("pmmalloc_freesb");
 	}
+	// flush everything needed before exit
 	void cleanup(){
-		// flush everything needed before exit
 		delete free_sb;
 	}
 
@@ -247,14 +247,18 @@ private:
 
 	// func on page map
 	void update_pagemap(ProcHeap* heap, char* ptr, Descriptor* desc, size_t sc_idx);
+	// set desc into pagemap and flush desc as used
 	void register_desc(Descriptor* desc);
+	// set sb's corresponding desc to nullptr
 	void unregister_desc(ProcHeap* heap, char* superblock);
 	PageInfo get_page_info_for_ptr(void* ptr);
 
 	// helper func
 	void heap_push_partial(Descriptor* desc);
 	Descriptor* heap_pop_partial(ProcHeap* heap);
+	// fill cache from a partially used sb in heap[sc_idx]
 	void malloc_from_partial(size_t sc_idx, TCacheBin* cache, size_t& block_num);
+	// fill cache by allocating a new sb in heap[sc_idx]
 	void malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_num);
 	// alloc function to call for large block
 	void* alloc_large_block(size_t sz);
@@ -271,7 +275,9 @@ private:
 	// retire a large sb
 	void large_sb_retire(void* sb, size_t size);
 
+	// get unused desc from avail_desc or allocate a new space for desc
 	Descriptor* desc_alloc();
+	// put desc to avail_desc and flush it as unused
 	void desc_retire(Descriptor* desc);
 };
 
