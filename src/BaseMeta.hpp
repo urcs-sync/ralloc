@@ -1,21 +1,3 @@
-/*
- * Copyright (C) 2007  Scott Schneider, Christos Antonopoulos
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- */
-
 #ifndef _BASE_META_HPP_
 #define _BASE_META_HPP_
 
@@ -83,7 +65,7 @@
  * $(HEAPFILE_PREFIX)_queue_scpartial$(sz).
  *
  * Most of functions related to malloc and free share large portion of 
- * code with the open source project https://github.com/scotts/michael.
+ * code with the open source project https://github.com/ricleite/lrmalloc
  * Some modifications were applied for bug fixing or functionality adjustment.
  *
  * Adapted and reimplemented by:
@@ -92,8 +74,7 @@
 
 // superblock states
 // used in Anchor::state
-enum SuperblockState
-{
+enum SuperblockState {
 	// all blocks allocated or reserved
 	SB_FULL		= 0,
 	// has unreserved available blocks
@@ -116,8 +97,8 @@ struct Anchor{
 };
 static_assert(sizeof(Anchor) == sizeof(uint64_t), "Invalid anchor size");
 
-struct DescriptorNode
-{
+//todo:make it pptr
+struct DescriptorNode {
 public:
 	// ptr
 	Descriptor* _desc = nullptr;
@@ -155,31 +136,30 @@ static_assert(sizeof(DescriptorNode) == sizeof(uint64_t), "Invalid descriptor no
  * all desc whose in_use is true will be added
  * to pagemap again.
  */
-struct Descriptor
-{
+struct Descriptor {
 	// list node pointers
 	// used in free descriptor list
-	std::atomic<DescriptorNode> next_free;
+	PM_TRANSIENT std::atomic<DescriptorNode> next_free;
 	// used in partial descriptor list
-	std::atomic<DescriptorNode> next_partial;
-	// anchor
-	std::atomic<Anchor> anchor;
+	PM_TRANSIENT std::atomic<DescriptorNode> next_partial;
+	// anchor; is reconstructed during recovery
+	PM_TRANSIENT std::atomic<Anchor> anchor;
 
-	char* superblock;
-	ProcHeap* heap;
-	uint32_t block_size; // block size
-	uint32_t maxcount;
-	bool in_use; // false if it's free, true if it's in use
+	PM_PERSIST char* superblock;
+	//todo :make it pptr
+	PM_PERSIST ProcHeap* heap;
+	PM_PERSIST uint32_t block_size; // block size
+	PM_PERSIST uint32_t maxcount;
+	PM_PERSIST bool in_use = false; // false if it's free, true if it's in use
 }__attribute__((aligned(CACHELINE_SIZE)));
 
 // at least one ProcHeap instance exists for each sizeclass
-struct ProcHeap
-{
+struct ProcHeap {
 public:
 	// ptr to descriptor, head of partial descriptor list
-	std::atomic<DescriptorNode> partial_list;
-	// size class index
-	size_t sc_idx;
+	PM_TRANSIENT std::atomic<DescriptorNode> partial_list;
+	// size class index; never change after init
+	PM_PERSIST size_t sc_idx;
 }__attribute__((aligned(CACHELINE_SIZE)));
 
 //persistent sections
@@ -189,7 +169,7 @@ struct Section {
 	PM_PERSIST size_t sec_bytes;
 }__attribute__((aligned(CACHELINE_SIZE)));
 
-class BaseMeta{
+class BaseMeta {
 	/* transient metadata and tools */
 	PM_TRANSIENT RegionManager* mgr;//assigned when BaseMeta constructs
 	//unused small sb
@@ -246,28 +226,19 @@ public:
 		free_sb = new ArrayStack<void*>("pmmalloc_freesb");
 	}
 	void cleanup(){
-		//flush everything before exit
-		// delete free_desc;
+		// flush everything needed before exit
 		delete free_sb;
 	}
 
 private:
 	//i=0:desc, i=1:small sb, i=2:large sb. return index of allocated space
 	uint64_t new_space(int i);
-	// get one free sb or allocate a new space for sbs
-	void* small_sb_alloc(size_t size);
-	// free the superblock sb points to
-	void small_sb_retire(void* sb, size_t size);
-	// add all newly allocated sbs to free_sb
-	void organize_sb_list(void* start, uint64_t count, uint64_t stride);
-	void* large_sb_alloc(size_t size, uint64_t alignement);
-	void large_sb_retire(void* sb, size_t size);
-	void* alloc_large_block(size_t sz);
 
 	// func on size class
 	size_t get_sizeclass(size_t size);
 	SizeClassData* get_sizeclass(ProcHeap* h);
 	SizeClassData* get_sizeclass_by_idx(size_t idx);
+	// compute block index in superblock by addr to sb, block, and sc index
 	uint32_t compute_idx(char* superblock, char* block, size_t sc_idx);
 
 	// func on cache
@@ -285,6 +256,21 @@ private:
 	Descriptor* heap_pop_partial(ProcHeap* heap);
 	void malloc_from_partial(size_t sc_idx, TCacheBin* cache, size_t& block_num);
 	void malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_num);
+	// alloc function to call for large block
+	void* alloc_large_block(size_t sz);
+
+	// add all newly allocated sbs to free_sb
+	void organize_sb_list(void* start, uint64_t count, uint64_t stride);
+	// get one free sb or allocate a new space for sbs
+	void* small_sb_alloc(size_t size);
+	// free the superblock sb points to
+	void small_sb_retire(void* sb, size_t size);
+
+	// allocate a large sb
+	void* large_sb_alloc(size_t size, uint64_t alignement);
+	// retire a large sb
+	void large_sb_retire(void* sb, size_t size);
+
 	Descriptor* desc_alloc();
 	void desc_retire(Descriptor* desc);
 };

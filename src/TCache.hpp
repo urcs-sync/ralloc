@@ -11,6 +11,7 @@
  * https://github.com/ricleite/lrmalloc
  * 
  * This defines thread-local cache, and is reconstructible.
+ * As a result, no need to flush at all.
  *
  * Note by Wentao Cai (wcai6@cs.rochester.edu)
  */
@@ -42,13 +43,8 @@ inline void TCacheBin::push_block(char* block)
 {
 	// block has at least sizeof(char*)
 	*(char**)block = _block;
-	TFLUSH(block);
-	TFLUSHFENCE;
 	_block = block;
 	_block_num++;
-	TFLUSH(&_block);
-	TFLUSH(&_block_num);
-	TFLUSHFENCE;
 }
 
 inline void TCacheBin::push_list(char* block, uint32_t length)
@@ -59,9 +55,6 @@ inline void TCacheBin::push_list(char* block, uint32_t length)
 
 	_block = block;
 	_block_num = length;
-	TFLUSH(&_block);
-	TFLUSH(&_block_num);
-	TFLUSHFENCE;
 }
 
 inline char* TCacheBin::pop_block()
@@ -72,9 +65,6 @@ inline char* TCacheBin::pop_block()
 	char* ret = _block;
 	_block = *(char**)_block;
 	_block_num--;
-	TFLUSH(&_block);
-	TFLUSH(&_block_num);
-	TFLUSHFENCE;
 	return ret;
 }
 
@@ -84,9 +74,6 @@ inline void TCacheBin::pop_list(char* block, uint32_t length)
 
 	_block = block;
 	_block_num -= length;
-	TFLUSH(&_block);
-	TFLUSH(&_block_num);
-	TFLUSHFENCE;
 }
 
 #endif // __TCACHE_H_

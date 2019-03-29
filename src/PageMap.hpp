@@ -20,6 +20,8 @@
  * graceful exit, you should do a whole cache flush or flush
  * all used pages mapped as PageMap.
  *
+ * Note by Wentao Cai (wcai6@cs.rochester.edu)
+ *
  */
 
 

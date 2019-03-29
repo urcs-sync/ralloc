@@ -1,20 +1,3 @@
-/*
- * Copyright (C) 2007  Scott Schneider, Christos Antonopoulos
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- */
 #include <sys/mman.h>
 
 #include <string>
@@ -83,7 +66,6 @@ inline SizeClassData* BaseMeta::get_sizeclass_by_idx(size_t idx) {
 	return sizeclass.get_sizeclass_by_idx(idx);
 }
 
-// compute block index in superblock by addr to sb, block, and sc index
 uint32_t BaseMeta::compute_idx(char* superblock, char* block, size_t sc_idx) {
 	SizeClassData* sc = get_sizeclass_by_idx(sc_idx);
 	uint32_t sc_block_size = sc->block_size;
@@ -132,7 +114,6 @@ void BaseMeta::fill_cache(size_t sc_idx, TCacheBin* cache) {
 	assert(block_num <= sc->cache_block_num);
 }
 
-//todo after this point: persist
 void BaseMeta::flush_cache(size_t sc_idx, TCacheBin* cache) {
 	ProcHeap* heap = &heaps[sc_idx];
 	SizeClassData* sc = get_sizeclass_by_idx(sc_idx);
@@ -232,8 +213,7 @@ void BaseMeta::update_pagemap(ProcHeap* heap, char* ptr, Descriptor* desc, size_
 
 	// large allocation, don't need to (un)register every page
 	// just first
-	if (!heap)
-	{
+	if (!heap) {
 		pagemap.set_page_info(ptr, info);
 		return;
 	}
@@ -251,8 +231,7 @@ void BaseMeta::update_pagemap(ProcHeap* heap, char* ptr, Descriptor* desc, size_
 		pagemap.set_page_info(ptr + idx, info); 
 }
 
-void BaseMeta::register_desc(Descriptor* desc)
-{
+void BaseMeta::register_desc(Descriptor* desc) {
 	ProcHeap* heap = desc->heap;
 	char* ptr = desc->superblock;
 	size_t sc_idx = 0;
@@ -260,44 +239,40 @@ void BaseMeta::register_desc(Descriptor* desc)
 		sc_idx = heap->sc_idx;
 
 	update_pagemap(heap, ptr, desc, sc_idx);
+	desc->in_use = true;
+	FLUSH(desc);
+	FLUSHFENCE;
 }
 
 // unregister descriptor before superblock deletion
 // can only be done when superblock is about to be free'd to OS
-inline void BaseMeta::unregister_desc(ProcHeap* heap, char* superblock)
-{
+inline void BaseMeta::unregister_desc(ProcHeap* heap, char* superblock) {
 	update_pagemap(heap, superblock, nullptr, 0L);
 }
 
-inline PageInfo BaseMeta::get_page_info_for_ptr(void* ptr)
-{
+inline PageInfo BaseMeta::get_page_info_for_ptr(void* ptr) {
 	return pagemap.get_page_info((char*)ptr);
 }
 
-//todo after this point: understand func impl.
-void BaseMeta::heap_push_partial(Descriptor* desc)
-{
+void BaseMeta::heap_push_partial(Descriptor* desc) {
 	ProcHeap* heap = desc->heap;
 	std::atomic<DescriptorNode>& list = heap->partial_list;
 
 	DescriptorNode oldhead = list.load();
 	DescriptorNode newhead;
 	newhead.set(desc, oldhead.get_counter() + 1);
-	do
-	{
+	do {
 		assert(oldhead.get_desc() != newhead.get_desc());
 		newhead.get_desc()->next_partial.store(oldhead); 
 	}
 	while (!list.compare_exchange_weak(oldhead, newhead));
 }
 
-Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap)
-{
+Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap) {
 	std::atomic<DescriptorNode>& list = heap->partial_list;
 	DescriptorNode oldhead = list.load();
 	DescriptorNode newhead;
-	do
-	{
+	do {
 		Descriptor* olddesc = oldhead.get_desc();
 		if (!olddesc)
 			return nullptr;
@@ -312,8 +287,7 @@ Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap)
 	return oldhead.get_desc();
 }
 
-void BaseMeta::malloc_from_partial(size_t sc_idx, TCacheBin* cache, size_t& block_num)
-{
+void BaseMeta::malloc_from_partial(size_t sc_idx, TCacheBin* cache, size_t& block_num){
 	ProcHeap* heap = &heaps[sc_idx];
 
 retry:
@@ -330,10 +304,8 @@ retry:
 
 	// we have "ownership" of block, but anchor can still change
 	// due to free()
-	do
-	{
-		if (oldanchor.state == SB_EMPTY)
-		{
+	do {
+		if (oldanchor.state == SB_EMPTY) {
 			desc_retire(desc);
 			goto retry;
 		}
@@ -374,8 +346,7 @@ retry:
 	block_num += block_take;
 }
 
-void BaseMeta::malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_num)
-{
+void BaseMeta::malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_num) {
 	ProcHeap* heap = &heaps[sc_idx];
 	SizeClassData* sc = get_sizeclass_by_idx(sc_idx);
 
@@ -392,8 +363,7 @@ void BaseMeta::malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_
 
 	// prepare block list
 	char* superblock = desc->superblock;
-	for (uint32_t idx = 0; idx < maxcount - 1; ++idx)
-	{
+	for (uint32_t idx = 0; idx < maxcount - 1; ++idx) {
 		char* block = superblock + idx * block_size;
 		char* next = superblock + (idx + 1) * block_size;
 		*(char**)block = next;
@@ -422,79 +392,6 @@ void BaseMeta::malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_
 	assert(anchor.state == SB_FULL);
 
 	block_num += maxcount;
-}
-
-Descriptor* BaseMeta::desc_alloc(){
-	DescriptorNode oldhead = avail_desc.load();
-	while(true){
-		Descriptor* desc = oldhead.get_desc();
-		if (desc) {
-			DescriptorNode newhead = desc->next_free.load();
-			newhead.set(newhead.get_desc(), oldhead.get_counter());
-			if (avail_desc.compare_exchange_weak(oldhead, newhead)) {
-				assert(desc->block_size == 0);
-				return desc;
-			}
-		}
-		else {
-			// allocate several pages
-			// get first descriptor, this is returned to caller
-			uint64_t space_num = new_space(0);
-			// cout<<"allocate desc space "<<space_num<<endl;
-			// spaces[0][space_num].sec_curr.store((void*)((size_t)spaces[0][space_num].sec_start+spaces[0][space_num].sec_bytes));
-			char* ptr = (char*)spaces[0][space_num].sec_start;
-			Descriptor* ret = (Descriptor*)ptr;
-			// organize list with the rest of descriptors
-			// and add to available descriptors
-			{
-				Descriptor* first = nullptr;
-				Descriptor* prev = nullptr;
-
-				char* curr_ptr = ptr + sizeof(Descriptor);
-				curr_ptr = ALIGN_ADDR(curr_ptr, CACHELINE_SIZE);
-				first = (Descriptor*)curr_ptr;
-				while (curr_ptr + sizeof(Descriptor) <
-						ptr + DESC_SPACE_SIZE)
-				{
-					Descriptor* curr = (Descriptor*)curr_ptr;
-					if (prev)
-						prev->next_free.store({ curr });
-
-					prev = curr;
-					curr_ptr = curr_ptr + sizeof(Descriptor);
-					curr_ptr = ALIGN_ADDR(curr_ptr, CACHELINE_SIZE);
-				}
-
-				prev->next_free.store({ nullptr });
-
-				// add list to available descriptors
-				DescriptorNode oldhead = avail_desc.load();
-				DescriptorNode newhead;
-				do
-				{
-					prev->next_free.store(oldhead);
-					newhead.set(first, oldhead.get_counter() + 1);
-				}
-				while (!avail_desc.compare_exchange_weak(oldhead, newhead));
-			}
-
-			return ret;
-		}
-	}
-}
-
-
-inline void BaseMeta::desc_retire(Descriptor* desc){
-	desc->block_size = 0;
-	DescriptorNode oldhead = avail_desc.load();
-	DescriptorNode newhead;
-	do
-	{
-		desc->next_free.store(oldhead);
-
-		newhead.set(desc, oldhead.get_counter() + 1);
-	}
-	while (!avail_desc.compare_exchange_weak(oldhead, newhead));
 }
 
 inline void BaseMeta::organize_sb_list(void* start, uint64_t count, uint64_t stride){
@@ -529,6 +426,7 @@ inline void BaseMeta::small_sb_retire(void* sb, size_t size){
 
 	free_sb->push(sb);
 }
+
 //todo
 void* BaseMeta::large_sb_alloc(size_t size, uint64_t alignement){
 	cout<<"WARNING: Allocating a large object is not persisted yet!\n";
@@ -563,21 +461,85 @@ void BaseMeta::large_sb_retire(void* sb, size_t size){
 	munmap(sb, size);
 }
 
-void* BaseMeta::alloc_large_block(size_t sz){
-	void* addr = large_sb_alloc(sz + HEADER_SIZE, SBSIZE);
-	*((char*)addr) = (char)LARGE;
-	addr += TYPE_SIZE;
-	*((uint64_t*)addr) = sz + HEADER_SIZE;
-	FLUSH(addr-TYPE_SIZE);
-	FLUSH(addr);
+Descriptor* BaseMeta::desc_alloc(){
+	DescriptorNode oldhead = avail_desc.load();
+	while(true){
+		Descriptor* desc = oldhead.get_desc();
+		if (desc) {
+			DescriptorNode newhead = desc->next_free.load();
+			newhead.set(newhead.get_desc(), oldhead.get_counter());
+			if (avail_desc.compare_exchange_weak(oldhead, newhead)) {
+				assert(desc->block_size == 0);
+				return desc;
+			}
+		}
+		else {
+			// allocate several pages
+			// get first descriptor, this is returned to caller
+			uint64_t space_num = new_space(0);
+			// cout<<"allocate desc space "<<space_num<<endl;
+			// spaces[0][space_num].sec_curr.store((void*)((size_t)spaces[0][space_num].sec_start+spaces[0][space_num].sec_bytes));
+			char* ptr = (char*)spaces[0][space_num].sec_start;
+			Descriptor* ret = (Descriptor*)ptr;
+			// organize list with the rest of descriptors
+			// and add to available descriptors
+			{
+				Descriptor* first = nullptr;
+				Descriptor* prev = nullptr;
+
+				char* curr_ptr = ptr + sizeof(Descriptor);
+				curr_ptr = ALIGN_ADDR(curr_ptr, CACHELINE_SIZE);
+				first = (Descriptor*)curr_ptr;
+				while (curr_ptr + sizeof(Descriptor) <
+						ptr + DESC_SPACE_SIZE) {
+					Descriptor* curr = (Descriptor*)curr_ptr;
+					if (prev)
+						prev->next_free.store({ curr });
+
+					prev = curr;
+					curr_ptr = curr_ptr + sizeof(Descriptor);
+					curr_ptr = ALIGN_ADDR(curr_ptr, CACHELINE_SIZE);
+				}
+
+				prev->next_free.store({ nullptr });
+
+				// add list to available descriptors
+				DescriptorNode oldhead = avail_desc.load();
+				DescriptorNode newhead;
+				do {
+					prev->next_free.store(oldhead);
+					newhead.set(first, oldhead.get_counter() + 1);
+				}
+				while (!avail_desc.compare_exchange_weak(oldhead, newhead));
+			}
+
+			return ret;
+		}
+	}
+}
+
+inline void BaseMeta::desc_retire(Descriptor* desc){
+	desc->block_size = 0;
+	DescriptorNode oldhead = avail_desc.load();
+	DescriptorNode newhead;
+	do {
+		desc->next_free.store(oldhead);
+
+		newhead.set(desc, oldhead.get_counter() + 1);
+	} while (!avail_desc.compare_exchange_weak(oldhead, newhead));
+	desc->in_use = false;
+	FLUSH(desc);
 	FLUSHFENCE;
-	return (void*)(addr + PTR_SIZE);
+}
+
+void* BaseMeta::alloc_large_block(size_t sz){
+	void* addr = large_sb_alloc(sz, SBSIZE);
+	return addr;
 }
 
 void* BaseMeta::do_malloc(size_t size){
 	// large block allocation
-	if (UNLIKELY(size > MAX_SZ))
-	{
+	if (UNLIKELY(size > MAX_SZ)) {
 		size_t pages = PAGE_CEILING(size);
 		Descriptor* desc = desc_alloc();
 		assert(desc);
@@ -623,8 +585,7 @@ void BaseMeta::do_free(void* ptr){
 	DBG_PRINT("Heap %p, Desc %p, ptr %p", heap, desc, ptr);
 
 	// large allocation case
-	if (UNLIKELY(!sc_idx))
-	{
+	if (UNLIKELY(!sc_idx)) {
 		char* superblock = desc->superblock;
 
 		// unregister descriptor

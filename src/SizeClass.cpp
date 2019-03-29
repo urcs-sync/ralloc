@@ -4,7 +4,7 @@
 
 // here we use same size for sbs in different sizeclass for easy management
 #define SIZE_CLASS_bin_yes(block_size, pages) \
-	{ block_size, SBSIZE, 0, 0 },
+	{ block_size, SBSIZE, SBSIZE/block_size, SBSIZE/block_size },
 /* #define SIZE_CLASS_bin_yes(block_size, pages) \
  	{ block_size, pages * PAGESIZE, 0, 0 },
  	*/
@@ -55,10 +55,10 @@ SizeClass::SizeClass():
 	for (size_t sc_idx = 1; sc_idx < MAX_SZ_IDX; ++sc_idx)
 	{
 		SizeClassData& sc = sizeclasses[sc_idx];
-		// block_num calc
-		sc.block_num = sc.sb_size / sc.block_size;
-		// cache_block_num calc
-		sc.cache_block_num = sc.block_num * 1;
+		// // block_num calc
+		// sc.block_num = sc.sb_size / sc.block_size;
+		// // cache_block_num calc
+		// sc.cache_block_num = sc.block_num * 1;
 		assert(sc.block_num > 0);
 		assert(sc.block_num < MAX_BLOCK_NUM);
 		assert(sc.block_num >= sc.cache_block_num);
