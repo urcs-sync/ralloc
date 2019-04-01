@@ -29,10 +29,7 @@ pmmalloc* pmmalloc::obj = nullptr;
 void pmmalloc::_init(std::string id, uint64_t thd_num){
 	obj = new pmmalloc(id, thd_num); 
 }
-void* pmmalloc::_p_malloc(size_t sz){
-	assert(obj!=nullptr&&"pmmalloc isn't initialized!");
-	return obj->__p_malloc(sz);
-}
+
 void pmmalloc::_p_free(void* ptr){
 	assert(obj!=nullptr&&"pmmalloc isn't initialized!");
 	obj->__p_free(ptr);
@@ -90,7 +87,8 @@ pmmalloc::~pmmalloc(){
 	delete mgr;
 }
 
-inline void* pmmalloc::__p_malloc(size_t sz){
+//cannot inline or linker cannot find it.
+void* pmmalloc::__p_malloc(size_t sz){
 	return base_md->do_malloc(sz);
 }
 

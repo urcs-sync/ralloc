@@ -47,7 +47,7 @@ const int DESC_SPACE_CAP = 128;//number of desc sbs per desc space
 const uint64_t SB_SPACE_SIZE = 1*1024*1024*1024ULL;
 const int PAGESIZE = 4096;//4K
 const uint64_t PAGE_MASK = (uint64_t)PAGESIZE - 1;
-const int SBSIZE = (PAGESIZE * PAGESIZE); // size of a superblock 16MB
+const int SBSIZE = (16 * PAGESIZE); // size of a superblock 16MB
 const int DESCSBSIZE = (1024 * 64);//assume sizeof(Descriptor) is 64
 const int DESC_SPACE_SIZE = DESC_SPACE_CAP * DESCSBSIZE;
 //Note: by this config, approximately 1 sb space needs 8 desc space
@@ -74,4 +74,5 @@ const uint64_t FREELIST_CAP = 10*1024*1024ULL; //largest amount of nodes in free
 const uint64_t FREESTACK_CAP = FREELIST_CAP;
 const uint64_t FREEQUEUE_CAP = FREELIST_CAP;
 const uint64_t PARTIAL_CAP = 10*1024ULL;//largest amount of nodes in partial list
+const int PPTR_PREFIX = 0X5AB0; // prefix for pptr offset. 7A as 'Z' and B0 as "BO", the name of my dearest ;)
 #endif

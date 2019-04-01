@@ -20,7 +20,8 @@ sb allocation/deallocation (management)
 	maybe put large allocation and small in different region
 		~small sb and freelist of it
 		~use FILO instead MSQ for sb freelist
-		implement ordered list
+		easiest way to do large sb allocation:
+			allocate a new space and get multiple of SBSIZE for the large allocation, and rest for future large allocation. Once it's freed, the large sb will be divided to several sb and put to free_sb for small allocation
 		when create a large sb space, we treat the whole space as a free sb and extract to use. the size of space is max(desired size, large_sb_space_size)
 	how to deallocate a region in nonblocking way
 mmap multiple regions and represent them by ids, and introduce smart ptrs using id and offset to dereference.
@@ -31,8 +32,8 @@ mmap multiple regions and represent them by ids, and introduce smart ptrs using 
 		~fix segfault after destroying
 ~change var names in doc.
 ~thread id lookup
-redesign the number of sizeclasses in BaseMeta
-use one desc pointer per sb (currently it's one per block)
+～redesign the number of sizeclasses in BaseMeta
+～use one desc pointer per sb (currently it's one per block)
 garbage collection
 	put filter function in blocks
 	metadata fix/reconstruction

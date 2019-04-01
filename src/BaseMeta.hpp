@@ -104,9 +104,7 @@ public:
 	Descriptor* _desc = nullptr;
 	// aba counter
 
-public:
-	void set(Descriptor* desc, uint64_t counter)
-	{
+	void set(Descriptor* desc, uint64_t counter) {
 		// desc must be cacheline aligned
 		assert(((uint64_t)desc & CACHELINE_MASK) == 0);
 		// counter may be incremented but will always be stored in
@@ -114,18 +112,14 @@ public:
 		_desc = (Descriptor*)((uint64_t)desc | (counter & CACHELINE_MASK));
 	}
 
-	Descriptor* get_desc() const
-	{
+	Descriptor* get_desc() const {
 		return (Descriptor*)((uint64_t)_desc & ~CACHELINE_MASK);
 	}
 
-	uint64_t get_counter() const
-	{
+	uint64_t get_counter() const {
 		return (uint64_t)((uint64_t)_desc & CACHELINE_MASK);
 	}
-
 };
-
 static_assert(sizeof(DescriptorNode) == sizeof(uint64_t), "Invalid descriptor node size");
 
 /* Superblock descriptor
@@ -148,8 +142,8 @@ struct Descriptor {
 	PM_PERSIST char* superblock;
 	//todo :make it pptr
 	PM_PERSIST ProcHeap* heap;
-	PM_PERSIST uint32_t block_size; // block size
-	PM_PERSIST uint32_t maxcount;
+	PM_PERSIST uint32_t block_size; // block size acquired from sc
+	PM_PERSIST uint32_t maxcount; // block number acquired from sc
 	PM_PERSIST bool in_use = false; // false if it's free, true if it's in use
 }__attribute__((aligned(CACHELINE_SIZE)));
 
@@ -158,7 +152,10 @@ struct ProcHeap {
 public:
 	// ptr to descriptor, head of partial descriptor list
 	PM_TRANSIENT std::atomic<DescriptorNode> partial_list;
-	// size class index; never change after init
+	/* size class index; never change after init
+	 * though it's tagged PM_PERSIST, in 1/sc scheme,
+	 * we don't have to flush it at all; it's fixed.
+	 */
 	PM_PERSIST size_t sc_idx;
 }__attribute__((aligned(CACHELINE_SIZE)));
 
@@ -170,34 +167,40 @@ struct Section {
 }__attribute__((aligned(CACHELINE_SIZE)));
 
 class BaseMeta {
-	/* transient metadata and tools */
-	PM_TRANSIENT RegionManager* mgr;//assigned when BaseMeta constructs
-	//unused small sb
+	// to manage (expand) persist region; assigned when BaseMeta constructs
+	PM_TRANSIENT RegionManager* mgr;
+	// unused small sb
 	PM_TRANSIENT ArrayStack<void*>* free_sb;
 	// descriptor recycle list
 	PM_TRANSIENT std::atomic<DescriptorNode> avail_desc;
 	// metadata for pagemap
 	PM_TRANSIENT PageMap pagemap;
-	/* sizeclass data for lookup. It's determined statically so we make it transient */
+	/* sizeclass data for lookup;
+	 * it's determined statically so we make it transient 
+	 */
 	PM_TRANSIENT SizeClass sizeclass;
 	/* thread-local cache */
 	PM_TRANSIENT static __thread TCacheBin t_cache[MAX_SZ_IDX]
 		__attribute__((aligned(CACHELINE_SIZE)));
 
-	/* persistent metadata defined here */
-	//base metadata
+	// so far we don't need thread_num at all
 	PM_PERSIST uint64_t thread_num;
-
+	/* 1 heap per sc, and don't have to be persistent in this scheme
+	 * todo: alloc a transient region for it in order to share among APPs
+	 */
 	PM_PERSIST ProcHeap heaps[MAX_SZ_IDX];
-
-	PM_PERSIST void* roots[MAX_ROOTS] = {nullptr};//persistent root
-	PM_PERSIST std::atomic<uint64_t> space_num[3];//0:desc, 1:small sb, 2: large sb
-	PM_PERSIST Section spaces[3][MAX_SECTION];//0:desc, 1:small sb, 2: large sb
-	/* persistent metadata ends here */
+	//persistent root
+	PM_PERSIST void* roots[MAX_ROOTS] = {nullptr};
+	//0:desc, 1:small sb, 2: large sb
+	PM_PERSIST std::atomic<uint64_t> space_num[3];
+	//0:desc, 1:small sb, 2: large sb
+	PM_PERSIST Section spaces[3][MAX_SECTION];
 public:
 	BaseMeta(RegionManager* m, uint64_t thd_num = MAX_THREADS);
 	~BaseMeta(){
-		//usually BaseMeta shouldn't be destructed, and will be reused in the next time
+		/* usually BaseMeta shouldn't be destructed, 
+		 * and will be reused in the next time
+		 */
 		std::cout<<"Warning: BaseMeta is being destructed!\n";
 		cleanup();
 	}
