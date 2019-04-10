@@ -54,7 +54,15 @@ sh6bench_test: ./benchmark/sh6bench.cpp libpmmalloc.a
 larson_test: ./benchmark/larson.cpp libpmmalloc.a
 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
 
-libpmmalloc.a:../obj/pmmalloc.o ../obj/BaseMeta.o ../obj/RegionManager.o ../obj/thread_util.o ../obj/PageMap.o ../obj/SizeClass.o
+# Active false sharing
+cache-thrash_test: ./benchmark/cache-thrash.cpp libpmmalloc.a
+	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
+
+# Passive false sharing
+cache-scratch_test: ./benchmark/cache-scratch.cpp libpmmalloc.a
+	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
+
+libpmmalloc.a:../obj/pmmalloc.o ../obj/BaseMeta.o ../obj/RegionManager.o ../obj/thread_util.o ../obj/PageMap.o ../obj/TCache.o ../obj/SizeClass.o 
 	ar -rcs $@ $^
 
 clean:
