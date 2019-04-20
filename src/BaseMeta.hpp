@@ -139,7 +139,7 @@ struct Descriptor {
 	// anchor; is reconstructed during recovery
 	PM_TRANSIENT std::atomic<Anchor> anchor;
 
-	PM_PERSIST char* superblock;
+	PM_PERSIST char* superblock;//pptr
 	//todo :make it pptr
 	PM_PERSIST ProcHeap* heap;
 	PM_PERSIST uint32_t block_size; // block size acquired from sc
@@ -161,42 +161,31 @@ public:
 
 //persistent sections
 struct Section {
-	PM_PERSIST void* sec_start;
+	PM_PERSIST void* sec_start;//pptr
 	// PM_PERSIST std::atomic<void*> sec_curr;
 	PM_PERSIST size_t sec_bytes;
 }__attribute__((aligned(CACHELINE_SIZE)));
 
 class BaseMeta {
-	// to manage (expand) persist region; assigned when BaseMeta constructs
-	PM_TRANSIENT RegionManager* mgr;
 	// unused small sb
 	PM_TRANSIENT ArrayStack<void*>* free_sb;
 	// descriptor recycle list
 	PM_TRANSIENT std::atomic<DescriptorNode> avail_desc;
-	// metadata for pagemap
-	PM_TRANSIENT PageMap pagemap;
-	/* sizeclass data for lookup;
-	 * it's determined statically so we make it transient 
-	 */
-	PM_TRANSIENT SizeClass sizeclass;
-	/* thread-local cache */
-	PM_TRANSIENT static __thread TCacheBin t_cache[MAX_SZ_IDX]
-		__attribute__((aligned(CACHELINE_SIZE)));
 
 	// so far we don't need thread_num at all
-	PM_PERSIST uint64_t thread_num;
+	// PM_PERSIST uint64_t thread_num;
 	/* 1 heap per sc, and don't have to be persistent in this scheme
 	 * todo: alloc a transient region for it in order to share among APPs
 	 */
 	PM_PERSIST ProcHeap heaps[MAX_SZ_IDX];
 	//persistent root
-	PM_PERSIST void* roots[MAX_ROOTS] = {nullptr};
+	PM_PERSIST void* roots[MAX_ROOTS] = {nullptr};//gc_ptr_base*
 	//0:desc, 1:small sb, 2: large sb
 	PM_PERSIST std::atomic<uint64_t> space_num[3];
 	//0:desc, 1:small sb, 2: large sb
 	PM_PERSIST Section spaces[3][MAX_SECTION];
 public:
-	BaseMeta(RegionManager* m, uint64_t thd_num = MAX_THREADS);
+	BaseMeta(uint64_t thd_num = MAX_THREADS);
 	~BaseMeta(){
 		/* usually BaseMeta shouldn't be destructed, 
 		 * and will be reused in the next time
@@ -206,7 +195,6 @@ public:
 	}
 	void* do_malloc(size_t size);
 	void do_free(void* ptr);
-	inline void set_mgr(RegionManager* m){mgr = m;}
 	inline uint64_t min(uint64_t a, uint64_t b){return a>b?b:a;}
 	inline uint64_t max(uint64_t a, uint64_t b){return a>b?a:b;}
 	inline void* set_root(void* ptr, uint64_t i){

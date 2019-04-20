@@ -44,7 +44,6 @@
 #ifdef PMMALLOC
 
   #include "pmmalloc.hpp"
-  pmmalloc* alloc = nullptr;
   #define pm_malloc(s) PM_malloc(s)
   #define pm_free(p) PM_free(p)
 
@@ -150,7 +149,7 @@ extern "C" void * worker (void * arg)
   workerArg w1 = *w;
   for (int i = 0; i < w1._iterations; i++) {
     // Allocate the object.
-    char * obj = new char[w1._objSize];
+    char * obj = (char*)pm_malloc(sizeof(char)*w1._objSize);
     // Write into it a bunch of times.
     for (int j = 0; j < w1._repetitions; j++) {
       for (int k = 0; k < w1._objSize; k++) {
@@ -188,7 +187,13 @@ int main (int argc, char * argv[])
   HL::Fred::setConcurrency (HL::CPUInfo::getNumProcessors());
 
   int i;
-
+#ifdef PMMALLOC
+  PM_init("test",nthreads+1);//additional 1 for main thread
+  // tid = thread_count.fetch_add(1);
+#elif defined (MAKALU)
+  __map_persistent_region();
+  MAK_start(&__nvm_region_allocator);
+#endif
   // Allocate nthreads objects and distribute them among the threads.
   char ** objs = (char**)pm_malloc(sizeof(char *)*nthreads);
   for (i = 0; i < nthreads; i++) {
@@ -209,8 +214,14 @@ int main (int argc, char * argv[])
   t.stop();
 
   delete [] threads;
-  delete [] objs;
+  pm_free(objs);
 
   printf ("Time elapsed = %f seconds.\n", (double) t);
+
+#ifdef PMMALLOC
+  PM_close();
+#elif defined (MAKALU)
+  MAK_close();
+#endif
   return 0;
 }

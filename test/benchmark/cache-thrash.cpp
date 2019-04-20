@@ -45,7 +45,6 @@ using namespace std;
 #ifdef PMMALLOC
 
   #include "pmmalloc.hpp"
-  pmmalloc* alloc = nullptr;
   #define pm_malloc(s) PM_malloc(s)
   #define pm_free(p) PM_free(p)
 
@@ -190,7 +189,12 @@ int main (int argc, char * argv[])
   HL::Fred::setConcurrency (HL::CPUInfo::getNumProcessors());
 
   int i;
-
+#ifdef PMMALLOC
+  PM_init("test",nthreads);
+#elif defined (MAKALU)
+  __map_persistent_region();
+  MAK_start(&__nvm_region_allocator);
+#endif
   HL::Timer t;
   t.start();
 
@@ -204,4 +208,9 @@ int main (int argc, char * argv[])
   t.stop();
 
   cout << "Time elapsed = " << (double) t << " seconds." << endl;
+#ifdef PMMALLOC
+  PM_close();
+#elif defined (MAKALU)
+  MAK_close();
+#endif
 }

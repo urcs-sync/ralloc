@@ -1,16 +1,16 @@
 #!/bin/bash
 
-if [[ $# -ne 3 ]]; then
+if [[ $# -ne 1 ]]; then
   echo "usage: passive-false-single.sh <num threads>"
   echo ""
   echo "wraps a single run of passive-false aka cache-scratch"
   echo ""
   echo "example:"
-  echo "  ./run/passive-false-single.sh 1 "
+  echo "  ./passive-false-single.sh 1 "
   exit 1
 fi
 
-BINARY=./cache-scratch
+BINARY=./cache-scratch_test
 THREADS=$1
 rm -f /tmp/cache-scratch
 $BINARY $THREADS 1000 8 1000000 2>&1 > /tmp/cache-scratch &

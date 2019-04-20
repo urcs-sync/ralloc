@@ -1,6 +1,6 @@
 #!/bin/bash
 
 make clean
-make cache-scratsh_test
+make cache-scratch_test
 rm -rf /dev/shm/*
 ./passive-false-single.sh 4

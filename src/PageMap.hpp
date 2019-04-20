@@ -84,5 +84,9 @@ private:
 	RegionManager* mgr = nullptr;//initialized when ArrayStack constructs
 };
 
+namespace pmmalloc{
+	// metadata for pagemap
+	extern PageMap pagemap;
+}
 #endif // __PAGEMAP_H
 

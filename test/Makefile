@@ -4,9 +4,9 @@ CXX = g++
 WARNING_FLAGS:=-ftrapv -Wreturn-type -W -Wall \
 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-parameter
 
-FLAGS = -O0 -g -fpermissive -std=c++17 -DDESTROY $(WARNING_FLAGS)
-PMMALLOC_FLAGS = $(FLAGS) -DPMMALLOC -L. -lpmmalloc
-PMMALLOC_GC_FLAGS = $(FLAGS) -DGC -DPMMALLOC -L. -lpmmalloc
+FLAGS = -O3 -g -fpermissive -std=c++17 -DDESTROY $(WARNING_FLAGS)
+PMMALLOC_FLAGS = $(FLAGS) -DPMMALLOC -L.
+PMMALLOC_GC_FLAGS = $(FLAGS) -DGC -DPMMALLOC -L.
 MAKALU_FLAGS = $(FLAGS) -I../ext/makalu_alloc/include -DMAKALU -L../ext/makalu_alloc/lib -lmakalu -L~/.local/lib/
 CXXFLAGS = $(PMMALLOC_GC_FLAGS)
 # CXXFLAGS = $(MAKALU_FLAGS)
@@ -14,7 +14,7 @@ CXXFLAGS = $(PMMALLOC_GC_FLAGS)
 LIBS = -pthread -lstdc++ -latomic -fPIC -ljemalloc 
 
 
-all: msqueue_test region_manager_test base_meta_test pmmalloc_test arraystack_test arrayqueue_test benchmark_test
+all: benchmark_pm
 
 trivial_test: trivial_test.cpp
 	$(CXX) -I $(SRC) -o $@ $^ $(CXXFLAGS) $(LIBS)
@@ -43,7 +43,7 @@ arrayqueue_test: arrayqueue_test.cpp libpmmalloc.a
 ../obj/%.o: ../src/%.cpp
 	$(CXX) -I $(SRC) -o $@ -c $^ $(CXXFLAGS)
 
-benchmark_pm: threadtest_test sh6bench_test_pm larson_test_pm #cache-scratch_test cache-thrash_test
+benchmark_pm: threadtest_test sh6bench_test larson_test cache-scratch_test cache-thrash_test
 
 threadtest_test: ./benchmark/threadtest.cpp libpmmalloc.a
 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
@@ -62,7 +62,7 @@ cache-thrash_test: ./benchmark/cache-thrash.cpp libpmmalloc.a
 cache-scratch_test: ./benchmark/cache-scratch.cpp libpmmalloc.a
 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
 
-libpmmalloc.a:../obj/pmmalloc.o ../obj/BaseMeta.o ../obj/RegionManager.o ../obj/thread_util.o ../obj/PageMap.o ../obj/TCache.o ../obj/SizeClass.o 
+libpmmalloc.a:../obj/RegionManager.o ../obj/PageMap.o ../obj/BaseMeta.o ../obj/pmmalloc.o ../obj/TCache.o ../obj/SizeClass.o 
 	ar -rcs $@ $^
 
 clean:

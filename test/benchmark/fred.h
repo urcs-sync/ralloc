@@ -31,7 +31,7 @@ public:
 
   void create (ThreadFunctionType function, void * arg) {
 #ifdef PMMALLOC
-    PM_pthread_create (&t, &attr, function, arg);
+    pthread_create (&t, &attr, function, arg);
 #elif defined (MAKALU)
     MAK_pthread_create (&t, &attr, function, arg);
 #else

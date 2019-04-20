@@ -24,31 +24,16 @@
 
 using namespace std;
 
-//required by linker
-pmmalloc* pmmalloc::obj = nullptr;
-void pmmalloc::_init(std::string id, uint64_t thd_num){
-	obj = new pmmalloc(id, thd_num); 
-}
-
-void pmmalloc::_p_free(void* ptr){
-	assert(obj!=nullptr&&"pmmalloc isn't initialized!");
-	obj->__p_free(ptr);
-}
-void* pmmalloc::_set_root(void* ptr, uint64_t i){
-	assert(obj!=nullptr&&"pmmalloc isn't initialized!");
-	return obj->__set_root(ptr,i);
-}
-void* pmmalloc::_get_root(uint64_t i){
-	assert(obj!=nullptr&&"pmmalloc isn't initialized!");
-	return obj->__get_root(i);
-}
-bool pmmalloc::_collect(){
-	assert(obj!=nullptr&&"pmmalloc isn't initialized!");
-	return obj->__collect();
-}
-void pmmalloc::_close(){
-	delete obj;obj = nullptr; 
-}
+namespace pmmalloc{
+	std::string filepath;
+	uint64_t thread_num;
+	/* manager to map, remap, and unmap the heap */
+	RegionManager* mgr;//initialized when pmmalloc constructs
+	/* persistent metadata and their layout */
+	BaseMeta* base_md;
+	//GC
+};
+using namespace pmmalloc;
 
 /* 
  * mmap the existing heap file corresponding to id. aka restart,
@@ -56,8 +41,8 @@ void pmmalloc::_close(){
  * if such a heap doesn't exist, create one. aka start.
  * id is the distinguishable identity of applications.
  */
-pmmalloc::pmmalloc(std::string id, uint64_t thd_num) : 
-	thread_num(thd_num){
+void PM_init(std::string id, uint64_t thd_num){
+	thread_num = thd_num;
 	filepath = HEAPFILE_PREFIX + id;
 	bool restart = RegionManager::exists_test(filepath);
 	cout<<"sizeof basemeta:"<<sizeof(BaseMeta)<<endl;
@@ -67,7 +52,6 @@ pmmalloc::pmmalloc(std::string id, uint64_t thd_num) :
 		mgr = new RegionManager(filepath);
 		void* hstart = mgr->__fetch_heap_start();
 		base_md = (BaseMeta*) hstart;
-		base_md->set_mgr(mgr);
 		base_md->restart();
 		//collect if the heap is dirty
 	} else {
@@ -76,38 +60,31 @@ pmmalloc::pmmalloc(std::string id, uint64_t thd_num) :
 		bool res = mgr->__nvm_region_allocator((void**)&base_md,sizeof(void*),sizeof(BaseMeta));
 		if(!res) assert(0&&"mgr allocation fails!");
 		mgr->__store_heap_start(base_md);
-		new (base_md) BaseMeta(mgr, thd_num);
+		new (base_md) BaseMeta(thd_num);
 	}
 }
 
-//destructor aka close
-pmmalloc::~pmmalloc(){
-	//close
+void PM_close(){
 	base_md->cleanup();
 	delete mgr;
 }
 
-//cannot inline or linker cannot find it.
-void* pmmalloc::__p_malloc(size_t sz){
-	return base_md->do_malloc(sz);
-}
-
-inline void pmmalloc::__p_free(void* ptr){
-	base_md->do_free(ptr);
-}
-
 //manually request to collect garbage
-bool pmmalloc::__collect(){
+bool PM_collect(){
 	//TODO
 	return true;
 }
 
-//return the old i-th root, if exists.
-inline void* pmmalloc::__set_root(void* ptr, uint64_t i){
-	return base_md->set_root(ptr,i);
+void* PM_malloc(size_t sz){
+	return base_md->do_malloc(sz);
 }
 
-//return the current i-th root, or nullptr if not exist.
-inline void* pmmalloc::__get_root(uint64_t i){
+void PM_free(void* ptr){
+	base_md->do_free(ptr);
+}
+void* PM_set_root(void* ptr, uint64_t i){
+	return base_md->set_root(ptr,i);
+}
+void* PM_get_root(uint64_t i){
 	return base_md->get_root(i);
 }

@@ -48,8 +48,12 @@ public:
 	inline size_t get_sizeclass(size_t size){return sizeclass_lookup[size];}
 	inline SizeClassData* get_sizeclass_by_idx(size_t idx){return &sizeclasses[idx];}
 };
+namespace pmmalloc{
+	extern SizeClass sizeclass;
+}
 
 // size class data, from jemalloc 5.0
+// block_size = 1<<lg_grp + ndelta<<lg_delta
 #define SIZE_CLASSES \
   /* index, lg_grp, lg_delta, ndelta, psz, bin, pgs, lg_delta_lookup */ \
 	SC(  0,	  3,		3,	  0,  no, yes,   1,  3) \

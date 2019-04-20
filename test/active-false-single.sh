@@ -1,12 +1,12 @@
 #!/bin/bash
 
-if [[ $# -ne 3 ]]; then
+if [[ $# -ne 1 ]]; then
   echo "usage: active-false-single.sh <num threads>"
   echo ""
   echo "wraps a single run of active-false aka cache-thrash"
   echo ""
   echo "example:"
-  echo "  ./run/active-false-single.sh 1 "
+  echo "  ./active-false-single.sh 1 "
   exit 1
 fi
 

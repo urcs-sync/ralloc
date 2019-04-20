@@ -4,15 +4,18 @@
 
 #include "BaseMeta.hpp"
 
-// some metadata from LRMalloc
-__thread TCacheBin BaseMeta::t_cache[MAX_SZ_IDX];
-
 using namespace std;
-
-BaseMeta::BaseMeta(RegionManager* m, uint64_t thd_num) : 
-	mgr(m),
-	thread_num(thd_num) {
-	FLUSH(&thread_num);
+namespace pmmalloc{
+	/* manager to map, remap, and unmap the heap */
+	extern RegionManager* mgr;//initialized when pmmalloc constructs
+	//GC
+};
+using namespace pmmalloc;
+BaseMeta::BaseMeta(uint64_t thd_num) 
+// : 
+	// thread_num(thd_num) {
+{
+	// FLUSH(&thread_num);
 	// free_desc = new ArrayQueue<Descriptor*>("pmmalloc_freedesc");
 	free_sb = new ArrayStack<void*>("pmmalloc_freesb");
 	/* allocate these persistent data into specific memory address */
@@ -35,6 +38,7 @@ BaseMeta::BaseMeta(RegionManager* m, uint64_t thd_num) :
 }
 
 uint64_t BaseMeta::new_space(int i){//i=0:desc, i=1:small sb, i=2:large sb
+	FLUSH(&space_num[i]);
 	FLUSHFENCE;
 	uint64_t my_space_num = space_num[i].fetch_add(1,std::memory_order_relaxed);
 	if(my_space_num>=MAX_SECTION) assert(0&&"space number reaches max!");
@@ -187,8 +191,22 @@ void BaseMeta::flush_cache(size_t sc_idx, TCacheBin* cache) {
 		assert(newanchor.avail < maxcount);
 		assert(newanchor.count < maxcount);
 
-		// CAS success, can free block
+		// CAS success
 		if (newanchor.state == SB_EMPTY) {
+			/* In this case, state in desc is set to be empty (aka to free)
+			 * though this desc may still be in partial list.
+			 * Others attempt to allocate from desc's sb will
+			 * fail and help retire desc.
+			 * 
+			 * In this routine, we unregister desc and then retire sb.
+			 * Because sb retire must happen after unregister desc,
+			 * no one else would touch this part of pagemap until sb 
+			 * is reallocate and thus it's safe.
+			 */
+			// 
+			desc->in_use = false;
+			FLUSH(desc);
+			FLUSHFENCE;
 			// unregister descriptor
 			unregister_desc(heap, superblock);
 
@@ -231,6 +249,8 @@ void BaseMeta::update_pagemap(ProcHeap* heap, char* ptr, Descriptor* desc, size_
 		pagemap.set_page_info(ptr + idx, info); 
 }
 
+// every time you alloc a new desc, you ought to register it
+// and register_desc will flush desc and issue a fence for you
 void BaseMeta::register_desc(Descriptor* desc) {
 	ProcHeap* heap = desc->heap;
 	char* ptr = desc->superblock;

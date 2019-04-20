@@ -11,7 +11,8 @@ struct thd_info{
 
 void* func_wrapper (void *args){
 	thd_info* thd = (thd_info*)args;
-	tid = thread_count.fetch_add(1);
+	// tid = thread_count.fetch_add(1);
+	tid = 0;
 	void* ret = (*thd->start_routine)(thd->arg);
 	delete thd;
 	return ret;

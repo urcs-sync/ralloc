@@ -58,7 +58,6 @@ void QueryPerformanceFrequency(long * x)
 #ifdef PMMALLOC
 
   #include "pmmalloc.hpp"
-  pmmalloc* alloc = nullptr;
   #define pm_malloc(s) PM_malloc(s)
   #define pm_free(p) PM_free(p)
 
@@ -145,7 +144,7 @@ void _beginthread (VoidFunction x, int, void * z)
 
   //  printf ("creating a thread.\n");
 #ifdef PMMALLOC
-  int v = PM_pthread_create(&pt, &pa, x, z);
+  int v = pthread_create(&pt, &pa, x, z);
 #elif defined (MAKALU)
   int v = MAK_pthread_create(&pt, &pa, x, z);
 #else
@@ -282,7 +281,7 @@ int main (int argc, char *argv[])
   // init_space = CountReservedSpace() ;
 #ifdef PMMALLOC
   PM_init("test",max_threads+1);//additional 1 for main thread
-  tid = thread_count.fetch_add(1);
+  // tid = thread_count.fetch_add(1);
 #elif defined (MAKALU)
   __map_persistent_region();
   MAK_start(&__nvm_region_allocator);
@@ -530,7 +529,7 @@ restart:
   pdea->finished = TRUE ;
 
   if( !stopflag ){
-    goto restart;
+    _beginthread(exercise_heap, 0, pdea) ;
   } else {
     // printf ("thread stopping.\n");
   }

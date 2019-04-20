@@ -1,6 +1,8 @@
 #include "PageMap.hpp"
 
 #include "RegionManager.hpp"
+
+PageMap pmmalloc::pagemap;
 void PageInfo::set(Descriptor* desc, size_t sc_idx)
 {
 	assert(((size_t)desc & SC_MASK) == 0);

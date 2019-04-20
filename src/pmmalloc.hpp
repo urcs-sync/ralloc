@@ -31,8 +31,7 @@
 void PM_init(std::string id, uint64_t thd_num = MAX_THREADS);
 void PM_close();
 bool PM_collect();
-template<class T = void>
-T* PM_malloc(size_t sz);
+void* PM_malloc(size_t sz);
 void PM_free(void* ptr);
 void* PM_set_root(void* ptr, uint64_t i);
 void* PM_get_root(uint64_t i);
@@ -81,67 +80,13 @@ void* PM_get_root(uint64_t i);
  *
  */
 
-class pmmalloc{
-public:
-	static void _init(std::string id, uint64_t thd_num);
-	static void _close();
-	static bool _collect();
-	template<class T>
-	static T* _p_malloc(size_t sz);
-	static void _p_free(void* ptr);
-	static void* _set_root(void* ptr, uint64_t i);
-	static void* _get_root(uint64_t i);
-
-private:
-	static pmmalloc* obj; // singleton
-	pmmalloc(std::string id, uint64_t thd_num); // start/restart the heap by the application id.
-	~pmmalloc(); // destructor to close the heap
-	void* __p_malloc(size_t sz);
-	void __p_free(void* ptr);
-	void* __set_root(void* ptr, uint64_t i);//return the old i-th root
-	void* __get_root(uint64_t i);
-	bool __collect();
-	std::string filepath;
-	uint64_t thread_num;
+namespace pmmalloc{
+	extern std::string filepath;
+	extern uint64_t thread_num;
 	/* manager to map, remap, and unmap the heap */
-	RegionManager* mgr;//initialized when pmmalloc constructs
+	extern RegionManager* mgr;//initialized when pmmalloc constructs
 	/* persistent metadata and their layout */
-	BaseMeta* base_md;
+	extern BaseMeta* base_md;
 	//GC
 };
-
-inline void PM_init(std::string id, uint64_t thd_num){
-	return pmmalloc::_init(id, thd_num);
-}
-inline void PM_close(){
-	return pmmalloc::_close();
-}
-inline bool PM_collect(){
-	return pmmalloc::_collect();
-}
-
-template<class T>
-inline T* PM_malloc(size_t sz){
-	return pmmalloc::_p_malloc<T>(sz);
-}
-inline void PM_free(void* ptr) {
-	return pmmalloc::_p_free(ptr);
-}
-inline void* PM_set_root(void* ptr, uint64_t i){
-	return pmmalloc::_set_root(ptr, i);
-}
-inline void* PM_get_root(uint64_t i) {
-	return pmmalloc::_get_root(i);
-}
-
-template<class T>
-T* pmmalloc::_p_malloc(size_t sz){
-	assert(obj!=nullptr&&"pmmalloc isn't initialized!");
-	return (T*)obj->__p_malloc(sizeof(T));
-}
-template<>
-inline void* pmmalloc::_p_malloc<void>(size_t sz){
-	assert(obj!=nullptr&&"pmmalloc isn't initialized!");
-	return obj->__p_malloc(sz);
-}
 #endif /* _PMMALLOC_HPP_ */

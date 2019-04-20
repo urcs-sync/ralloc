@@ -75,6 +75,10 @@ inline void TCacheBin::pop_list(char* block, uint32_t length)
 	_block = block;
 	_block_num -= length;
 }
-
+	/* thread-local cache */
+namespace pmmalloc{
+	extern __thread TCacheBin t_cache[MAX_SZ_IDX]
+		__attribute__((aligned(CACHELINE_SIZE)));
+}
 #endif // __TCACHE_H_
 

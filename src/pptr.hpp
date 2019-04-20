@@ -36,8 +36,16 @@ public:
 };
 
 struct gc_ptr_base : public ptr_base{
+	bool marked = false;
 	gc_ptr_base(void* v=nullptr):ptr_base(v){};
-	virtual vector<gc_ptr_base*> filter_func() {return {};}
+	void mark(gc_ptr_base* p){
+		//todo: check ptr is valid 
+		if(!marked){
+			marked = true;
+			p->filter_func();
+		}
+	}
+	virtual void filter_func() {return {};}
 };
 
 template<class T>
@@ -46,6 +54,7 @@ struct gc_ptr : public gc_ptr_base{
 	T* operator ->(){return (T*)val;}//arrow
 	gc_ptr(T* v=nullptr):gc_ptr_base((void*)v){};
 	gc_ptr(pptr<T> v):gc_ptr_base((void*)v.val){};
+	template <class F = mark_func>
 	vector<gc_ptr_base*> filter_func(){
 		return gc_ptr_base::filter_func();
 	}
