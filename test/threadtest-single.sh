@@ -14,7 +14,7 @@ BINARY=./threadtest_test
 THREADS=$1
 
 rm /tmp/threadtest
-$BINARY $THREADS 10000 100000 0 64 > /tmp/threadtest &
+$BINARY $THREADS 10000 100000 0 8 > /tmp/threadtest &
 pid=$!
 
 renice -n 19 -p $$ > /dev/null

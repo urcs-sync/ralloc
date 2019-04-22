@@ -11,7 +11,7 @@
 #define SIZE_CLASS_bin_no(block_size, pages)
 
 #define SC(index, lg_grp, lg_delta, ndelta, psz, bin, pgs, lg_delta_lookup) \
-	SIZE_CLASS_bin_##bin((1U << lg_grp) + (ndelta << lg_delta), pgs)
+	SIZE_CLASS_bin_##bin(((1U << lg_grp) + (ndelta << lg_delta)), pgs)
 
 SizeClass pmmalloc::sizeclass;
 
@@ -53,17 +53,17 @@ SizeClass::SizeClass():
 	// }
 
 	// fill block_num and cache_block_num
-	for (size_t sc_idx = 1; sc_idx < MAX_SZ_IDX; ++sc_idx)
-	{
-		SizeClassData& sc = sizeclasses[sc_idx];
-		// // block_num calc
-		// sc.block_num = sc.sb_size / sc.block_size;
-		// // cache_block_num calc
-		// sc.cache_block_num = sc.block_num * 1;
-		assert(sc.block_num > 0);
-		assert(sc.block_num < MAX_BLOCK_NUM);
-		assert(sc.block_num >= sc.cache_block_num);
-	}
+	// for (size_t sc_idx = 1; sc_idx < MAX_SZ_IDX; ++sc_idx)
+	// {
+	// 	SizeClassData& sc = sizeclasses[sc_idx];
+	// 	// block_num calc
+	// 	sc.block_num = sc.sb_size / sc.block_size;
+	// 	// cache_block_num calc
+	// 	sc.cache_block_num = sc.block_num * 1;
+	// 	assert(sc.block_num > 0);
+	// 	assert(sc.block_num < MAX_BLOCK_NUM);
+	// 	assert(sc.block_num >= sc.cache_block_num);
+	// }
 
 	// first size class reserved for large allocations
 	size_t lookupIdx = 0;

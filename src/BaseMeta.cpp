@@ -416,9 +416,9 @@ void BaseMeta::malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_
 
 inline void BaseMeta::organize_sb_list(void* start, uint64_t count, uint64_t stride){
 	// put new sbs to free_sb queue
-	uint64_t ptr = (uint64_t)start;
+	uint64_t ptr = (uint64_t)start + count*stride;
 	for(uint64_t i = 1; i < count; i++){
-		ptr += stride;
+		ptr -= stride;
 		free_sb->push((void*)ptr);
 	}
 }
