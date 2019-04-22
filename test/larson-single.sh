@@ -36,3 +36,4 @@ done
 (( rss = rss / n ))
 
 echo "{ \"threads\": $THREADS , \"ops\":  $ops , \"rss\": $rss }"
+echo "$THREADS, $ops, $rss" > larson.csv

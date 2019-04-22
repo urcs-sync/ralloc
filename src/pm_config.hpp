@@ -41,7 +41,7 @@
 const uint64_t MAX_FILESIZE = 16*1024*1024*1024ULL;
 const uint64_t MAX_THREADS = 512;
 const int MAX_ROOTS = 1024;
-const int MAX_SECTION = 10;
+const int MAX_SECTION = 128;
 const uint64_t MAX_BLOCK_NUM = (2ULL << 31);//max number of blocks per sb
 const int DESC_SPACE_CAP = 128;//number of desc sbs per desc space
 const uint64_t SB_SPACE_SIZE = 1*1024*1024*1024ULL;
