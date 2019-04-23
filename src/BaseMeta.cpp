@@ -11,8 +11,10 @@ namespace pmmalloc{
 	//GC
 };
 using namespace pmmalloc;
-BaseMeta::BaseMeta(uint64_t thd_num) 
-// : 
+BaseMeta::BaseMeta(uint64_t thd_num) noexcept
+: 
+	avail_desc(),
+	heaps()
 	// thread_num(thd_num) {
 {
 	// FLUSH(&thread_num);

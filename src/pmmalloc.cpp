@@ -57,7 +57,7 @@ void PM_init(std::string id, uint64_t thd_num){
 	} else {
 		/* RegionManager init */
 		mgr = new RegionManager(filepath);
-		bool res = mgr->__nvm_region_allocator((void**)&base_md,sizeof(void*),sizeof(BaseMeta));
+		bool res = mgr->__nvm_region_allocator((void**)&base_md,PAGESIZE,sizeof(BaseMeta)); 
 		if(!res) assert(0&&"mgr allocation fails!");
 		mgr->__store_heap_start(base_md);
 		new (base_md) BaseMeta(thd_num);

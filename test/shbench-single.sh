@@ -43,4 +43,4 @@ done
 
 #exec_time=$(echo $line | awk '{print $4}')
 echo "{ \"threads\": $THREADS , \"time\":  $exec_time , \"rss\": $rss }"
-echo "$THREADS, $exec_time, $rss" > shbench.csv
+echo "$THREADS, $exec_time, $rss" >> shbench.csv

@@ -75,12 +75,14 @@
 // superblock states
 // used in Anchor::state
 enum SuperblockState {
+	// invalid state
+	SB_ERROR	= 0,
 	// all blocks allocated or reserved
-	SB_FULL		= 0,
+	SB_FULL		= 1,
 	// has unreserved available blocks
-	SB_PARTIAL	= 1,
+	SB_PARTIAL	= 2,
 	// all blocks are free
-	SB_EMPTY	= 2,
+	SB_EMPTY	= 3,
 };
 
 struct Anchor;
@@ -91,8 +93,8 @@ struct ProcHeap;
 /* data structures */
 struct Anchor{
 	uint64_t avail:31,count:31, state:2;
-	Anchor(uint64_t a = 0){(*(uint64_t*)this) = a;}
-	Anchor(unsigned a, unsigned c, unsigned s):
+	Anchor(uint64_t a = 0) noexcept {(*(uint64_t*)this) = a;}
+	Anchor(unsigned a, unsigned c, unsigned s) noexcept :
 		avail(a),count(c),state(s){};
 };
 static_assert(sizeof(Anchor) == sizeof(uint64_t), "Invalid anchor size");
@@ -101,9 +103,11 @@ static_assert(sizeof(Anchor) == sizeof(uint64_t), "Invalid anchor size");
 struct DescriptorNode {
 public:
 	// ptr
-	Descriptor* _desc = nullptr;
+	Descriptor* _desc;
 	// aba counter
 
+	DescriptorNode(Descriptor* desc = nullptr, uint64_t counter = 0) noexcept:
+		_desc((Descriptor*)((uint64_t)desc | (counter & CACHELINE_MASK))){};
 	void set(Descriptor* desc, uint64_t counter) {
 		// desc must be cacheline aligned
 		assert(((uint64_t)desc & CACHELINE_MASK) == 0);
@@ -145,6 +149,10 @@ struct Descriptor {
 	PM_PERSIST uint32_t block_size; // block size acquired from sc
 	PM_PERSIST uint32_t maxcount; // block number acquired from sc
 	PM_PERSIST bool in_use = false; // false if it's free, true if it's in use
+	Descriptor() noexcept :
+		next_free(),
+		next_partial(),
+		anchor(){};
 }__attribute__((aligned(CACHELINE_SIZE)));
 
 // at least one ProcHeap instance exists for each sizeclass
@@ -157,6 +165,8 @@ public:
 	 * we don't have to flush it at all; it's fixed.
 	 */
 	PM_PERSIST size_t sc_idx;
+	ProcHeap() noexcept :
+		partial_list(){};
 }__attribute__((aligned(CACHELINE_SIZE)));
 
 //persistent sections
@@ -185,7 +195,7 @@ class BaseMeta {
 	//0:desc, 1:small sb, 2: large sb
 	PM_PERSIST Section spaces[3][MAX_SECTION];
 public:
-	BaseMeta(uint64_t thd_num = MAX_THREADS);
+	BaseMeta(uint64_t thd_num = MAX_THREADS) noexcept;
 	~BaseMeta(){
 		/* usually BaseMeta shouldn't be destructed, 
 		 * and will be reused in the next time

@@ -3,8 +3,8 @@
 make clean
 make larson_test
 rm -rf larson.csv
-echo "thread, ops, rss" > larson.csv
-for i in {1..5}
+echo "thread, ops, rss" >> larson.csv
+for i in {1..3}
 do
 	rm -rf /dev/shm/*
 	./larson-single.sh 1

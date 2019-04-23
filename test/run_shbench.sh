@@ -3,8 +3,8 @@
 make clean
 make sh6bench_test
 rm -rf shbench.csv
-echo "thread, exec_time, rss" > shbench.csv
-for i in {1..5}
+echo "thread, exec_time, rss" >> shbench.csv
+for i in {1..3}
 do
 	rm -rf /dev/shm/*
 	./shbench-single.sh 1
