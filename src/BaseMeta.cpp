@@ -305,7 +305,7 @@ Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap) {
 		newhead.set(desc, counter);
 	}
 	while (!list.compare_exchange_weak(oldhead, newhead));
-
+	assert(oldhead.get_desc()->anchor.load().state!=SB_FULL);
 	return oldhead.get_desc();
 }
 

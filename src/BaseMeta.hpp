@@ -46,7 +46,7 @@
  * Procedure to do a fresh start mapping to $filepath$:
  * 		BaseMeta* base_md;
  * 		RegionManager* mgr = new RegionManager(filepath);
- * 		bool res = mgr->__nvm_region_allocator((void**)&base_md,sizeof(void*),sizeof(BaseMeta));
+ * 		bool res = mgr->__nvm_region_allocator((void**)&base_md,PAGESIZE,sizeof(BaseMeta));
  * 		if(!res) assert(0&&"mgr allocation fails!");
  * 		mgr->__store_heap_start(base_md);
  * 		new (base_md) BaseMeta(mgr, thd_num);
