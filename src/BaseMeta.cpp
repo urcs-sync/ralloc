@@ -277,6 +277,7 @@ inline PageInfo BaseMeta::get_page_info_for_ptr(void* ptr) {
 }
 
 void BaseMeta::heap_push_partial(Descriptor* desc) {
+	assert(desc->anchor.load().state!=SB_FULL);
 	ProcHeap* heap = desc->heap;
 	std::atomic<DescriptorNode>& list = heap->partial_list;
 
@@ -286,8 +287,14 @@ void BaseMeta::heap_push_partial(Descriptor* desc) {
 	do {
 		assert(oldhead.get_desc() != newhead.get_desc());
 		newhead.get_desc()->next_partial.store(oldhead); 
+		heap->partial_lock.lock();
+		if(list.compare_exchange_strong(oldhead, newhead)){
+			break;
+		}
+		heap->partial_lock.unlock();
 	}
-	while (!list.compare_exchange_weak(oldhead, newhead));
+	while (true);
+	heap->partial_lock.unlock();
 }
 
 Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap) {
@@ -299,12 +306,18 @@ Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap) {
 		if (!olddesc)
 			return nullptr;
 
+		heap->partial_lock.lock();
 		newhead = olddesc->next_partial.load();
 		Descriptor* desc = newhead.get_desc();
 		uint64_t counter = oldhead.get_counter();
 		newhead.set(desc, counter);
+		if(list.compare_exchange_strong(oldhead, newhead)){
+			break;
+		}
+		heap->partial_lock.unlock();
 	}
-	while (!list.compare_exchange_weak(oldhead, newhead));
+	while (true);
+	heap->partial_lock.unlock();
 	assert(oldhead.get_desc()->anchor.load().state!=SB_FULL);
 	return oldhead.get_desc();
 }
@@ -492,6 +505,7 @@ Descriptor* BaseMeta::desc_alloc(){
 			newhead.set(newhead.get_desc(), oldhead.get_counter());
 			if (avail_desc.compare_exchange_weak(oldhead, newhead)) {
 				assert(desc->block_size == 0);
+				new (desc) Descriptor();
 				return desc;
 			}
 		}
@@ -503,6 +517,7 @@ Descriptor* BaseMeta::desc_alloc(){
 			// spaces[0][space_num].sec_curr.store((void*)((size_t)spaces[0][space_num].sec_start+spaces[0][space_num].sec_bytes));
 			char* ptr = (char*)spaces[0][space_num].sec_start;
 			Descriptor* ret = (Descriptor*)ptr;
+			new (ret) Descriptor();
 			// organize list with the rest of descriptors
 			// and add to available descriptors
 			{
@@ -515,6 +530,7 @@ Descriptor* BaseMeta::desc_alloc(){
 				while (curr_ptr + sizeof(Descriptor) <
 						ptr + DESC_SPACE_SIZE) {
 					Descriptor* curr = (Descriptor*)curr_ptr;
+					new (curr) Descriptor();
 					if (prev)
 						prev->next_free.store({ curr });
 

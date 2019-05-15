@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <iostream>
+#include <mutex>
 
 #include "pm_config.hpp"
 #include "thread_util.hpp"
@@ -164,6 +165,7 @@ public:
 	 * though it's tagged PM_PERSIST, in 1/sc scheme,
 	 * we don't have to flush it at all; it's fixed.
 	 */
+	std::mutex partial_lock;
 	PM_PERSIST size_t sc_idx;
 	ProcHeap() noexcept :
 		partial_list(){};
