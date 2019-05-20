@@ -150,7 +150,6 @@ struct Descriptor {
 	PM_PERSIST uint32_t block_size; // block size acquired from sc
 	PM_PERSIST uint32_t maxcount; // block number acquired from sc
 	PM_PERSIST bool in_use = false; // false if it's free, true if it's in use
-	uint64_t grabbed = 0;
 	Descriptor() noexcept :
 		next_free(),
 		next_partial(),
@@ -166,7 +165,6 @@ public:
 	 * though it's tagged PM_PERSIST, in 1/sc scheme,
 	 * we don't have to flush it at all; it's fixed.
 	 */
-	std::mutex partial_lock;
 	PM_PERSIST size_t sc_idx;
 	ProcHeap() noexcept :
 		partial_list(){};

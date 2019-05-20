@@ -278,8 +278,6 @@ inline PageInfo BaseMeta::get_page_info_for_ptr(void* ptr) {
 }
 
 void BaseMeta::heap_push_partial(Descriptor* desc) {
-	// assert(desc->anchor.load().state!=SB_FULL);
-	// desc->grabbed = 0;
 	ProcHeap* heap = desc->heap;
 	std::atomic<DescriptorNode>& list = heap->partial_list;
 
@@ -289,14 +287,7 @@ void BaseMeta::heap_push_partial(Descriptor* desc) {
 		newhead.set(desc, oldhead.get_counter() + 1);
 		assert(oldhead.get_desc() != newhead.get_desc());
 		newhead.get_desc()->next_partial.store(oldhead); 
-		// heap->partial_lock.lock();
-		if(list.compare_exchange_strong(oldhead, newhead)){
-			break;
-		}
-		// heap->partial_lock.unlock();
-	}
-	while (true);
-	// heap->partial_lock.unlock();
+	} while (!list.compare_exchange_weak(oldhead, newhead));
 }
 
 Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap) {
@@ -307,22 +298,11 @@ Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap) {
 		Descriptor* olddesc = oldhead.get_desc();
 		if (!olddesc)
 			return nullptr;
-		// heap->partial_lock.lock();
 		newhead = olddesc->next_partial.load();
 		Descriptor* desc = newhead.get_desc();
 		uint64_t counter = oldhead.get_counter();
 		newhead.set(desc, counter);
-		if(list.compare_exchange_strong(oldhead, newhead)){
-			break;
-		}
-		// heap->partial_lock.unlock();
-	}
-	while (true);
-	// heap->partial_lock.unlock();
-	// assert(oldhead.get_desc()->grabbed == 0);
-	// assert(oldhead.get_desc()->anchor.load().state!=SB_FULL);
-
-	// oldhead.get_desc()->grabbed = (uint64_t)oldhead._desc;
+	} while (!list.compare_exchange_strong(oldhead, newhead));
 	return oldhead.get_desc();
 }
 
