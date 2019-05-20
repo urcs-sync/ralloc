@@ -116,6 +116,7 @@ void BaseMeta::fill_cache(size_t sc_idx, TCacheBin* cache) {
 		malloc_from_newsb(sc_idx, cache, block_num);
 
 	SizeClassData* sc = get_sizeclass_by_idx(sc_idx);
+	(void)sc;
 	assert(block_num > 0);
 	assert(block_num <= sc->cache_block_num);
 }
@@ -277,24 +278,25 @@ inline PageInfo BaseMeta::get_page_info_for_ptr(void* ptr) {
 }
 
 void BaseMeta::heap_push_partial(Descriptor* desc) {
-	assert(desc->anchor.load().state!=SB_FULL);
+	// assert(desc->anchor.load().state!=SB_FULL);
+	// desc->grabbed = 0;
 	ProcHeap* heap = desc->heap;
 	std::atomic<DescriptorNode>& list = heap->partial_list;
 
 	DescriptorNode oldhead = list.load();
 	DescriptorNode newhead;
-	newhead.set(desc, oldhead.get_counter() + 1);
 	do {
+		newhead.set(desc, oldhead.get_counter() + 1);
 		assert(oldhead.get_desc() != newhead.get_desc());
 		newhead.get_desc()->next_partial.store(oldhead); 
-		heap->partial_lock.lock();
+		// heap->partial_lock.lock();
 		if(list.compare_exchange_strong(oldhead, newhead)){
 			break;
 		}
-		heap->partial_lock.unlock();
+		// heap->partial_lock.unlock();
 	}
 	while (true);
-	heap->partial_lock.unlock();
+	// heap->partial_lock.unlock();
 }
 
 Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap) {
@@ -305,8 +307,7 @@ Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap) {
 		Descriptor* olddesc = oldhead.get_desc();
 		if (!olddesc)
 			return nullptr;
-
-		heap->partial_lock.lock();
+		// heap->partial_lock.lock();
 		newhead = olddesc->next_partial.load();
 		Descriptor* desc = newhead.get_desc();
 		uint64_t counter = oldhead.get_counter();
@@ -314,18 +315,21 @@ Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap) {
 		if(list.compare_exchange_strong(oldhead, newhead)){
 			break;
 		}
-		heap->partial_lock.unlock();
+		// heap->partial_lock.unlock();
 	}
 	while (true);
-	heap->partial_lock.unlock();
-	assert(oldhead.get_desc()->anchor.load().state!=SB_FULL);
+	// heap->partial_lock.unlock();
+	// assert(oldhead.get_desc()->grabbed == 0);
+	// assert(oldhead.get_desc()->anchor.load().state!=SB_FULL);
+
+	// oldhead.get_desc()->grabbed = (uint64_t)oldhead._desc;
 	return oldhead.get_desc();
 }
 
 void BaseMeta::malloc_from_partial(size_t sc_idx, TCacheBin* cache, size_t& block_num){
+retry:
 	ProcHeap* heap = &heaps[sc_idx];
 
-retry:
 	Descriptor* desc = heap_pop_partial(heap);
 	if (!desc)
 		return;

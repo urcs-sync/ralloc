@@ -32,7 +32,7 @@ pmmalloc_test: pmmalloc_test.cpp libpmmalloc.a
 	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
 
 pptr_test: pptr_test.cpp
-	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS)
+	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
 
 arraystack_test: arraystack_test.cpp libpmmalloc.a
 	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
