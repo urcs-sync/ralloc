@@ -14,6 +14,7 @@
 #include "SizeClass.hpp"
 #include "TCache.hpp"
 #include "PageMap.hpp"
+#include "pptr.hpp"
 
 /********class BaseMeta********
  * This is the file where meta data structures of
@@ -104,7 +105,7 @@ static_assert(sizeof(Anchor) == sizeof(uint64_t), "Invalid anchor size");
 struct DescriptorNode {
 public:
 	// ptr
-	Descriptor* _desc;
+	Descriptor* _desc;//pptr
 	// aba counter
 
 	DescriptorNode(Descriptor* desc = nullptr, uint64_t counter = 0) noexcept:
@@ -144,9 +145,8 @@ struct Descriptor {
 	// anchor; is reconstructed during recovery
 	PM_TRANSIENT std::atomic<Anchor> anchor;
 
-	PM_PERSIST char* superblock;//pptr
-	//todo :make it pptr
-	PM_PERSIST ProcHeap* heap;
+	PM_PERSIST pptr<char> superblock;
+	PM_PERSIST pptr<ProcHeap> heap;
 	PM_PERSIST uint32_t block_size; // block size acquired from sc
 	PM_PERSIST uint32_t maxcount; // block number acquired from sc
 	PM_PERSIST bool in_use = false; // false if it's free, true if it's in use
@@ -172,15 +172,17 @@ public:
 
 //persistent sections
 struct Section {
-	PM_PERSIST void* sec_start;//pptr
+	PM_PERSIST pptr<char> sec_start;
 	// PM_PERSIST std::atomic<void*> sec_curr;
 	PM_PERSIST size_t sec_bytes;
+	Section() noexcept:sec_start(),sec_bytes(){};
 }__attribute__((aligned(CACHELINE_SIZE)));
 
 class BaseMeta {
 	// unused small sb
-	PM_TRANSIENT ArrayStack<void*>* free_sb;
+	PM_TRANSIENT _ArrayStack<void*, FREESTACK_CAP> free_sb;//pptr
 	// descriptor recycle list
+	// PM_TRANSIENT std::atomic<void*> avail_sb;
 	PM_TRANSIENT std::atomic<DescriptorNode> avail_desc;
 
 	// so far we don't need thread_num at all
@@ -190,7 +192,7 @@ class BaseMeta {
 	 */
 	PM_PERSIST ProcHeap heaps[MAX_SZ_IDX];
 	//persistent root
-	PM_PERSIST void* roots[MAX_ROOTS] = {nullptr};//gc_ptr_base*
+	PM_PERSIST pptr<char> roots[MAX_ROOTS] = {nullptr};//gc_ptr_base*
 	//0:desc, 1:small sb, 2: large sb
 	PM_PERSIST std::atomic<uint64_t> space_num[3];
 	//0:desc, 1:small sb, 2: large sb
@@ -225,11 +227,11 @@ public:
 	}
 	void restart(){
 		// free_desc = new ArrayQueue<Descriptor*>("pmmalloc_freedesc");
-		free_sb = new ArrayStack<void*>("pmmalloc_freesb");
+		// free_sb = new ArrayStack<void*>("pmmalloc_freesb");
 	}
 	// flush everything needed before exit
 	void cleanup(){
-		delete free_sb;
+		free_sb.cleanup();
 	}
 
 private:

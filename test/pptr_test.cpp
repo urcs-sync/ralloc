@@ -94,6 +94,7 @@ void test_pptr(){
 		cout<<"p3: "<<(*p3)->val<<" = 7"<<endl;
 		*p3 = *p1;
 		cout<<"p3: "<<(*p3)->val<<" = 7"<<endl;
+		assert((*p1) == (*p3));
 	} else {
 		cout<<"create new RegionManager in /dev/shm/test...";
 		mgr = new RegionManager("/dev/shm/test");

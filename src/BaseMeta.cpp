@@ -19,7 +19,7 @@ BaseMeta::BaseMeta(uint64_t thd_num) noexcept
 {
 	// FLUSH(&thread_num);
 	// free_desc = new ArrayQueue<Descriptor*>("pmmalloc_freedesc");
-	free_sb = new ArrayStack<void*>("pmmalloc_freesb");
+	free_sb.init();
 	/* allocate these persistent data into specific memory address */
 
 	/* heaps init */
@@ -49,12 +49,14 @@ uint64_t BaseMeta::new_space(int i){//i=0:desc, i=1:small sb, i=2:large sb
 	FLUSH(&spaces[i][my_space_num].sec_bytes);
 	FLUSHFENCE;
 	uint64_t space_size = i==0?DESC_SPACE_SIZE:SB_SPACE_SIZE;
-	bool res = mgr->__nvm_region_allocator(&(spaces[i][my_space_num].sec_start),PAGESIZE, space_size);
+	void* tmp_sec_start = nullptr;
+	bool res = mgr->__nvm_region_allocator(&tmp_sec_start,PAGESIZE, space_size);
 	if(!res) assert(0&&"region allocation fails!");
 	// spaces[i][my_space_num].sec_curr.store(spaces[i][my_space_num].sec_start);
+	spaces[i][my_space_num].sec_start = tmp_sec_start;
 	spaces[i][my_space_num].sec_bytes = space_size;
 	FLUSH(&spaces[i][my_space_num].sec_start);
-	// FLUSH(&spaces[i][my_space_num].sec_curr);
+	FLUSHFENCE;
 	FLUSH(&spaces[i][my_space_num].sec_bytes);
 	FLUSHFENCE;
 	return my_space_num;
@@ -149,7 +151,7 @@ void BaseMeta::flush_cache(size_t sc_idx, TCacheBin* cache) {
 		// check if next cache blocks are in the same superblock
 		// same superblock, same descriptor
 		while (cache->get_block_num() > block_count) {
-			char* ptr = *(char**)tail;
+			char* ptr = *(pptr<char>*)tail;
 			if (ptr < superblock || ptr >= superblock + sb_size)
 				break; // ptr not in superblock
 
@@ -158,7 +160,7 @@ void BaseMeta::flush_cache(size_t sc_idx, TCacheBin* cache) {
 			tail = ptr;
 		}
 
-		cache->pop_list(*(char**)tail, block_count);
+		cache->pop_list(*(pptr<char>*)tail, block_count);
 
 		// add list to desc, update anchor
 		uint32_t idx = compute_idx(superblock, head, sc_idx);
@@ -168,7 +170,7 @@ void BaseMeta::flush_cache(size_t sc_idx, TCacheBin* cache) {
 		do {
 			// update anchor.avail
 			char* next = (char*)(superblock + oldanchor.avail * block_size);
-			*(char**)tail = next;
+			*(pptr<char>*)tail = next;
 
 			newanchor = oldanchor;
 			newanchor.avail = idx;
@@ -383,9 +385,9 @@ void BaseMeta::malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_
 	// prepare block list
 	char* superblock = desc->superblock;
 	for (uint32_t idx = 0; idx < maxcount - 1; ++idx) {
-		char* block = superblock + idx * block_size;
+		pptr<char>* block = (pptr<char>*)(superblock + idx * block_size);
 		char* next = superblock + (idx + 1) * block_size;
-		*(char**)block = next;
+		*block = next;
 	}
 
 	// push blocks to cache
@@ -418,8 +420,18 @@ inline void BaseMeta::organize_sb_list(void* start, uint64_t count, uint64_t str
 	uint64_t ptr = (uint64_t)start + count*stride;
 	for(uint64_t i = 1; i < count; i++){
 		ptr -= stride;
-		free_sb->push((void*)ptr);
+		free_sb.push((void*)ptr);
 	}
+	// uint64_t ptr = start + stride;
+	// for(uint64_t i = 1; i < count-1; i++){
+	// 	*(pptr<char>*)ptr = (char*)(ptr + stride);
+	// 	ptr += stride;
+	// }
+	// void* oldhead = avail_sb.load();
+	// pptr<char> newhead = (char*)ptr;
+	// do{
+	// 	*(pptr<char>*)ptr = oldhead;
+	// }while(!head.compare_exchange_weak(oldhead,newhead));
 }
 
 void* BaseMeta::small_sb_alloc(size_t size){
@@ -429,7 +441,11 @@ void* BaseMeta::small_sb_alloc(size_t size){
 	}
 
 	void* sb = nullptr;
-	if(auto tmp = free_sb->pop()){
+	void* tmp = nullptr;
+	{
+
+	}
+	if(auto tmp = free_sb.pop()){
 		sb = tmp.value();
 	}
 	else{
@@ -443,7 +459,7 @@ void* BaseMeta::small_sb_alloc(size_t size){
 inline void BaseMeta::small_sb_retire(void* sb, size_t size){
 	assert(size == SBSIZE);
 
-	free_sb->push(sb);
+	free_sb.push(sb);
 }
 
 //todo

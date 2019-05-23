@@ -148,6 +148,15 @@ public:
 			}
 		}
 	}
+	void cleanup(){
+		FLUSHFENCE;
+		clean = true;
+		FLUSH(&clean);
+		FLUSHFENCE;
+	}
+	void init(){
+		top.store({0,0,0});
+	}
 private:
 	void finish(T value, uint32_t index, uint32_t counter){
 		Node old_node(nodes[index].load(std::memory_order_acquire).value, counter-1);
@@ -175,7 +184,7 @@ private:
 			value(val),
 			counter(a){};
 	};
-	paddedAtomic<Top> top;
+	std::atomic<Top> top;
 	std::atomic<Node> nodes[size];
 };
 

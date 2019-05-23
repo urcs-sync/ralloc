@@ -5,6 +5,7 @@
 #include "pm_config.hpp"
 #include "pfence_util.h"
 #include "SizeClass.hpp"
+#include "pptr.hpp"
 
 /*
  * This is from LRMALLOC:
@@ -19,8 +20,8 @@
 struct TCacheBin
 {
 private:
-	char* _block = nullptr;
-	uint32_t _block_num = 0;
+	pptr<char> _block;
+	uint32_t _block_num;
 
 public:
 	// common, fast ops
@@ -35,14 +36,14 @@ public:
 	char* peek_block() const { return _block; }
 
 	uint32_t get_block_num() const { return _block_num; }
-
+	TCacheBin() noexcept:_block(nullptr), _block_num(0) {};
 	// slow operations like fill/flush handled in cache user
 };
 
 inline void TCacheBin::push_block(char* block)
 {
 	// block has at least sizeof(char*)
-	*(char**)block = _block;
+	*(pptr<char>*)block = _block;
 	_block = block;
 	_block_num++;
 }
@@ -63,7 +64,7 @@ inline char* TCacheBin::pop_block()
 	assert(_block_num > 0);
 
 	char* ret = _block;
-	_block = *(char**)_block;
+	_block = *(pptr<char>*)(char*)_block;
 	_block_num--;
 	return ret;
 }
@@ -77,7 +78,7 @@ inline void TCacheBin::pop_list(char* block, uint32_t length)
 }
 	/* thread-local cache */
 namespace pmmalloc{
-	extern __thread TCacheBin t_cache[MAX_SZ_IDX]
+	extern thread_local TCacheBin t_cache[MAX_SZ_IDX]
 		__attribute__((aligned(CACHELINE_SIZE)));
 }
 #endif // __TCACHE_H_
