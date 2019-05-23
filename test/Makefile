@@ -31,7 +31,7 @@ base_meta_test: base_meta_test.cpp libpmmalloc.a
 pmmalloc_test: pmmalloc_test.cpp libpmmalloc.a
 	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
 
-pptr_test: pptr_test.cpp
+pptr_test: pptr_test.cpp libpmmalloc.a
 	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
 
 arraystack_test: arraystack_test.cpp libpmmalloc.a

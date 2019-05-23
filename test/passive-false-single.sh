@@ -28,3 +28,5 @@ while true ; do
 done
 
 echo "{ \"threads\": $THREADS , \"time\":  $t  }"
+
+echo "$THREADS, $t" >> pas.csv

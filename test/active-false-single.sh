@@ -28,3 +28,4 @@ while true ; do
 done
 
 echo "{ \"threads\": $THREADS , \"time\":  $t  }"
+echo "$THREADS, $t" >> act.csv
