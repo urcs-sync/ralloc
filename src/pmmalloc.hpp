@@ -81,6 +81,7 @@ void* PM_get_root(uint64_t i);
  */
 
 namespace pmmalloc{
+	extern bool initialized;
 	extern std::string filepath;
 	extern uint64_t thread_num;
 	/* manager to map, remap, and unmap the heap */

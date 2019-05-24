@@ -6,6 +6,7 @@
 #include "pfence_util.h"
 #include "SizeClass.hpp"
 #include "pptr.hpp"
+#include "RegionManager.hpp"
 
 /*
  * This is from LRMALLOC:
@@ -16,11 +17,15 @@
  *
  * Note by Wentao Cai (wcai6@cs.rochester.edu)
  */
+namespace pmmalloc{
+	extern RegionManager* mgr;
+	extern bool initialized;
+}
 
 struct TCacheBin
 {
 private:
-	pptr<char> _block;
+	uint64_t _block;
 	uint32_t _block_num;
 
 public:
@@ -33,50 +38,14 @@ public:
 	// manually popped list of blocks and now need to update cache
 	// `block` is the new head
 	void pop_list(char* block, uint32_t length);
-	char* peek_block() const { return _block; }
+	char* peek_block() const { return _block==0 ? nullptr : (char*)(_block + (uint64_t)pmmalloc::mgr->base_addr); }
 
 	uint32_t get_block_num() const { return _block_num; }
-	TCacheBin() noexcept:_block(nullptr), _block_num(0) {};
+	TCacheBin() noexcept:_block(0), _block_num(0) {};
 	// slow operations like fill/flush handled in cache user
 };
 
-inline void TCacheBin::push_block(char* block)
-{
-	// block has at least sizeof(char*)
-	*(pptr<char>*)block = _block;
-	_block = block;
-	_block_num++;
-}
-
-inline void TCacheBin::push_list(char* block, uint32_t length)
-{
-	// caller must ensure there's no available block
-	// this op is only used to fill empty cache
-	assert(_block_num == 0);
-
-	_block = block;
-	_block_num = length;
-}
-
-inline char* TCacheBin::pop_block()
-{
-	// caller must ensure there's an available block
-	assert(_block_num > 0);
-
-	char* ret = _block;
-	_block = *(pptr<char>*)(char*)_block;
-	_block_num--;
-	return ret;
-}
-
-inline void TCacheBin::pop_list(char* block, uint32_t length)
-{
-	assert(_block_num >= length);
-
-	_block = block;
-	_block_num -= length;
-}
-	/* thread-local cache */
+/* thread-local cache */
 namespace pmmalloc{
 	extern thread_local TCacheBin t_cache[MAX_SZ_IDX]
 		__attribute__((aligned(CACHELINE_SIZE)));

@@ -139,9 +139,9 @@ static_assert(sizeof(DescriptorNode) == sizeof(uint64_t), "Invalid descriptor no
 struct Descriptor {
 	// list node pointers
 	// used in free descriptor list
-	PM_TRANSIENT std::atomic<DescriptorNode> next_free;
+	PM_TRANSIENT atomic_pptr_cnt<Descriptor> next_free;
 	// used in partial descriptor list
-	PM_TRANSIENT std::atomic<DescriptorNode> next_partial;
+	PM_TRANSIENT atomic_pptr_cnt<Descriptor> next_partial;
 	// anchor; is reconstructed during recovery
 	PM_TRANSIENT std::atomic<Anchor> anchor;
 
@@ -160,7 +160,7 @@ struct Descriptor {
 struct ProcHeap {
 public:
 	// ptr to descriptor, head of partial descriptor list
-	PM_TRANSIENT std::atomic<DescriptorNode> partial_list;
+	PM_TRANSIENT atomic_pptr_cnt<Descriptor> partial_list;
 	/* size class index; never change after init
 	 * though it's tagged PM_PERSIST, in 1/sc scheme,
 	 * we don't have to flush it at all; it's fixed.
@@ -183,7 +183,8 @@ class BaseMeta {
 	// PM_TRANSIENT _ArrayStack<void*, FREESTACK_CAP> free_sb;//pptr
 	// descriptor recycle list
 	PM_TRANSIENT atomic_pptr_cnt<char> avail_sb;
-	PM_TRANSIENT std::atomic<DescriptorNode> avail_desc;
+	PM_TRANSIENT atomic_pptr_cnt<Descriptor> avail_desc;
+	PM_PERSIST bool dirty;
 
 	// so far we don't need thread_num at all
 	// PM_PERSIST uint64_t thread_num;
@@ -229,9 +230,12 @@ public:
 		// free_desc = new ArrayQueue<Descriptor*>("pmmalloc_freedesc");
 		// free_sb = new ArrayStack<void*>("pmmalloc_freesb");
 	}
-	// flush everything needed before exit
 	void cleanup(){
-		// free_sb.cleanup();
+		// todo: flush everything needed before exit
+		FLUSHFENCE;
+		dirty = false;
+		FLUSH(&dirty);
+		FLUSHFENCE;
 	}
 
 private:

@@ -7,7 +7,7 @@
 #include <atomic>
 #include "gc.hpp"
 using namespace std;
-
+//todo: some comments please?
 class ptr_base{
 protected:
 	int64_t off;
@@ -134,6 +134,58 @@ public:
 		return ret;
 	}
 };
+
+template <class T> 
+class atomic_pptr{
+	atomic<int64_t> off;
+public:
+	atomic_pptr(T* v=nullptr)noexcept: //default constructor
+		off(v==nullptr ? 0 : ((int64_t)v) - ((int64_t)this)) {};
+	atomic_pptr(const pptr<T> &p)noexcept: //copy constructor
+		off(p.is_null() ? 0 : (int64_t)(p.off + (int64_t)&p) - ((int64_t)this)) {};
+	T* load(memory_order order = memory_order_seq_cst) const noexcept{
+		int64_t cur_off = off.load(order);
+		T* ret;
+		ret = cur_off==0 ? nullptr : (T*)(cur_off + ((int64_t)this));
+		return ret;
+	}
+	void store(T* desired, 
+		memory_order order = memory_order_seq_cst ) noexcept{
+		int64_t new_off = desired==nullptr? 0 : ((int64_t)desired) - ((int64_t)this);
+		off.store(new_off, order);
+	}
+	bool compare_exchange_weak(T*& expected, T* desired,
+		memory_order order = memory_order_seq_cst ) noexcept{
+		int64_t old_off = expected==nullptr ? 0 : ((int64_t)expected) - ((int64_t)this);
+		int64_t new_off = desired==nullptr ? 0 : ((int64_t)desired) - ((int64_t)this);
+		bool ret = off.compare_exchange_weak(old_off, new_off, order);
+		if(!ret) {
+			int64_t cur_off = off.load();
+			if(cur_off == 0){
+				expected = nullptr;
+			} else{
+				expected = (T*)(cur_off + ((int64_t)this));
+			}
+		}
+		return ret;
+	}
+	bool compare_exchange_strong(T*& expected, T* desired,
+		memory_order order = memory_order_seq_cst ) noexcept{
+		int64_t old_off = expected==nullptr ? 0 : ((int64_t)expected) - ((int64_t)this);
+		int64_t new_off = desired==nullptr ? 0 : ((int64_t)desired) - ((int64_t)this);
+		bool ret = off.compare_exchange_strong(old_off, new_off, order);
+		if(!ret) {
+			int64_t cur_off = off.load();
+			if(cur_off == 0){
+				expected = nullptr;
+			} else{
+				expected = (T*)(cur_off + ((int64_t)this));
+			}
+		}
+		return ret;
+	}
+};
+
 template <class T>
 inline bool operator==(const pptr<T>& lhs, const std::nullptr_t& rhs){
 	return lhs.is_null();

@@ -25,6 +25,7 @@
 using namespace std;
 
 namespace pmmalloc{
+	bool initialized = false;
 	std::string filepath;
 	uint64_t thread_num;
 	/* manager to map, remap, and unmap the heap */
@@ -45,7 +46,7 @@ void PM_init(std::string id, uint64_t thd_num){
 	thread_num = thd_num;
 	filepath = HEAPFILE_PREFIX + id;
 	bool restart = RegionManager::exists_test(filepath);
-	cout<<"sizeof basemeta:"<<sizeof(BaseMeta)<<endl;
+	// cout<<"sizeof basemeta:"<<sizeof(BaseMeta)<<endl;
 
 	//TODO: find all heap files with this id to determine the value of restart, and assign appropriate path to filepath
 	if(restart){
@@ -62,11 +63,13 @@ void PM_init(std::string id, uint64_t thd_num){
 		mgr->__store_heap_start(base_md);
 		new (base_md) BaseMeta(thd_num);
 	}
+	initialized = true;
 }
 
 void PM_close(){
 	base_md->cleanup();
 	delete mgr;
+	initialized = false;
 }
 
 //manually request to collect garbage

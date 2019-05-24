@@ -51,7 +51,7 @@ struct PageInfo
 {
 private:
 	// descriptor
-	Descriptor* _desc;
+	uint64_t _desc;
 	// size class
 	// stealing bits from desc to store size class
 	// desc is aligned to at least 64 bytes, so 6 bits to steal
@@ -81,12 +81,14 @@ private:
 
 	// array based impl
 	std::atomic<PageInfo>* _pagemap = { nullptr };
-	RegionManager* mgr = nullptr;//initialized when ArrayStack constructs
+	RegionManager* page_mgr = nullptr;//initialized when ArrayStack constructs
 };
 
 namespace pmmalloc{
 	// metadata for pagemap
 	extern PageMap pagemap;
+	extern RegionManager* mgr;
+	extern bool initialized;
 }
 #endif // __PAGEMAP_H
 

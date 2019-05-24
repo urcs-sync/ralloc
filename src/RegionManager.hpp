@@ -29,14 +29,23 @@
 #include <atomic>
 
 #include "pm_config.hpp"
+#include "pptr.hpp"
 
+
+/* layout of the region:
+ *	atomic_pptr<char> curr_addr  0~63 (base_addr points to)
+ *	heap_start = root - base_start 64~127
+ *	(heap starts here to which heap_start points)
+ *	....
+ *	(heap ends here to which curr_addr points)
+ */
 class RegionManager{
 	const uint64_t FILESIZE;
 	const std::string HEAPFILE;
 public:
 	int FD = 0;
 	char *base_addr = nullptr;
-	std::atomic<char *>* curr_addr_ptr;//this always points to the place of base_addr+1
+	atomic_pptr<char>* curr_addr_ptr;//this always points to the place of base_addr
 	bool persist;
 
 	RegionManager(const std::string& file_path, bool p = true, uint64_t size = MAX_FILESIZE):
@@ -44,25 +53,25 @@ public:
 		HEAPFILE(file_path),
 		curr_addr_ptr(nullptr),
 		persist(p){
-		if(persist){
+		// if(persist){
 			if(exists_test(HEAPFILE)){
 				__remap_persistent_region();
 			} else {
 				__map_persistent_region();
 			}
-		} else {
-			if(exists_test(HEAPFILE)){
-				__remap_transient_region();
-			} else {
-				__map_transient_region();
-			}
-		}
+		// } else {
+		// 	if(exists_test(HEAPFILE)){
+		// 		__remap_transient_region();
+		// 	} else {
+		// 		__map_transient_region();
+		// 	}
+		// }
 	};
 	~RegionManager(){
-		if(persist)
+		// if(persist)
 			__close_persistent_region();
-		else
-			__close_transient_region();
+		// else
+			// __close_transient_region();
 #ifdef DESTROY
 		__destroy();
 #endif

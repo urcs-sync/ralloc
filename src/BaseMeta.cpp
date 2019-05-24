@@ -22,7 +22,8 @@ BaseMeta::BaseMeta(uint64_t thd_num) noexcept
 	// free_desc = new ArrayQueue<Descriptor*>("pmmalloc_freedesc");
 	// free_sb.init();
 	/* allocate these persistent data into specific memory address */
-
+	dirty = true;
+	FLUSH(&dirty);
 	/* heaps init */
 	for (size_t idx = 0; idx < MAX_SZ_IDX; ++idx){
 		ProcHeap& heap = heaps[idx];
@@ -282,31 +283,31 @@ inline PageInfo BaseMeta::get_page_info_for_ptr(void* ptr) {
 
 void BaseMeta::heap_push_partial(Descriptor* desc) {
 	ProcHeap* heap = desc->heap;
-	std::atomic<DescriptorNode>& list = heap->partial_list;
+	atomic_pptr_cnt<Descriptor>& list = heap->partial_list;
 
-	DescriptorNode oldhead = list.load();
-	DescriptorNode newhead;
+	ptr_cnt<Descriptor> oldhead = list.load();
+	ptr_cnt<Descriptor> newhead;
 	do {
 		newhead.set(desc, oldhead.get_counter() + 1);
-		assert(oldhead.get_desc() != newhead.get_desc());
-		newhead.get_desc()->next_partial.store(oldhead); 
+		assert(oldhead.get_ptr() != newhead.get_ptr());
+		newhead.get_ptr()->next_partial.store(oldhead); 
 	} while (!list.compare_exchange_weak(oldhead, newhead));
 }
 
 Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap) {
-	std::atomic<DescriptorNode>& list = heap->partial_list;
-	DescriptorNode oldhead = list.load();
-	DescriptorNode newhead;
+	atomic_pptr_cnt<Descriptor>& list = heap->partial_list;
+	ptr_cnt<Descriptor> oldhead = list.load();
+	ptr_cnt<Descriptor> newhead;
 	do {
-		Descriptor* olddesc = oldhead.get_desc();
+		Descriptor* olddesc = oldhead.get_ptr();
 		if (!olddesc)
 			return nullptr;
 		newhead = olddesc->next_partial.load();
-		Descriptor* desc = newhead.get_desc();
+		Descriptor* desc = newhead.get_ptr();
 		uint64_t counter = oldhead.get_counter();
 		newhead.set(desc, counter);
-	} while (!list.compare_exchange_strong(oldhead, newhead));
-	return oldhead.get_desc();
+	} while (!list.compare_exchange_weak(oldhead, newhead));
+	return oldhead.get_ptr();
 }
 
 void BaseMeta::malloc_from_partial(size_t sc_idx, TCacheBin* cache, size_t& block_num){
@@ -452,7 +453,7 @@ void* BaseMeta::small_sb_alloc(size_t size){
 		if(oldptr) {
 			ptr_cnt<char> newhead = ((atomic_pptr_cnt<char>*)oldptr)->load();
 			newhead.set(newhead.get_ptr(),oldhead.get_counter());
-			if(avail_sb.compare_exchange_weak(oldhead,newhead)){
+			if(avail_sb.compare_exchange_strong(oldhead,newhead)){
 				return oldptr;
 			}
 		}
@@ -511,12 +512,12 @@ void BaseMeta::large_sb_retire(void* sb, size_t size){
 }
 
 Descriptor* BaseMeta::desc_alloc(){
-	DescriptorNode oldhead = avail_desc.load();
+	ptr_cnt<Descriptor> oldhead = avail_desc.load();
 	while(true){
-		Descriptor* desc = oldhead.get_desc();
+		Descriptor* desc = oldhead.get_ptr();
 		if (desc) {
-			DescriptorNode newhead = desc->next_free.load();
-			newhead.set(newhead.get_desc(), oldhead.get_counter());
+			ptr_cnt<Descriptor> newhead = desc->next_free.load();
+			newhead.set(newhead.get_ptr(), oldhead.get_counter());
 			if (avail_desc.compare_exchange_weak(oldhead, newhead)) {
 				assert(desc->block_size == 0);
 				new (desc) Descriptor();
@@ -556,8 +557,8 @@ Descriptor* BaseMeta::desc_alloc(){
 				prev->next_free.store({ nullptr });
 
 				// add list to available descriptors
-				DescriptorNode oldhead = avail_desc.load();
-				DescriptorNode newhead;
+				ptr_cnt<Descriptor> oldhead = avail_desc.load();
+				ptr_cnt<Descriptor> newhead;
 				do {
 					prev->next_free.store(oldhead);
 					newhead.set(first, oldhead.get_counter() + 1);
@@ -572,8 +573,8 @@ Descriptor* BaseMeta::desc_alloc(){
 
 inline void BaseMeta::desc_retire(Descriptor* desc){
 	desc->block_size = 0;
-	DescriptorNode oldhead = avail_desc.load();
-	DescriptorNode newhead;
+	ptr_cnt<Descriptor> oldhead = avail_desc.load();
+	ptr_cnt<Descriptor> newhead;
 	do {
 		desc->next_free.store(oldhead);
 
@@ -634,7 +635,7 @@ void BaseMeta::do_free(void* ptr){
 
 	size_t sc_idx = info.get_sc_idx();
  
-	DBG_PRINT("Heap %p, Desc %p, ptr %p", heap, desc, ptr);
+	// DBG_PRINT("Desc %p, ptr %p", desc, ptr);
 
 	// large allocation case
 	if (UNLIKELY(!sc_idx)) {
