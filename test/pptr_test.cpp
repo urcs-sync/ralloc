@@ -95,6 +95,12 @@ void test_pptr(){
 		*p3 = *p1;
 		cout<<"p3: "<<(*p3)->val<<" = 7"<<endl;
 		assert((*p1) == (*p3));
+		atomic<pptr<Node>> atm_p = *p1;
+		cout<<"atm_p: "<<atm_p.load()->val<<" = 7"<<endl;
+		atm_p.store(*p3);
+		cout<<"atm_p: "<<atm_p.load()->val<<" = 7"<<endl;
+		atm_p.compare_exchange_strong(*p3,*p1);
+		cout<<"atm_p: "<<atm_p.load()->val<<" = 7"<<endl;
 	} else {
 		cout<<"create new RegionManager in /dev/shm/test...";
 		mgr = new RegionManager("/dev/shm/test");

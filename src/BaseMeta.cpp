@@ -13,13 +13,14 @@ namespace pmmalloc{
 using namespace pmmalloc;
 BaseMeta::BaseMeta(uint64_t thd_num) noexcept
 : 
+	avail_sb(),
 	avail_desc(),
 	heaps()
 	// thread_num(thd_num) {
 {
 	// FLUSH(&thread_num);
 	// free_desc = new ArrayQueue<Descriptor*>("pmmalloc_freedesc");
-	free_sb.init();
+	// free_sb.init();
 	/* allocate these persistent data into specific memory address */
 
 	/* heaps init */
@@ -417,21 +418,24 @@ void BaseMeta::malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_
 
 inline void BaseMeta::organize_sb_list(void* start, uint64_t count, uint64_t stride){
 	// put new sbs to free_sb queue
-	uint64_t ptr = (uint64_t)start + count*stride;
-	for(uint64_t i = 1; i < count; i++){
-		ptr -= stride;
-		free_sb.push((void*)ptr);
-	}
-	// uint64_t ptr = start + stride;
-	// for(uint64_t i = 1; i < count-1; i++){
-	// 	*(pptr<char>*)ptr = (char*)(ptr + stride);
-	// 	ptr += stride;
+	// uint64_t ptr = (uint64_t)start + count*stride;
+	// for(uint64_t i = 1; i < count; i++){
+	// 	ptr -= stride;
+	// 	free_sb.push((void*)ptr);
 	// }
-	// void* oldhead = avail_sb.load();
-	// pptr<char> newhead = (char*)ptr;
-	// do{
-	// 	*(pptr<char>*)ptr = oldhead;
-	// }while(!head.compare_exchange_weak(oldhead,newhead));
+
+	uint64_t ptr = (uint64_t)start + stride;
+	for(uint64_t i = 1; i < count-1; i++){
+		new ((atomic_pptr_cnt<char>*)ptr) atomic_pptr_cnt<char>((char*)(ptr + stride));
+		ptr += stride;
+	}
+	new ((atomic_pptr_cnt<char>*)ptr) atomic_pptr_cnt<char>();//init to empty
+	ptr_cnt<char> oldhead = avail_sb.load();
+	ptr_cnt<char> newhead;
+	do{
+		((atomic_pptr_cnt<char>*)ptr)->store(oldhead);//include counter
+		newhead.set((char*)((uint64_t)start + stride), oldhead.get_counter()+1);
+	}while(!avail_sb.compare_exchange_weak(oldhead,newhead));
 }
 
 void* BaseMeta::small_sb_alloc(size_t size){
@@ -440,26 +444,36 @@ void* BaseMeta::small_sb_alloc(size_t size){
 		assert(0);
 	}
 
-	void* sb = nullptr;
-	void* tmp = nullptr;
-	{
+	char* oldptr = nullptr;
 
+	ptr_cnt<char> oldhead = avail_sb.load();
+	while(true){
+		oldptr = oldhead.get_ptr();
+		if(oldptr) {
+			ptr_cnt<char> newhead = ((atomic_pptr_cnt<char>*)oldptr)->load();
+			newhead.set(newhead.get_ptr(),oldhead.get_counter());
+			if(avail_sb.compare_exchange_weak(oldhead,newhead)){
+				return oldptr;
+			}
+		}
+		else{
+			uint64_t space_num = new_space(1);
+			cout<<"allocate sb space "<<space_num<<endl;
+			oldptr = spaces[1][space_num].sec_start;
+			organize_sb_list(oldptr,SB_SPACE_SIZE/SBSIZE,SBSIZE);
+			return oldptr;
+		}
 	}
-	if(auto tmp = free_sb.pop()){
-		sb = tmp.value();
-	}
-	else{
-		uint64_t space_num = new_space(1);
-		cout<<"allocate sb space "<<space_num<<endl;
-		sb = spaces[1][space_num].sec_start;
-		organize_sb_list(sb,SB_SPACE_SIZE/SBSIZE,SBSIZE);
-	}
-	return sb;
 }
 inline void BaseMeta::small_sb_retire(void* sb, size_t size){
 	assert(size == SBSIZE);
 
-	free_sb.push(sb);
+	ptr_cnt<char> oldhead = avail_sb.load();
+	ptr_cnt<char> newhead;
+	do{
+		((atomic_pptr_cnt<char>*)sb)->store(oldhead);
+		newhead.set((char*)sb, oldhead.get_counter()+1);
+	} while (!avail_sb.compare_exchange_weak(oldhead,newhead));
 }
 
 //todo

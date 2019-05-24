@@ -180,9 +180,9 @@ struct Section {
 
 class BaseMeta {
 	// unused small sb
-	PM_TRANSIENT _ArrayStack<void*, FREESTACK_CAP> free_sb;//pptr
+	// PM_TRANSIENT _ArrayStack<void*, FREESTACK_CAP> free_sb;//pptr
 	// descriptor recycle list
-	// PM_TRANSIENT std::atomic<void*> avail_sb;
+	PM_TRANSIENT atomic_pptr_cnt<char> avail_sb;
 	PM_TRANSIENT std::atomic<DescriptorNode> avail_desc;
 
 	// so far we don't need thread_num at all
@@ -231,7 +231,7 @@ public:
 	}
 	// flush everything needed before exit
 	void cleanup(){
-		free_sb.cleanup();
+		// free_sb.cleanup();
 	}
 
 private:
