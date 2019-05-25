@@ -92,43 +92,41 @@ public:
 		off(v==nullptr ? 0 : (int64_t)((uint64_t)v | (counter & CACHELINE_MASK)) - ((int64_t)this)) {};
 	atomic_pptr_cnt(const pptr<T> &p, uint64_t counter=0)noexcept: //copy constructor
 		off(p.is_null() ? 0 : (int64_t)((uint64_t)(p.off + (int64_t)&p) | (counter & CACHELINE_MASK)) - ((int64_t)this)) {};
-	ptr_cnt<T> load(memory_order order = memory_order_seq_cst) const noexcept{
+	inline ptr_cnt<T> load(memory_order order = memory_order_seq_cst) const noexcept{
 		int64_t cur_off = off.load(order);
 		ptr_cnt<T> ret;
 		ret.ptr = cur_off==0 ? nullptr : (T*)(cur_off + ((int64_t)this));
 		return ret;
 	}
-	void store(ptr_cnt<T> desired, 
+	inline void store(ptr_cnt<T> desired, 
 		memory_order order = memory_order_seq_cst ) noexcept{
 		int64_t new_off = desired.get_ptr()==nullptr? 0 : ((int64_t)desired.ptr) - ((int64_t)this);
 		off.store(new_off, order);
 	}
-	bool compare_exchange_weak(ptr_cnt<T>& expected, ptr_cnt<T> desired,
+	inline bool compare_exchange_weak(ptr_cnt<T>& expected, ptr_cnt<T> desired,
 		memory_order order = memory_order_seq_cst ) noexcept{
 		int64_t old_off = expected.get_ptr()==nullptr ? 0 : ((int64_t)expected.ptr) - ((int64_t)this);
 		int64_t new_off = desired.get_ptr()==0 ? 0 : ((int64_t)(T*)desired.ptr) - ((int64_t)this);
 		bool ret = off.compare_exchange_weak(old_off, new_off, order);
 		if(!ret) {
-			int64_t cur_off = off.load();
-			if(cur_off == 0){
+			if(old_off == 0){
 				expected.ptr = nullptr;
 			} else{
-				expected.ptr = (T*)(cur_off + ((int64_t)this));
+				expected.ptr = (T*)(old_off + ((int64_t)this));
 			}
 		}
 		return ret;
 	}
-	bool compare_exchange_strong(ptr_cnt<T>& expected, ptr_cnt<T> desired,
+	inline bool compare_exchange_strong(ptr_cnt<T>& expected, ptr_cnt<T> desired,
 		memory_order order = memory_order_seq_cst ) noexcept{
 		int64_t old_off = expected.get_ptr()==nullptr ? 0 : ((int64_t)expected.ptr) - ((int64_t)this);
 		int64_t new_off = desired.get_ptr()==0 ? 0 : ((int64_t)(T*)desired.ptr) - ((int64_t)this);
 		bool ret = off.compare_exchange_strong(old_off, new_off, order);
 		if(!ret) {
-			int64_t cur_off = off.load();
-			if(cur_off == 0){
+			if(old_off == 0){
 				expected.ptr = nullptr;
 			} else{
-				expected.ptr = (T*)(cur_off + ((int64_t)this));
+				expected.ptr = (T*)(old_off + ((int64_t)this));
 			}
 		}
 		return ret;

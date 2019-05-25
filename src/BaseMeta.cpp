@@ -18,9 +18,6 @@ BaseMeta::BaseMeta(uint64_t thd_num) noexcept
 	heaps()
 	// thread_num(thd_num) {
 {
-	// FLUSH(&thread_num);
-	// free_desc = new ArrayQueue<Descriptor*>("pmmalloc_freedesc");
-	// free_sb.init();
 	/* allocate these persistent data into specific memory address */
 	dirty = true;
 	FLUSH(&dirty);
@@ -38,10 +35,18 @@ BaseMeta::BaseMeta(uint64_t thd_num) noexcept
 		FLUSH(&roots[i]);
 	}
 
+	// warm up small sb space 
+	uint64_t space_num = new_space(1);
+	DBG_PRINT("allocate sb space %d\n", space_num);
+	void* ptr = spaces[1][space_num].sec_start;
+	organize_sb_list((void*)ptr, SB_SPACE_SIZE/SBSIZE, SBSIZE);
+
 	FLUSHFENCE;
 }
 
-uint64_t BaseMeta::new_space(int i){//i=0:desc, i=1:small sb, i=2:large sb
+uint64_t BaseMeta::new_space(int i, size_t sz){
+	// i=0:desc, i=1:small sb, i=2:large sb
+	// sz is useful only when i == 2, i.e. when allocating a large block
 	FLUSH(&space_num[i]);
 	FLUSHFENCE;
 	uint64_t my_space_num = space_num[i].fetch_add(1,std::memory_order_relaxed);
@@ -50,11 +55,23 @@ uint64_t BaseMeta::new_space(int i){//i=0:desc, i=1:small sb, i=2:large sb
 	spaces[i][my_space_num].sec_bytes = 0;
 	FLUSH(&spaces[i][my_space_num].sec_bytes);
 	FLUSHFENCE;
-	uint64_t space_size = i==0?DESC_SPACE_SIZE:SB_SPACE_SIZE;
+	uint64_t space_size;
+	switch(i){
+		case 0:
+			space_size = DESC_SPACE_SIZE;
+			break;
+		case 1:
+			space_size = SB_SPACE_SIZE;
+			break;
+		case 2:
+			space_size = sz;
+			break;
+		default:
+			assert(0&&"incorrect space index!");
+	}
 	void* tmp_sec_start = nullptr;
 	bool res = mgr->__nvm_region_allocator(&tmp_sec_start,PAGESIZE, space_size);
 	if(!res) assert(0&&"region allocation fails!");
-	// spaces[i][my_space_num].sec_curr.store(spaces[i][my_space_num].sec_start);
 	spaces[i][my_space_num].sec_start = tmp_sec_start;
 	spaces[i][my_space_num].sec_bytes = space_size;
 	FLUSH(&spaces[i][my_space_num].sec_start);
@@ -283,20 +300,18 @@ inline PageInfo BaseMeta::get_page_info_for_ptr(void* ptr) {
 
 void BaseMeta::heap_push_partial(Descriptor* desc) {
 	ProcHeap* heap = desc->heap;
-	atomic_pptr_cnt<Descriptor>& list = heap->partial_list;
 
-	ptr_cnt<Descriptor> oldhead = list.load();
+	ptr_cnt<Descriptor> oldhead = heap->partial_list.load();
 	ptr_cnt<Descriptor> newhead;
 	do {
 		newhead.set(desc, oldhead.get_counter() + 1);
 		assert(oldhead.get_ptr() != newhead.get_ptr());
 		newhead.get_ptr()->next_partial.store(oldhead); 
-	} while (!list.compare_exchange_weak(oldhead, newhead));
+	} while (!heap->partial_list.compare_exchange_weak(oldhead, newhead));
 }
 
 Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap) {
-	atomic_pptr_cnt<Descriptor>& list = heap->partial_list;
-	ptr_cnt<Descriptor> oldhead = list.load();
+	ptr_cnt<Descriptor> oldhead = heap->partial_list.load();
 	ptr_cnt<Descriptor> newhead;
 	do {
 		Descriptor* olddesc = oldhead.get_ptr();
@@ -306,7 +321,8 @@ Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap) {
 		Descriptor* desc = newhead.get_ptr();
 		uint64_t counter = oldhead.get_counter();
 		newhead.set(desc, counter);
-	} while (!list.compare_exchange_weak(oldhead, newhead));
+	} while (!heap->partial_list.compare_exchange_weak(oldhead, newhead));
+	assert(oldhead.get_ptr()->anchor.load().state!=SB_FULL);
 	return oldhead.get_ptr();
 }
 
@@ -418,25 +434,20 @@ void BaseMeta::malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_
 }
 
 inline void BaseMeta::organize_sb_list(void* start, uint64_t count, uint64_t stride){
-	// put new sbs to free_sb queue
-	// uint64_t ptr = (uint64_t)start + count*stride;
-	// for(uint64_t i = 1; i < count; i++){
-	// 	ptr -= stride;
-	// 	free_sb.push((void*)ptr);
-	// }
-
-	uint64_t ptr = (uint64_t)start + stride;
-	for(uint64_t i = 1; i < count-1; i++){
-		new ((atomic_pptr_cnt<char>*)ptr) atomic_pptr_cnt<char>((char*)(ptr + stride));
+	// put (start)...(start+count-1) sbs to free_sb queue
+	// in total it's count sbs
+	uint64_t ptr = (uint64_t)start;
+	for(uint64_t i = 0; i < count-1; i++){
+		*(int64_t*)ptr = (int64_t)stride;
 		ptr += stride;
 	}
-	new ((atomic_pptr_cnt<char>*)ptr) atomic_pptr_cnt<char>();//init to empty
+	*(int64_t*)ptr = 0;//init to empty
 	ptr_cnt<char> oldhead = avail_sb.load();
 	ptr_cnt<char> newhead;
 	do{
 		((atomic_pptr_cnt<char>*)ptr)->store(oldhead);//include counter
 		newhead.set((char*)((uint64_t)start + stride), oldhead.get_counter()+1);
-	}while(!avail_sb.compare_exchange_weak(oldhead,newhead));
+	}while(!avail_sb.compare_exchange_strong(oldhead,newhead));
 }
 
 void* BaseMeta::small_sb_alloc(size_t size){
@@ -453,7 +464,7 @@ void* BaseMeta::small_sb_alloc(size_t size){
 		if(oldptr) {
 			ptr_cnt<char> newhead = ((atomic_pptr_cnt<char>*)oldptr)->load();
 			newhead.set(newhead.get_ptr(),oldhead.get_counter());
-			if(avail_sb.compare_exchange_strong(oldhead,newhead)){
+			if(avail_sb.compare_exchange_weak(oldhead,newhead)){
 				return oldptr;
 			}
 		}
@@ -461,7 +472,9 @@ void* BaseMeta::small_sb_alloc(size_t size){
 			uint64_t space_num = new_space(1);
 			DBG_PRINT("allocate sb space %d\n", space_num);
 			oldptr = spaces[1][space_num].sec_start;
-			organize_sb_list(oldptr,SB_SPACE_SIZE/SBSIZE,SBSIZE);
+			organize_sb_list((void*)((uint64_t)oldptr+SBSIZE),
+				SB_SPACE_SIZE/SBSIZE - 1,
+				SBSIZE);
 			return oldptr;
 		}
 	}
@@ -477,38 +490,26 @@ inline void BaseMeta::small_sb_retire(void* sb, size_t size){
 	} while (!avail_sb.compare_exchange_weak(oldhead,newhead));
 }
 
-//todo
-void* BaseMeta::large_sb_alloc(size_t size, uint64_t alignement){
-	cout<<"WARNING: Allocating a large object is not persisted yet!\n";
-	// assert(0&"not persistently implemented yet!");
-	void* addr = mmap(nullptr,size,PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-	if (addr == MAP_FAILED) {
-		fprintf(stderr, "large_sb_alloc() mmap failed, %lu: ", size);
-		switch (errno) {
-			case EBADF:	fprintf(stderr, "EBADF"); break;
-			case EACCES:	fprintf(stderr, "EACCES"); break;
-			case EINVAL:	fprintf(stderr, "EINVAL"); break;
-			case ETXTBSY:	fprintf(stderr, "ETXBSY"); break;
-			case EAGAIN:	fprintf(stderr, "EAGAIN"); break;
-			case ENOMEM:	fprintf(stderr, "ENOMEM"); break;
-			case ENODEV:	fprintf(stderr, "ENODEV"); break;
-		}
-		fprintf(stderr, "\n");
-		fflush(stderr);
-		exit(1);
-	}
-	else if(addr == nullptr){
-		fprintf(stderr, "large_sb_alloc() mmap of size %lu returned NULL\n", size);
-		fflush(stderr);
-		exit(1);
-	}
+/* 
+ * IMPORTANT: 	Large_sb_alloc is designed for very rare 
+ *				large sb (>=16K) allocations. 
+ *
+ *				For now it's restricted to 128 as MAX_SECTION 
+ *				is 128. After 128 times, large allocation will 
+ *				fail and the program will crash.
+ */
+void* BaseMeta::large_sb_alloc(size_t size){
+	// cout<<"WARNING: Allocating a large object.\n";
+	uint64_t space_num = new_space(2, size);
+	DBG_PRINT("allocate large sb space %d\n", space_num);
+	char* addr = spaces[2][space_num].sec_start;
 	return addr;
 }
 
-//todo
 void BaseMeta::large_sb_retire(void* sb, size_t size){
-	// assert(0&"not persistently implemented yet!");
-	munmap(sb, size);
+	// cout<<"WARNING: Deallocating a large object.\n";
+	assert(size%SBSIZE == 0);//size must be a multiple of SBSIZE
+	organize_sb_list(sb, size/SBSIZE, SBSIZE);
 }
 
 Descriptor* BaseMeta::desc_alloc(){
@@ -586,21 +587,21 @@ inline void BaseMeta::desc_retire(Descriptor* desc){
 }
 
 void* BaseMeta::alloc_large_block(size_t sz){
-	void* addr = large_sb_alloc(sz, SBSIZE);
+	void* addr = large_sb_alloc(sz);
 	return addr;
 }
 
 void* BaseMeta::do_malloc(size_t size){
-	// large block allocation
 	if (UNLIKELY(size > MAX_SZ)) {
-		size_t pages = PAGE_CEILING(size);
+		// large block allocation
+		size_t sbs = round_up(size, SBSIZE);//round size up to multiple of SBSIZE
 		Descriptor* desc = desc_alloc();
 		assert(desc);
 
 		desc->heap = nullptr;
-		desc->block_size = pages;
+		desc->block_size = sbs;
 		desc->maxcount = 1;
-		desc->superblock = (char*)alloc_large_block(pages);
+		desc->superblock = (char*)alloc_large_block(sbs);
 
 		Anchor anchor;
 		anchor.avail = 0;

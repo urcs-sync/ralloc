@@ -211,6 +211,11 @@ public:
 	void do_free(void* ptr);
 	inline uint64_t min(uint64_t a, uint64_t b){return a>b?b:a;}
 	inline uint64_t max(uint64_t a, uint64_t b){return a>b?a:b;}
+	inline uint64_t round_up(uint64_t numToRound, uint64_t multiple) {
+		//only works for some multiple that is a power of 2
+		assert(multiple && ((multiple & (multiple - 1)) == 0));
+		return (numToRound + multiple - 1) & ~(multiple - 1);
+	}
 	inline void* set_root(void* ptr, uint64_t i){
 		//this is sequential
 		assert(i<MAX_ROOTS);
@@ -242,8 +247,14 @@ public:
 	}
 
 private:
-	//i=0:desc, i=1:small sb, i=2:large sb. return index of allocated space
-	uint64_t new_space(int i);
+	/*
+	 * i=0:desc, i=1:small sb, i=2:large sb. 
+	 * return index of allocated space
+	 *
+	 * sz is useful only when i == 2, 
+	 * i.e. when allocating a large block
+	 */
+	uint64_t new_space(int i, size_t sz=0);
 
 	// func on size class
 	size_t get_sizeclass(size_t size);
@@ -282,7 +293,7 @@ private:
 	void small_sb_retire(void* sb, size_t size);
 
 	// allocate a large sb
-	void* large_sb_alloc(size_t size, uint64_t alignement);
+	void* large_sb_alloc(size_t size);
 	// retire a large sb
 	void large_sb_retire(void* sb, size_t size);
 
