@@ -10,21 +10,21 @@ void PageInfo::set(Descriptor* desc, size_t sc_idx)
 	assert(((size_t)desc & SC_MASK) == 0);
 	assert(sc_idx < MAX_SZ_IDX);
 
-	_desc = ((size_t)desc | sc_idx) - (uint64_t)pmmalloc::mgr->base_addr;
+	_desc = desc==nullptr ? 0 : ((size_t)desc | sc_idx) - (uint64_t)pmmalloc::mgr->base_addr;
 }
 
 Descriptor* PageInfo::get_desc() const
 {
 	assert(pmmalloc::initialized&&"PM should be initialized first.");
 	assert(pmmalloc::mgr&&"mgr should not be NULL.");
-	return (Descriptor*)((_desc + (uint64_t)pmmalloc::mgr->base_addr) & ~SC_MASK);
+	return _desc==0 ? nullptr : (Descriptor*)((_desc + (uint64_t)pmmalloc::mgr->base_addr) & ~SC_MASK);
 }
 
 size_t PageInfo::get_sc_idx() const
 {
 	assert(pmmalloc::initialized&&"PM should be initialized first.");
 	assert(pmmalloc::mgr&&"mgr should not be NULL.");
-	return ((_desc + (uint64_t)pmmalloc::mgr->base_addr) & SC_MASK);
+	return _desc==0 ? 0 : ((_desc + (uint64_t)pmmalloc::mgr->base_addr) & SC_MASK);
 }
 
 PageMap::PageMap(){
@@ -51,7 +51,9 @@ PageMap::~PageMap(){
 size_t PageMap::addr_to_key(char* ptr) const
 {
 	assert(initialized&&"PM should be initialized first.");
-	size_t key = ((size_t)ptr >> PM_KEY_SHIFT) & PM_KEY_MASK;
+	assert(pmmalloc::mgr&&"mgr should not be NULL.");
+	uint64_t diff = (uint64_t)ptr - (uint64_t)pmmalloc::mgr->base_addr;
+	size_t key = ((size_t)diff >> PM_KEY_SHIFT) & PM_KEY_MASK;
 	return key;
 }
 

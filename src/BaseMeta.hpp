@@ -229,6 +229,9 @@ public:
 	void restart(){
 		// free_desc = new ArrayQueue<Descriptor*>("pmmalloc_freedesc");
 		// free_sb = new ArrayStack<void*>("pmmalloc_freesb");
+		// todo: GC
+		assert(!dirty && "Heap is dirty and GC isn't implemented!");
+		dirty = true;
 	}
 	void cleanup(){
 		// todo: flush everything needed before exit

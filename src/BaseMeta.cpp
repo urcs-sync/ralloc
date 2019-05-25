@@ -459,7 +459,7 @@ void* BaseMeta::small_sb_alloc(size_t size){
 		}
 		else{
 			uint64_t space_num = new_space(1);
-			cout<<"allocate sb space "<<space_num<<endl;
+			DBG_PRINT("allocate sb space %d\n", space_num);
 			oldptr = spaces[1][space_num].sec_start;
 			organize_sb_list(oldptr,SB_SPACE_SIZE/SBSIZE,SBSIZE);
 			return oldptr;

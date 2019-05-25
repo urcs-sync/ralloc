@@ -4,7 +4,7 @@ CXX = g++
 WARNING_FLAGS:=-ftrapv -Wreturn-type -W -Wall \
 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-parameter
 
-FLAGS = -O0 -g -fpermissive -std=c++17 $(WARNING_FLAGS)
+FLAGS = -O3 -g -fpermissive -std=c++17 $(WARNING_FLAGS) #-DDESTROY
 PMMALLOC_FLAGS = $(FLAGS) -DPMMALLOC -L.
 PMMALLOC_GC_FLAGS = $(FLAGS) -DGC -DPMMALLOC -L.
 MAKALU_FLAGS = $(FLAGS) -I../ext/makalu_alloc/include -DMAKALU -L../ext/makalu_alloc/lib -lmakalu -L~/.local/lib/
@@ -62,7 +62,7 @@ cache-thrash_test: ./benchmark/cache-thrash.cpp libpmmalloc.a
 cache-scratch_test: ./benchmark/cache-scratch.cpp libpmmalloc.a
 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lpmmalloc
 
-libpmmalloc.a:../obj/RegionManager.o ../obj/PageMap.o ../obj/BaseMeta.o ../obj/pmmalloc.o ../obj/TCache.o ../obj/SizeClass.o 
+libpmmalloc.a:../obj/SizeClass.o ../obj/RegionManager.o ../obj/PageMap.o ../obj/TCache.o ../obj/BaseMeta.o ../obj/pmmalloc.o
 	ar -rcs $@ $^
 
 clean:
