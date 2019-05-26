@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <atomic>
 #include "gc.hpp"
+#include "pm_config.hpp"
 using namespace std;
 //todo: some comments please?
 class ptr_base{
@@ -89,44 +90,69 @@ protected:
 	atomic<int64_t> off;
 public:
 	atomic_pptr_cnt(T* v=nullptr, uint64_t counter=0)noexcept: //default constructor
-		off(v==nullptr ? 0 : (int64_t)((uint64_t)v | (counter & CACHELINE_MASK)) - ((int64_t)this)) {};
-	atomic_pptr_cnt(const pptr<T> &p, uint64_t counter=0)noexcept: //copy constructor
-		off(p.is_null() ? 0 : (int64_t)((uint64_t)(p.off + (int64_t)&p) | (counter & CACHELINE_MASK)) - ((int64_t)this)) {};
+		off(v==nullptr ? 0 : (((uint64_t)v | (counter & CACHELINE_MASK)) - ((uint64_t)this))) {};
 	inline ptr_cnt<T> load(memory_order order = memory_order_seq_cst) const noexcept{
 		int64_t cur_off = off.load(order);
 		ptr_cnt<T> ret;
-		ret.ptr = cur_off==0 ? nullptr : (T*)(cur_off + ((int64_t)this));
+		if(cur_off >=0 && cur_off<CACHELINE_SIZE){
+			ret.ptr = (T*)cur_off;
+		} else{
+			 ret.ptr = (T*)(cur_off + ((uint64_t)this));
+		}
 		return ret;
 	}
 	inline void store(ptr_cnt<T> desired, 
 		memory_order order = memory_order_seq_cst ) noexcept{
-		int64_t new_off = desired.get_ptr()==nullptr? 0 : ((int64_t)desired.ptr) - ((int64_t)this);
+		int64_t new_off;
+		if (desired.get_ptr() == nullptr){
+			new_off = desired.get_counter();
+		} else {
+			new_off = (uint64_t)desired.ptr - (uint64_t)this;
+		}
 		off.store(new_off, order);
 	}
 	inline bool compare_exchange_weak(ptr_cnt<T>& expected, ptr_cnt<T> desired,
 		memory_order order = memory_order_seq_cst ) noexcept{
-		int64_t old_off = expected.get_ptr()==nullptr ? 0 : ((int64_t)expected.ptr) - ((int64_t)this);
-		int64_t new_off = desired.get_ptr()==0 ? 0 : ((int64_t)(T*)desired.ptr) - ((int64_t)this);
+		int64_t old_off, new_off;
+		if(expected.get_ptr()==nullptr){
+			old_off = expected.get_counter();
+		} else {
+			old_off = (uint64_t)expected.ptr - (uint64_t)this;
+		}
+		if(desired.get_ptr()==nullptr){
+			new_off = desired.get_counter();
+		} else {
+			new_off = (uint64_t)desired.ptr - (uint64_t)this;
+		}
 		bool ret = off.compare_exchange_weak(old_off, new_off, order);
 		if(!ret) {
-			if(old_off == 0){
-				expected.ptr = nullptr;
+			if(old_off >= 0 && old_off < CACHELINE_SIZE){
+				expected.ptr = (T*)old_off;
 			} else{
-				expected.ptr = (T*)(old_off + ((int64_t)this));
+				expected.ptr = (T*)(old_off + (uint64_t)this);
 			}
 		}
 		return ret;
 	}
 	inline bool compare_exchange_strong(ptr_cnt<T>& expected, ptr_cnt<T> desired,
 		memory_order order = memory_order_seq_cst ) noexcept{
-		int64_t old_off = expected.get_ptr()==nullptr ? 0 : ((int64_t)expected.ptr) - ((int64_t)this);
-		int64_t new_off = desired.get_ptr()==0 ? 0 : ((int64_t)(T*)desired.ptr) - ((int64_t)this);
+		int64_t old_off, new_off;
+		if(expected.get_ptr()==nullptr){
+			old_off = expected.get_counter();
+		} else {
+			old_off = (uint64_t)expected.ptr - (uint64_t)this;
+		}
+		if(desired.get_ptr()==nullptr){
+			new_off = desired.get_counter();
+		} else {
+			new_off = (uint64_t)desired.ptr - (uint64_t)this;
+		}
 		bool ret = off.compare_exchange_strong(old_off, new_off, order);
 		if(!ret) {
-			if(old_off == 0){
-				expected.ptr = nullptr;
+			if(old_off >= 0 && old_off < CACHELINE_SIZE){
+				expected.ptr = (T*)old_off;
 			} else{
-				expected.ptr = (T*)(old_off + ((int64_t)this));
+				expected.ptr = (T*)(old_off + (uint64_t)this);
 			}
 		}
 		return ret;
