@@ -41,6 +41,11 @@ BaseMeta::BaseMeta(uint64_t thd_num) noexcept
 	void* ptr = spaces[1][space_num].sec_start;
 	organize_sb_list((void*)ptr, SB_SPACE_SIZE/SBSIZE, SBSIZE);
 
+	space_num = new_space(1);
+	DBG_PRINT("allocate sb space %d\n", space_num);
+	ptr = spaces[1][space_num].sec_start;
+	organize_sb_list((void*)ptr, SB_SPACE_SIZE/SBSIZE, SBSIZE);
+
 	FLUSHFENCE;
 }
 
@@ -447,7 +452,7 @@ inline void BaseMeta::organize_sb_list(void* start, uint64_t count, uint64_t str
 	do{
 		((atomic_pptr_cnt<char>*)ptr)->store(oldhead);//include counter
 		newhead.set((char*)((uint64_t)start + stride), oldhead.get_counter()+1);
-	}while(!avail_sb.compare_exchange_strong(oldhead,newhead));
+	}while(!avail_sb.compare_exchange_weak(oldhead,newhead));
 }
 
 void* BaseMeta::small_sb_alloc(size_t size){
@@ -464,7 +469,7 @@ void* BaseMeta::small_sb_alloc(size_t size){
 		if(oldptr) {
 			ptr_cnt<char> newhead = ((atomic_pptr_cnt<char>*)oldptr)->load();
 			newhead.set(newhead.get_ptr(),oldhead.get_counter());
-			if(avail_sb.compare_exchange_weak(oldhead,newhead)){
+			if(avail_sb.compare_exchange_strong(oldhead,newhead)){
 				return oldptr;
 			}
 		}

@@ -8,7 +8,11 @@
 #include "gc.hpp"
 #include "pm_config.hpp"
 using namespace std;
-//todo: some comments please?
+
+/*
+ * Class ptr_base is the base class for pptr.
+ * It's for future gc_ptr which perhaps defines filter_func in.
+ */
 class ptr_base{
 protected:
 	int64_t off;
@@ -22,6 +26,17 @@ public:
 	// operator T*(){return static_cast<T*>(val);}//cast to transient pointer
 };
 
+/*
+ * Class pptr is a templated class implemented off-holder. See paper:
+ * Efficient Support of Position Independence on Non-Volatile Memory
+ * 		Guoyang Chen et al., MICRO'2017
+ *
+ * It stores the offset from the instance itself to the object it points to.
+ * The offset can be negative.
+ * 
+ * Two kinds of constructors and casting to transient pointer are provided,
+ * as well as dereference, arrow access, assignment, and comparison.
+ */
 template<class T>
 class pptr : public ptr_base{
 public:
@@ -67,6 +82,30 @@ public:
 };
 
 template <class T>
+inline bool operator==(const pptr<T>& lhs, const std::nullptr_t& rhs){
+	return lhs.is_null();
+}
+
+template <class T>
+inline bool operator==(const pptr<T>& lhs, const pptr<T>& rhs){
+	return (T*)lhs == (T*)rhs;
+}
+
+template <class T>
+inline bool operator!=(const pptr<T>& lhs, const std::nullptr_t& rhs){
+	return !lhs.is_null();
+}
+
+/* 
+ * Class ptr_cnt is also a templated class, but is a wrapper of plain pointer.
+ * The least significant 6 bits are for ABA counter, and the user should 
+ * guarantee the thing we points to is always aligned to 64 byte (expected to 
+ * be the cache line  size).
+ * 
+ * This class is mainly to store the intermediate value of operations on 
+ * atomic_pptr_cnt<T> defined below, including atomic load, store, and CAS.
+ */
+template <class T>
 class ptr_cnt{
 public:
 	T* ptr;//ptr with least 6 bits as counter
@@ -84,6 +123,18 @@ public:
 	}
 };
 
+/* 
+ * Class atomic_pptr_cnt is considered the atomic and ABA-counter-added 
+ * version of pptr.It's initialized by a pointer and a counter.
+ *
+ * The member *off* stores the offset from the instance of atomic_pptr_cnt to 
+ * the object it points to PLUS the ABA counter. As a result, when you add off
+ * to pointer *this*, you'll get something like ptr_cnt.
+ *
+ * It defines load, store, compare_exchange_weak, and compare_exchange_strong
+ * with the same specification of atomic, but returns and/or takes desired and 
+ * expected value in type of ptr_cnt<T>.
+ */
 template <class T>
 class atomic_pptr_cnt{//atomic pptr with 6 bits of counter
 protected:
@@ -159,6 +210,17 @@ public:
 	}
 };
 
+/* 
+ * Class atomic_pptr is considered the atomic version of pptr.
+ * It's initialized by a pointer or pptr<T>.
+ *
+ * The member *off* stores the offset from the instance of atomic_pptr to 
+ * the object it points to.
+ *
+ * It defines load, store, compare_exchange_weak, and compare_exchange_strong
+ * with the same specification of atomic, but returns and/or takes desired and 
+ * expected value in type of T*.
+ */
 template <class T> 
 class atomic_pptr{
 	atomic<int64_t> off;
@@ -210,20 +272,6 @@ public:
 	}
 };
 
-template <class T>
-inline bool operator==(const pptr<T>& lhs, const std::nullptr_t& rhs){
-	return lhs.is_null();
-}
-
-template <class T>
-inline bool operator==(const pptr<T>& lhs, const pptr<T>& rhs){
-	return (T*)lhs == (T*)rhs;
-}
-
-template <class T>
-inline bool operator!=(const pptr<T>& lhs, const std::nullptr_t& rhs){
-	return !lhs.is_null();
-}
 // struct gc_ptr_base : public ptr_base{
 // 	gc_ptr_base(void* v=nullptr):ptr_base(v){};
 // 	virtual vector<gc_ptr_base*> filter_func(GarbageCollection* gc) {
