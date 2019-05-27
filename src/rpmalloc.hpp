@@ -21,6 +21,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C"{
+#endif
+
 void RP_init(char* _id);
 void RP_close();
 bool RP_collect();
@@ -28,8 +32,12 @@ void* RP_malloc(size_t sz);
 void RP_free(void* ptr);
 void* RP_set_root(void* ptr, uint64_t i);
 void* RP_get_root(uint64_t i);
-#define RP_pthread_create(thd, attr, f, arg) pm_thread_create(thd, attr, f, arg)
 
+#ifdef __cplusplus
+}
+#endif
+
+#define RP_pthread_create(thd, attr, f, arg) pm_thread_create(thd, attr, f, arg)
 /*
  ************class rpmalloc************
  * This is a persistent lock-free allocator based on LRMalloc.
