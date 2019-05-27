@@ -27,7 +27,7 @@ extern "C"{
 
 void RP_init(char* _id);
 void RP_close();
-bool RP_collect();
+int RP_collect();
 void* RP_malloc(size_t sz);
 void RP_free(void* ptr);
 void* RP_set_root(void* ptr, uint64_t i);

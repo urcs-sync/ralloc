@@ -79,9 +79,9 @@ void RP_close(){
 }
 
 //manually request to collect garbage
-bool RP_collect(){
+int RP_collect(){
 	//TODO
-	return true;
+	return 1;
 }
 
 void* RP_malloc(size_t sz){
