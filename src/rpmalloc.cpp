@@ -24,7 +24,7 @@
 
 #include "RegionManager.hpp"
 #include "BaseMeta.hpp"
-#include "thread_util.hpp"
+// #include "thread_util.hpp"
 #include "pm_config.hpp"
 
 using namespace std;
@@ -32,7 +32,7 @@ using namespace std;
 namespace rpmalloc{
 	bool initialized = false;
 	std::string filepath;
-	uint64_t thread_num;
+	// uint64_t thread_num;
 	/* manager to map, remap, and unmap the heap */
 	RegionManager* mgr;//initialized when rpmalloc constructs
 	/* persistent metadata and their layout */
@@ -47,9 +47,9 @@ using namespace rpmalloc;
  * if such a heap doesn't exist, create one. aka start.
  * id is the distinguishable identity of applications.
  */
-void RP_init(char* _id, uint64_t thd_num){
+void RP_init(char* _id){
 	string id(_id);
-	thread_num = thd_num;
+	// thread_num = thd_num;
 	filepath = HEAPFILE_PREFIX + id;
 	bool restart = RegionManager::exists_test(filepath);
 	// cout<<"sizeof basemeta:"<<sizeof(BaseMeta)<<endl;
@@ -67,7 +67,7 @@ void RP_init(char* _id, uint64_t thd_num){
 		bool res = mgr->__nvm_region_allocator((void**)&base_md,PAGESIZE,sizeof(BaseMeta)); 
 		if(!res) assert(0&&"mgr allocation fails!");
 		mgr->__store_heap_start(base_md);
-		new (base_md) BaseMeta(thd_num);
+		new (base_md) BaseMeta();
 	}
 	initialized = true;
 }

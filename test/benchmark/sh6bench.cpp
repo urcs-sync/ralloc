@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
 
 	uThreadCount = (int)promptAndRead("threads", GetNumProcessors(), 'u');
 #ifdef PMMALLOC
-	RP_init("test",uThreadCount);
+	RP_init("test");
 #elif defined (MAKALU)
 	__map_persistent_region();
 	MAK_start(&__nvm_region_allocator);

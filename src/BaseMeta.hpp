@@ -6,7 +6,7 @@
 #include <mutex>
 
 #include "pm_config.hpp"
-#include "thread_util.hpp"
+// #include "thread_util.hpp"
 
 #include "RegionManager.hpp"
 #include "ArrayStack.hpp"
@@ -51,7 +51,7 @@
  * 		bool res = mgr->__nvm_region_allocator((void**)&base_md,PAGESIZE,sizeof(BaseMeta));
  * 		if(!res) assert(0&&"mgr allocation fails!");
  * 		mgr->__store_heap_start(base_md);
- * 		new (base_md) BaseMeta(mgr, thd_num);
+ * 		new (base_md) BaseMeta(mgr);
  *
  * Procedure to restart from $filepath$:
  * 		BaseMeta* base_md;
@@ -199,7 +199,7 @@ class BaseMeta {
 	//0:desc, 1:small sb, 2: large sb
 	RP_PERSIST Section spaces[3][MAX_SECTION];
 public:
-	BaseMeta(uint64_t thd_num = MAX_THREADS) noexcept;
+	BaseMeta() noexcept;
 	~BaseMeta(){
 		/* usually BaseMeta shouldn't be destructed, 
 		 * and will be reused in the next time

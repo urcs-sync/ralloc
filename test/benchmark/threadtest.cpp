@@ -220,7 +220,7 @@ int main (int argc, char * argv[])
     sz = atoi(argv[5]);
   }
 #ifdef PMMALLOC
-  RP_init("threadtest",nthreads);
+  RP_init("threadtest");
 #elif defined (MAKALU)
   __map_persistent_region();
   MAK_start(&__nvm_region_allocator);

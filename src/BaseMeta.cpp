@@ -11,7 +11,7 @@ namespace rpmalloc{
 	//GC
 };
 using namespace rpmalloc;
-BaseMeta::BaseMeta(uint64_t thd_num) noexcept
+BaseMeta::BaseMeta() noexcept
 : 
 	avail_sb(),
 	avail_desc(),

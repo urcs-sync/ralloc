@@ -190,7 +190,7 @@ int main (int argc, char * argv[])
 
   int i;
 #ifdef PMMALLOC
-  RP_init("test",nthreads);
+  RP_init("test");
 #elif defined (MAKALU)
   __map_persistent_region();
   MAK_start(&__nvm_region_allocator);

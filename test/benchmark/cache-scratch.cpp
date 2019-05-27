@@ -188,7 +188,7 @@ int main (int argc, char * argv[])
 
   int i;
 #ifdef PMMALLOC
-  RP_init("test",nthreads+1);//additional 1 for main thread
+  RP_init("test");//additional 1 for main thread
   // tid = thread_count.fetch_add(1);
 #elif defined (MAKALU)
   __map_persistent_region();
