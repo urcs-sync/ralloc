@@ -85,15 +85,27 @@ int RP_collect(){
 }
 
 void* RP_malloc(size_t sz){
+	if(UNLIKELY(initialized==false)){
+		RP_init("no_explicit_init");
+	}
 	return base_md->do_malloc(sz);
 }
 
 void RP_free(void* ptr){
+	if(UNLIKELY(initialized==false)){
+		RP_init("no_explicit_init");
+	}
 	base_md->do_free(ptr);
 }
 void* RP_set_root(void* ptr, uint64_t i){
+	if(UNLIKELY(initialized==false)){
+		RP_init("no_explicit_init");
+	}
 	return base_md->set_root(ptr,i);
 }
 void* RP_get_root(uint64_t i){
+	if(UNLIKELY(initialized==false)){
+		RP_init("no_explicit_init");
+	}
 	return base_md->get_root(i);
 }
