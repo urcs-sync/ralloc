@@ -22,6 +22,10 @@
 #include <vector>
 #include <algorithm>
 
+#include "RegionManager.hpp"
+#include "BaseMeta.hpp"
+#include "thread_util.hpp"
+
 using namespace std;
 
 namespace rpmalloc{
@@ -42,7 +46,8 @@ using namespace rpmalloc;
  * if such a heap doesn't exist, create one. aka start.
  * id is the distinguishable identity of applications.
  */
-void RP_init(std::string id, uint64_t thd_num){
+void RP_init(char* _id, uint64_t thd_num){
+	string id(_id);
 	thread_num = thd_num;
 	filepath = HEAPFILE_PREFIX + id;
 	bool restart = RegionManager::exists_test(filepath);

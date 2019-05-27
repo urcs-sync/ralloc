@@ -18,17 +18,10 @@
 #ifndef _PMMALLOC_HPP_
 #define _PMMALLOC_HPP_
 
-#include <string>
-#include <atomic>
-#include <vector>
-
 #include "pm_config.hpp"
+#include <stddef.h>
 
-#include "RegionManager.hpp"
-#include "BaseMeta.hpp"
-#include "thread_util.hpp"
-
-void RP_init(std::string id, uint64_t thd_num = MAX_THREADS);
+void RP_init(char* _id, uint64_t thd_num = MAX_THREADS);
 void RP_close();
 bool RP_collect();
 void* RP_malloc(size_t sz);
@@ -80,14 +73,4 @@ void* RP_get_root(uint64_t i);
  *
  */
 
-namespace rpmalloc{
-	extern bool initialized;
-	extern std::string filepath;
-	extern uint64_t thread_num;
-	/* manager to map, remap, and unmap the heap */
-	extern RegionManager* mgr;//initialized when rpmalloc constructs
-	/* persistent metadata and their layout */
-	extern BaseMeta* base_md;
-	//GC
-};
 #endif /* _PMMALLOC_HPP_ */
