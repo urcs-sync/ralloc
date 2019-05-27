@@ -68,10 +68,10 @@ int thread_specific;
 
 #ifdef PMMALLOC
 
-  #include "pmmalloc.hpp"
+  #include "rpmalloc.hpp"
 
-  #define pm_malloc(s) PM_malloc(s)
-  #define pm_free(p) PM_free(p)
+  #define pm_malloc(s) RP_malloc(s)
+  #define pm_free(p) RP_free(p)
 
 #elif defined (MAKALU)
 
@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
 
 	uThreadCount = (int)promptAndRead("threads", GetNumProcessors(), 'u');
 #ifdef PMMALLOC
-	PM_init("test",uThreadCount);
+	RP_init("test",uThreadCount);
 #elif defined (MAKALU)
 	__map_persistent_region();
 	MAK_start(&__nvm_region_allocator);
@@ -266,7 +266,7 @@ int main(int argc, char *argv[])
 	if (fout != stdout)
 		fclose(fout);
 #ifdef PMMALLOC
-	PM_close();
+	RP_close();
 #elif defined (MAKALU)
 	MAK_close();
 #endif

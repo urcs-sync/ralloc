@@ -1,5 +1,5 @@
-#ifndef _PM_CONFIG_HPP_
-#define _PM_CONFIG_HPP_
+#ifndef _RP_CONFIG_HPP_
+#define _RP_CONFIG_HPP_
 
 
 #include <assert.h>
@@ -7,10 +7,10 @@
 #include "pfence_util.h"
 
 /* prefixing indicator */
-// persistent data in pmmalloc
-#define PM_PERSIST
-// transient data in pmmalloc
-#define PM_TRANSIENT
+// persistent data in rpmalloc
+#define RP_PERSIST
+// transient data in rpmalloc
+#define RP_TRANSIENT
 
 #define LIKELY(x) __builtin_expect((x), 1)
 #define UNLIKELY(x) __builtin_expect((x), 0)

@@ -28,17 +28,17 @@
 #include "BaseMeta.hpp"
 #include "thread_util.hpp"
 
-void PM_init(std::string id, uint64_t thd_num = MAX_THREADS);
-void PM_close();
-bool PM_collect();
-void* PM_malloc(size_t sz);
-void PM_free(void* ptr);
-void* PM_set_root(void* ptr, uint64_t i);
-void* PM_get_root(uint64_t i);
-#define PM_pthread_create(thd, attr, f, arg) pm_thread_create(thd, attr, f, arg)
+void RP_init(std::string id, uint64_t thd_num = MAX_THREADS);
+void RP_close();
+bool RP_collect();
+void* RP_malloc(size_t sz);
+void RP_free(void* ptr);
+void* RP_set_root(void* ptr, uint64_t i);
+void* RP_get_root(uint64_t i);
+#define RP_pthread_create(thd, attr, f, arg) pm_thread_create(thd, attr, f, arg)
 
 /*
- ************class pmmalloc************
+ ************class rpmalloc************
  * This is a persistent lock-free allocator based on LRMalloc.
  *
  * Function:
@@ -61,7 +61,7 @@ void* PM_get_root(uint64_t i);
  * 		void* _get_root(uint64_t i):
  * 			Return i-th root.
  * 		bool _collect(): TODO
- * 			Manually bring pmmalloc offline and do garbage collection
+ * 			Manually bring rpmalloc offline and do garbage collection
  * 
  * Note: Main data is stored in *base_md and is mapped to 
  * filepath, which is $(HEAPFILE_PREFIX)$(id).
@@ -80,12 +80,12 @@ void* PM_get_root(uint64_t i);
  *
  */
 
-namespace pmmalloc{
+namespace rpmalloc{
 	extern bool initialized;
 	extern std::string filepath;
 	extern uint64_t thread_num;
 	/* manager to map, remap, and unmap the heap */
-	extern RegionManager* mgr;//initialized when pmmalloc constructs
+	extern RegionManager* mgr;//initialized when rpmalloc constructs
 	/* persistent metadata and their layout */
 	extern BaseMeta* base_md;
 	//GC

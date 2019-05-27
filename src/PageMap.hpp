@@ -29,16 +29,16 @@
 // which uses 48 bits for addressing (e.g high 16 bits ignored)
 // can ignore the bottom 12 bits (lg of page)
 // insignificant high bits
-#define PM_NHS 14
+#define RP_NHS 14
 // insignificant low bits. page is 4K
-#define PM_NLS 12
+#define RP_NLS 12
 // significant middle bits
-#define PM_SB (64 - PM_NHS - PM_NLS)
+#define RP_SB (64 - RP_NHS - RP_NLS)
 // to get the key from a address
 // 1. shift to remove insignificant low bits
 // 2. apply mask of middle significant bits
-#define PM_KEY_SHIFT PM_NLS
-#define PM_KEY_MASK ((1ULL << PM_SB) - 1)
+#define RP_KEY_SHIFT RP_NLS
+#define RP_KEY_MASK ((1ULL << RP_SB) - 1)
 
 struct Descriptor;
 // associates metadata to each allocator page
@@ -63,7 +63,7 @@ public:
 	size_t get_sc_idx() const;
 };
 
-#define PM_SZ ((1ULL << PM_SB) * sizeof(PageInfo))
+#define RP_SZ ((1ULL << RP_SB) * sizeof(PageInfo))
 
 static_assert(sizeof(PageInfo) == sizeof(uint64_t), "Invalid PageInfo size");
 
@@ -84,7 +84,7 @@ private:
 	RegionManager* page_mgr = nullptr;//initialized when ArrayStack constructs
 };
 
-namespace pmmalloc{
+namespace rpmalloc{
 	// metadata for pagemap
 	extern PageMap pagemap;
 	extern RegionManager* mgr;

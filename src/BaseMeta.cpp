@@ -5,12 +5,12 @@
 #include "BaseMeta.hpp"
 
 using namespace std;
-namespace pmmalloc{
+namespace rpmalloc{
 	/* manager to map, remap, and unmap the heap */
-	extern RegionManager* mgr;//initialized when pmmalloc constructs
+	extern RegionManager* mgr;//initialized when rpmalloc constructs
 	//GC
 };
-using namespace pmmalloc;
+using namespace rpmalloc;
 BaseMeta::BaseMeta(uint64_t thd_num) noexcept
 : 
 	avail_sb(),

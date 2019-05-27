@@ -41,9 +41,9 @@
 #include "timer.h"
 #ifdef PMMALLOC
 
-  #include "pmmalloc.hpp"
-  #define pm_malloc(s) PM_malloc(s)
-  #define pm_free(p) PM_free(p)
+  #include "rpmalloc.hpp"
+  #define pm_malloc(s) RP_malloc(s)
+  #define pm_free(p) RP_free(p)
 
 #elif defined (MAKALU)
 
@@ -220,7 +220,7 @@ int main (int argc, char * argv[])
     sz = atoi(argv[5]);
   }
 #ifdef PMMALLOC
-  PM_init("threadtest",nthreads);
+  RP_init("threadtest",nthreads);
 #elif defined (MAKALU)
   __map_persistent_region();
   MAK_start(&__nvm_region_allocator);
@@ -251,7 +251,7 @@ int main (int argc, char * argv[])
 
   delete [] threads;
 #ifdef PMMALLOC
-  PM_close();
+  RP_close();
 #elif defined(MAKALU)
   MAK_close();
 #endif

@@ -8,7 +8,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #ifdef PMMALLOC
-  #include "pmmalloc.hpp"
+  #include "rpmalloc.hpp"
 #elif defined (MAKALU)
   #include "makalu.h"
 #endif

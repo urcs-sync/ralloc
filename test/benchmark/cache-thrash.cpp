@@ -44,9 +44,9 @@ using namespace std;
 
 #ifdef PMMALLOC
 
-  #include "pmmalloc.hpp"
-  #define pm_malloc(s) PM_malloc(s)
-  #define pm_free(p) PM_free(p)
+  #include "rpmalloc.hpp"
+  #define pm_malloc(s) RP_malloc(s)
+  #define pm_free(p) RP_free(p)
 
 #elif defined(MAKALU) // PMMALLOC ends
 
@@ -190,7 +190,7 @@ int main (int argc, char * argv[])
 
   int i;
 #ifdef PMMALLOC
-  PM_init("test",nthreads);
+  RP_init("test",nthreads);
 #elif defined (MAKALU)
   __map_persistent_region();
   MAK_start(&__nvm_region_allocator);
@@ -209,7 +209,7 @@ int main (int argc, char * argv[])
 
   cout << "Time elapsed = " << (double) t << " seconds." << endl;
 #ifdef PMMALLOC
-  PM_close();
+  RP_close();
 #elif defined (MAKALU)
   MAK_close();
 #endif

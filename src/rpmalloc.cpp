@@ -15,7 +15,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#include "pmmalloc.hpp"
+#include "rpmalloc.hpp"
 
 #include <string>
 #include <atomic>
@@ -24,17 +24,17 @@
 
 using namespace std;
 
-namespace pmmalloc{
+namespace rpmalloc{
 	bool initialized = false;
 	std::string filepath;
 	uint64_t thread_num;
 	/* manager to map, remap, and unmap the heap */
-	RegionManager* mgr;//initialized when pmmalloc constructs
+	RegionManager* mgr;//initialized when rpmalloc constructs
 	/* persistent metadata and their layout */
 	BaseMeta* base_md;
 	//GC
 };
-using namespace pmmalloc;
+using namespace rpmalloc;
 
 /* 
  * mmap the existing heap file corresponding to id. aka restart,
@@ -42,7 +42,7 @@ using namespace pmmalloc;
  * if such a heap doesn't exist, create one. aka start.
  * id is the distinguishable identity of applications.
  */
-void PM_init(std::string id, uint64_t thd_num){
+void RP_init(std::string id, uint64_t thd_num){
 	thread_num = thd_num;
 	filepath = HEAPFILE_PREFIX + id;
 	bool restart = RegionManager::exists_test(filepath);
@@ -66,28 +66,28 @@ void PM_init(std::string id, uint64_t thd_num){
 	initialized = true;
 }
 
-void PM_close(){
+void RP_close(){
 	base_md->cleanup();
 	delete mgr;
 	initialized = false;
 }
 
 //manually request to collect garbage
-bool PM_collect(){
+bool RP_collect(){
 	//TODO
 	return true;
 }
 
-void* PM_malloc(size_t sz){
+void* RP_malloc(size_t sz){
 	return base_md->do_malloc(sz);
 }
 
-void PM_free(void* ptr){
+void RP_free(void* ptr){
 	base_md->do_free(ptr);
 }
-void* PM_set_root(void* ptr, uint64_t i){
+void* RP_set_root(void* ptr, uint64_t i){
 	return base_md->set_root(ptr,i);
 }
-void* PM_get_root(uint64_t i){
+void* RP_get_root(uint64_t i){
 	return base_md->get_root(i);
 }

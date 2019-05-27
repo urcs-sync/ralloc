@@ -18,7 +18,7 @@
 
 /********class BaseMeta********
  * This is the file where meta data structures of
- * pmmalloc are defined.
+ * rpmalloc are defined.
  *
  * The logic is: 
  * 	1. 	Use RegionManager to allocate a persistent 
@@ -61,8 +61,8 @@
  * 		base_md->set_mgr(mgr);
  * 		base_md->restart();
  *
- * By default free_sb is mapped to $(HEAPFILE_PREFIX)_stack_pmmalloc_freesb,
- * free_desc to $(HEAPFILE_PREFIX)_queue_pmmalloc_freedesc, 
+ * By default free_sb is mapped to $(HEAPFILE_PREFIX)_stack_rpmalloc_freesb,
+ * free_desc to $(HEAPFILE_PREFIX)_queue_rpmalloc_freedesc, 
  * and partial_desc of each sizeclass with block size sz to 
  * $(HEAPFILE_PREFIX)_queue_scpartial$(sz).
  *
@@ -139,17 +139,17 @@ static_assert(sizeof(DescriptorNode) == sizeof(uint64_t), "Invalid descriptor no
 struct Descriptor {
 	// list node pointers
 	// used in free descriptor list
-	PM_TRANSIENT atomic_pptr_cnt<Descriptor> next_free;
+	RP_TRANSIENT atomic_pptr_cnt<Descriptor> next_free;
 	// used in partial descriptor list
-	PM_TRANSIENT atomic_pptr_cnt<Descriptor> next_partial;
+	RP_TRANSIENT atomic_pptr_cnt<Descriptor> next_partial;
 	// anchor; is reconstructed during recovery
-	PM_TRANSIENT std::atomic<Anchor> anchor;
+	RP_TRANSIENT std::atomic<Anchor> anchor;
 
-	PM_PERSIST pptr<char> superblock;
-	PM_PERSIST pptr<ProcHeap> heap;
-	PM_PERSIST uint32_t block_size; // block size acquired from sc
-	PM_PERSIST uint32_t maxcount; // block number acquired from sc
-	PM_PERSIST bool in_use = false; // false if it's free, true if it's in use
+	RP_PERSIST pptr<char> superblock;
+	RP_PERSIST pptr<ProcHeap> heap;
+	RP_PERSIST uint32_t block_size; // block size acquired from sc
+	RP_PERSIST uint32_t maxcount; // block number acquired from sc
+	RP_PERSIST bool in_use = false; // false if it's free, true if it's in use
 	Descriptor() noexcept :
 		next_free(),
 		next_partial(),
@@ -160,44 +160,44 @@ struct Descriptor {
 struct ProcHeap {
 public:
 	// ptr to descriptor, head of partial descriptor list
-	PM_TRANSIENT atomic_pptr_cnt<Descriptor> partial_list;
+	RP_TRANSIENT atomic_pptr_cnt<Descriptor> partial_list;
 	/* size class index; never change after init
-	 * though it's tagged PM_PERSIST, in 1/sc scheme,
+	 * though it's tagged RP_PERSIST, in 1/sc scheme,
 	 * we don't have to flush it at all; it's fixed.
 	 */
-	PM_PERSIST size_t sc_idx;
+	RP_PERSIST size_t sc_idx;
 	ProcHeap() noexcept :
 		partial_list(){};
 }__attribute__((aligned(CACHELINE_SIZE)));
 
 //persistent sections
 struct Section {
-	PM_PERSIST pptr<char> sec_start;
-	// PM_PERSIST std::atomic<void*> sec_curr;
-	PM_PERSIST size_t sec_bytes;
+	RP_PERSIST pptr<char> sec_start;
+	// RP_PERSIST std::atomic<void*> sec_curr;
+	RP_PERSIST size_t sec_bytes;
 	Section() noexcept:sec_start(),sec_bytes(){};
 }__attribute__((aligned(CACHELINE_SIZE)));
 
 class BaseMeta {
 	// unused small sb
-	// PM_TRANSIENT _ArrayStack<void*, FREESTACK_CAP> free_sb;//pptr
+	// RP_TRANSIENT _ArrayStack<void*, FREESTACK_CAP> free_sb;//pptr
 	// descriptor recycle list
-	PM_TRANSIENT atomic_pptr_cnt<char> avail_sb;
-	PM_TRANSIENT atomic_pptr_cnt<Descriptor> avail_desc;
-	PM_PERSIST bool dirty;
+	RP_TRANSIENT atomic_pptr_cnt<char> avail_sb;
+	RP_TRANSIENT atomic_pptr_cnt<Descriptor> avail_desc;
+	RP_PERSIST bool dirty;
 
 	// so far we don't need thread_num at all
-	// PM_PERSIST uint64_t thread_num;
+	// RP_PERSIST uint64_t thread_num;
 	/* 1 heap per sc, and don't have to be persistent in this scheme
 	 * todo: alloc a transient region for it in order to share among APPs
 	 */
-	PM_PERSIST ProcHeap heaps[MAX_SZ_IDX];
+	RP_PERSIST ProcHeap heaps[MAX_SZ_IDX];
 	//persistent root
-	PM_PERSIST pptr<char> roots[MAX_ROOTS] = {nullptr};//gc_ptr_base*
+	RP_PERSIST pptr<char> roots[MAX_ROOTS] = {nullptr};//gc_ptr_base*
 	//0:desc, 1:small sb, 2: large sb
-	PM_PERSIST std::atomic<uint64_t> space_num[3];
+	RP_PERSIST std::atomic<uint64_t> space_num[3];
 	//0:desc, 1:small sb, 2: large sb
-	PM_PERSIST Section spaces[3][MAX_SECTION];
+	RP_PERSIST Section spaces[3][MAX_SECTION];
 public:
 	BaseMeta(uint64_t thd_num = MAX_THREADS) noexcept;
 	~BaseMeta(){
@@ -232,8 +232,8 @@ public:
 		return roots[i];
 	}
 	void restart(){
-		// free_desc = new ArrayQueue<Descriptor*>("pmmalloc_freedesc");
-		// free_sb = new ArrayStack<void*>("pmmalloc_freesb");
+		// free_desc = new ArrayQueue<Descriptor*>("rpmalloc_freedesc");
+		// free_sb = new ArrayStack<void*>("rpmalloc_freesb");
 		// todo: GC
 		assert(!dirty && "Heap is dirty and GC isn't implemented!");
 		dirty = true;
