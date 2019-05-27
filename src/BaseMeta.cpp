@@ -635,7 +635,6 @@ void* BaseMeta::do_malloc(size_t size){
 void BaseMeta::do_free(void* ptr){
 	char* curr = mgr->curr_addr_ptr->load();
 	assert(ptr>=mgr->base_addr && ptr<=curr);
-	assert
 	PageInfo info = get_page_info_for_ptr(ptr);
 	Descriptor* desc = info.get_desc();
 	// @todo: this can happen with dynamic loading
