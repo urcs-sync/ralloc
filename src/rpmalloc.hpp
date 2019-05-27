@@ -18,10 +18,10 @@
 #ifndef _PMMALLOC_HPP_
 #define _PMMALLOC_HPP_
 
-#include "pm_config.hpp"
 #include <stddef.h>
+#include <stdint.h>
 
-void RP_init(char* _id, uint64_t thd_num = MAX_THREADS);
+void RP_init(char* _id, uint64_t thd_num = 512);
 void RP_close();
 bool RP_collect();
 void* RP_malloc(size_t sz);

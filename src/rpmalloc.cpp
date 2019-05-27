@@ -25,6 +25,7 @@
 #include "RegionManager.hpp"
 #include "BaseMeta.hpp"
 #include "thread_util.hpp"
+#include "pm_config.hpp"
 
 using namespace std;
 
