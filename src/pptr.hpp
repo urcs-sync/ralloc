@@ -5,7 +5,7 @@
 #include <iostream>
 #include <cstddef>
 #include <atomic>
-#include "gc.hpp"
+// #include "gc.hpp"
 #include "pm_config.hpp"
 using namespace std;
 
