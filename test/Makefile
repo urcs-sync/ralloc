@@ -8,10 +8,11 @@ FLAGS = -O3 -g -fpermissive -std=c++17 $(WARNING_FLAGS) -DDESTROY
 PMMALLOC_FLAGS = $(FLAGS) -DPMMALLOC -L.
 PMMALLOC_GC_FLAGS = $(FLAGS) -DGC -DPMMALLOC -L.
 MAKALU_FLAGS = $(FLAGS) -I../ext/makalu_alloc/include -DMAKALU -L../ext/makalu_alloc/lib -lmakalu -L~/.local/lib/
-CXXFLAGS = $(PMMALLOC_GC_FLAGS)
-# CXXFLAGS = $(MAKALU_FLAGS)
-# CXXFLAGS = $(FLAGS) #-L../../lrmalloc -l:lrmalloc.a -ldl# for built-in malloc
-LIBS = -pthread -lstdc++ -latomic -fPIC -ljemalloc 
+CXXFLAGS = $(PMMALLOC_GC_FLAGS) -ljemalloc 
+# CXXFLAGS = $(MAKALU_FLAGS) -ljemalloc 
+# CXXFLAGS = $(FLAGS) -ljemalloc
+# CXXFLAGS = $(FLAGS) -L../../lrmalloc -l:lrmalloc.a -ldl# for built-in malloc
+LIBS = -pthread -lstdc++ -latomic -fPIC 
 
 
 all: benchmark_pm
@@ -67,6 +68,6 @@ librpmalloc.a:../obj/SizeClass.o ../obj/RegionManager.o ../obj/PageMap.o ../obj/
 
 clean:
 	rm -f *_test
-	rm -f ../obj/*
+	rm -rf ../obj/*
 	rm -f librpmalloc.a
-	rm -f /dev/shm/*
+	rm -rf /dev/shm/*
