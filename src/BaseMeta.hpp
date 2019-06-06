@@ -9,8 +9,6 @@
 // #include "thread_util.hpp"
 
 #include "RegionManager.hpp"
-#include "ArrayStack.hpp"
-#include "ArrayQueue.hpp"
 #include "SizeClass.hpp"
 #include "TCache.hpp"
 #include "PageMap.hpp"

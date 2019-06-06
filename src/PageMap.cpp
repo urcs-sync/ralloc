@@ -31,13 +31,13 @@ PageMap::PageMap(){
 	std::string path = HEAPFILE_PREFIX + std::string("_pagemap");
 	bool persist = false;
 	if(RegionManager::exists_test(path)){
-		page_mgr = new RegionManager(path,persist,RP_SZ);
+		page_mgr = new RegionManager(path,RP_SZ,persist);
 		void* hstart = page_mgr->__fetch_heap_start();
 		_pagemap = (std::atomic<PageInfo>*) hstart;
 		//todo: do we need recovery?
 	} else {
 		//doesn't exist. create a new one
-		page_mgr = new RegionManager(path,persist,RP_SZ);
+		page_mgr = new RegionManager(path,RP_SZ,persist);
 		bool res = page_mgr->__nvm_region_allocator((void**)&_pagemap,PAGESIZE,RP_SZ);
 		if(!res) assert(0&&"page_mgr allocation fails!");
 		page_mgr->__store_heap_start(_pagemap);

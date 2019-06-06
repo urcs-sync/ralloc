@@ -41,10 +41,10 @@ BaseMeta::BaseMeta() noexcept
 	void* ptr = spaces[1][space_num].sec_start;
 	organize_sb_list((void*)ptr, SB_SPACE_SIZE/SBSIZE, SBSIZE);
 
-	space_num = new_space(1);
-	DBG_PRINT("allocate sb space %d\n", space_num);
-	ptr = spaces[1][space_num].sec_start;
-	organize_sb_list((void*)ptr, SB_SPACE_SIZE/SBSIZE, SBSIZE);
+	// space_num = new_space(1);
+	// DBG_PRINT("allocate sb space %d\n", space_num);
+	// ptr = spaces[1][space_num].sec_start;
+	// organize_sb_list((void*)ptr, SB_SPACE_SIZE/SBSIZE, SBSIZE);
 
 	FLUSHFENCE;
 }

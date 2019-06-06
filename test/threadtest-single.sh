@@ -23,9 +23,10 @@ n=0
 rss=0
 while true ; do
   rss_sample=$(ps --no-headers -o "rss" $pid)
+  echo "$rss_sample"
   (( n += 1 ))
   (( rss += rss_sample ))
-  sleep 0.05
+  sleep 0.01
   while read line; do
     if [[ $line == *"Time elapsed"* ]]; then
       exec_time=$(echo $line | awk '{print $4}')

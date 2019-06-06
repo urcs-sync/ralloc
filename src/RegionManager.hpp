@@ -48,30 +48,30 @@ public:
 	atomic_pptr<char>* curr_addr_ptr;//this always points to the place of base_addr
 	bool persist;
 
-	RegionManager(const std::string& file_path, bool p = true, uint64_t size = MAX_FILESIZE):
+	RegionManager(const std::string& file_path, uint64_t size = MAX_FILESIZE, bool p = true):
 		FILESIZE(size+PAGESIZE),
 		HEAPFILE(file_path),
 		curr_addr_ptr(nullptr),
 		persist(p){
-		// if(persist){
+		if(persist){
 			if(exists_test(HEAPFILE)){
 				__remap_persistent_region();
 			} else {
 				__map_persistent_region();
 			}
-		// } else {
-		// 	if(exists_test(HEAPFILE)){
-		// 		__remap_transient_region();
-		// 	} else {
-		// 		__map_transient_region();
-		// 	}
-		// }
+		} else {
+			if(exists_test(HEAPFILE)){
+				__remap_transient_region();
+			} else {
+				__map_transient_region();
+			}
+		}
 	};
 	~RegionManager(){
-		// if(persist)
+		if(persist)
 			__close_persistent_region();
-		// else
-			// __close_transient_region();
+		else
+			__close_transient_region();
 #ifdef DESTROY
 		__destroy();
 #endif

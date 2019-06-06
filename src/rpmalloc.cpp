@@ -25,7 +25,6 @@
 #include "RegionManager.hpp"
 #include "BaseMeta.hpp"
 // #include "thread_util.hpp"
-#include "pm_config.hpp"
 
 using namespace std;
 
@@ -47,7 +46,7 @@ using namespace rpmalloc;
  * if such a heap doesn't exist, create one. aka start.
  * id is the distinguishable identity of applications.
  */
-void RP_init(char* _id){
+void RP_init(char* _id, uint64_t size){
 	string id(_id);
 	// thread_num = thd_num;
 	filepath = HEAPFILE_PREFIX + id;
@@ -56,14 +55,14 @@ void RP_init(char* _id){
 
 	//TODO: find all heap files with this id to determine the value of restart, and assign appropriate path to filepath
 	if(restart){
-		mgr = new RegionManager(filepath);
+		mgr = new RegionManager(filepath, size, true);
 		void* hstart = mgr->__fetch_heap_start();
 		base_md = (BaseMeta*) hstart;
 		base_md->restart();
 		//collect if the heap is dirty
 	} else {
 		/* RegionManager init */
-		mgr = new RegionManager(filepath);
+		mgr = new RegionManager(filepath, size, true);
 		bool res = mgr->__nvm_region_allocator((void**)&base_md,PAGESIZE,sizeof(BaseMeta)); 
 		if(!res) assert(0&&"mgr allocation fails!");
 		mgr->__store_heap_start(base_md);
