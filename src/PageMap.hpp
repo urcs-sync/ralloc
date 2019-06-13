@@ -87,7 +87,7 @@ private:
 namespace rpmalloc{
 	// metadata for pagemap
 	extern PageMap pagemap;
-	extern RegionManager* mgr;
+	extern Regions* _rgs;
 	extern bool initialized;
 }
 #endif // __PAGEMAP_H

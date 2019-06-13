@@ -5,26 +5,26 @@ using namespace rpmalloc;
 PageMap rpmalloc::pagemap;
 void PageInfo::set(Descriptor* desc, size_t sc_idx)
 {
-	assert(rpmalloc::initialized&&"PM should be initialized first.");
-	assert(rpmalloc::mgr&&"mgr should not be NULL.");
+	assert(initialized&&"PM should be initialized first.");
+	assert(_rgs&&"_rgs should not be NULL.");
 	assert(((size_t)desc & SC_MASK) == 0);
 	assert(sc_idx < MAX_SZ_IDX);
 
-	_desc = desc==nullptr ? 0 : ((size_t)desc | sc_idx) - (uint64_t)rpmalloc::mgr->base_addr;
+	_desc = desc==nullptr ? 0 : _rgs->untranslate(META_IDX,(size_t)desc | sc_idx);
 }
 
 Descriptor* PageInfo::get_desc() const
 {
-	assert(rpmalloc::initialized&&"PM should be initialized first.");
-	assert(rpmalloc::mgr&&"mgr should not be NULL.");
-	return _desc==0 ? nullptr : (Descriptor*)((_desc + (uint64_t)rpmalloc::mgr->base_addr) & ~SC_MASK);
+	assert(initialized&&"PM should be initialized first.");
+	assert(_rgs&&"_rgs should not be NULL.");
+	return _desc==0 ? nullptr : (Descriptor*)((uint64_t)_rgs->translate(META_IDX,_desc) & ~SC_MASK);
 }
 
 size_t PageInfo::get_sc_idx() const
 {
-	assert(rpmalloc::initialized&&"PM should be initialized first.");
-	assert(rpmalloc::mgr&&"mgr should not be NULL.");
-	return _desc==0 ? 0 : ((_desc + (uint64_t)rpmalloc::mgr->base_addr) & SC_MASK);
+	assert(initialized&&"PM should be initialized first.");
+	assert(_rgs&&"_rgs should not be NULL.");
+	return _desc==0 ? 0 : ((uint64_t)_rgs->translate(META_IDX,_desc) & SC_MASK);
 }
 
 PageMap::PageMap(){
@@ -51,8 +51,8 @@ PageMap::~PageMap(){
 size_t PageMap::addr_to_key(char* ptr) const
 {
 	assert(initialized&&"PM should be initialized first.");
-	assert(rpmalloc::mgr&&"mgr should not be NULL.");
-	uint64_t diff = (uint64_t)ptr - (uint64_t)rpmalloc::mgr->base_addr;
+	assert(_rgs&&"_rgs should not be NULL.");
+	uint64_t diff = _rgs->untranslate(META_IDX,ptr);
 	size_t key = ((size_t)diff >> RP_KEY_SHIFT) & RP_KEY_MASK;
 	return key;
 }

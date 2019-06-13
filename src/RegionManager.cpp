@@ -70,7 +70,7 @@ void RegionManager::__map_persistent_region(){
 	// | curr_addr  |
 	// | heap_start |
 	// |     size   |
-	new (((atomic_pptr<char>*) base_addr)) atomic_pptr<char>((char*) ((size_t)addr + 2*sizeof(atomic_pptr<char>) + sizeof(uint64_t)));
+	new (((atomic_pptr<char>*) base_addr)) atomic_pptr<char>((char*) ((size_t)addr + PAGESIZE));
 	curr_addr_ptr = (atomic_pptr<char>*)base_addr;
 	*(uint64_t*)((size_t)base_addr + 2*sizeof(atomic_pptr<char>)) = FILESIZE;
 
@@ -131,7 +131,7 @@ void RegionManager::__map_transient_region(){
 	// | curr_addr  |
 	// | heap_start |
 	// |     size   |
-	new (((atomic_pptr<char>*) base_addr)) atomic_pptr<char>((char*) ((size_t)addr + 2*sizeof(atomic_pptr<char>) + sizeof(uint64_t)));
+	new (((atomic_pptr<char>*) base_addr)) atomic_pptr<char>((char*) ((size_t)addr + PAGESIZE));
 	curr_addr_ptr = (atomic_pptr<char>*)base_addr;
 	*(uint64_t*)((size_t)base_addr + 2*sizeof(atomic_pptr<char>)) = FILESIZE;
 

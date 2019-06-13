@@ -27,15 +27,19 @@
 #include <string>
 #include <fstream>
 #include <atomic>
+#include <vector>
 
 #include "pm_config.hpp"
 #include "pptr.hpp"
 
 
 /* layout of the region:
+ *	(The first page (4K) is reserved)
  *	atomic_pptr<char> curr_addr  0~63 (base_addr points to)
  *	heap_start = root - base_start 64~127
- *	(heap starts here to which heap_start points)
+ *	uint64_t size 128~191
+ *	...
+ *	(the first page ends and heap starts here to which heap_start points)
  *	....
  *	(heap ends here to which curr_addr points)
  */
@@ -123,5 +127,87 @@ public:
 	void __destroy();
 };
 
+
+class Regions{
+public:
+	std::vector<RegionManager> regions;
+	std::vector<char*> regions_address; // base address of each region
+	Regions():
+		regions(),
+		regions_address(){
+			regions_address.reserve(8);// a cache line
+		};
+	~Regions(){
+		regions.clear();
+		regions_address.clear();
+	}
+
+	inline bool exists_test (const std::string& name){
+		std::ifstream f(name.c_str());
+		return f.good();
+	}
+
+	void destroy(){
+		regions.clear();
+		regions_address.clear();
+	}
+
+	void create(const std::string& file_path, uint64_t size = MAX_FILESIZE, bool p = true){
+		assert(regions.size() == regions_address.size());
+		regions.emplace_back(file_path, size, p);
+		regions_address.emplace_back(regions.back().base_addr);
+		return;
+	}
+
+	template<class T>
+	void create_for(const std::string& file_path, uint64_t size = MAX_FILESIZE, bool p = true){
+		assert(regions.size() == regions_address.size());
+
+		bool restart = exists_test(file_path);
+		if(restart){
+			regions.emplace_back(file_path, size, p);
+			void* hstart = regions.back().__fetch_heap_start();
+			T* t = (T*) hstart;
+			t->restart();
+			//collect if the heap is dirty
+		} else {
+			/* RegionManager init */
+			regions.emplace_back(file_path, size, p);
+			T* t;
+			bool res = regions.back().__nvm_region_allocator((void**)&t,PAGESIZE,sizeof(T)); 
+			if(!res) assert(0&&"region allocation fails!");
+			regions.back().__store_heap_start(t);
+			new (t) T();
+		}
+		regions_address.emplace_back(regions.back().base_addr);
+
+		return;
+	}
+
+	// caller should ensure regions_address is created.
+	inline char* lookup(int index){
+		return regions_address[index];
+	}
+
+	// caller should ensure regions_address is created.
+	inline char* translate(int index, char* relative_address){
+		return regions_address[index] + (size_t)relative_address;
+	}
+
+	// caller should ensure regions_address is created.
+	inline uint64_t untranslate(int index, char* absolute_address){
+		return (uint64_t)absolute_address - (uint64_t)regions_address[index];
+	}
+
+	inline int expand(int index, void** memptr, size_t alignment, size_t size){
+		return regions[index].__nvm_region_allocator(memptr, alignment, size);
+	}
+
+	inline bool in_range(int index, void* ptr){
+		bool ret = ptr >= regions_address[index];
+		if (!ret) return false;
+		return ret && (ptr <= regions[index].curr_addr_ptr->load());
+	}
+};
 
 #endif /* _REGION_MANAGER_HPP_ */

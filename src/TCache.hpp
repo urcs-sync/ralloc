@@ -18,7 +18,7 @@
  * Note by Wentao Cai (wcai6@cs.rochester.edu)
  */
 namespace rpmalloc{
-	extern RegionManager* mgr;
+	extern Regions* _rgs;
 	extern bool initialized;
 }
 
@@ -38,7 +38,7 @@ public:
 	// manually popped list of blocks and now need to update cache
 	// `block` is the new head
 	void pop_list(char* block, uint32_t length);
-	char* peek_block() const { return _block==0 ? nullptr : (char*)(_block + (uint64_t)rpmalloc::mgr->base_addr); }
+	char* peek_block() const { return _block==0 ? nullptr : rpmalloc::_rgs->translate(META_IDX,_block); }
 
 	uint32_t get_block_num() const { return _block_num; }
 	TCacheBin() noexcept:_block(0), _block_num(0) {};

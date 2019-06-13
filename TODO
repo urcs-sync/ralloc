@@ -34,8 +34,17 @@ mmap multiple regions and represent them by ids, and introduce smart ptrs using 
 ~thread id lookup
 ～redesign the number of sizeclasses in BaseMeta
 ～use one desc pointer per sb (currently it's one per block)
+
+
+change layout to the one we discussed in the meeting
+separate things in different region and implement a constant address map for each region
+clean up things during exit
+	put blocks in caches back to superblocks
+	flush desc and sb section
+	flush freelists
 garbage collection
-	put filter function in blocks
-	metadata fix/reconstruction
-		when #thread changes?
-	sb coalesce
+	filter function
+	parallel
+benchmark
+	memcached
+	silo?

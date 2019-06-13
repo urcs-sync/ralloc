@@ -32,13 +32,13 @@ namespace rpmalloc{
 	bool initialized = false;
 	std::string filepath;
 	// uint64_t thread_num;
-	/* manager to map, remap, and unmap the heap */
-	RegionManager* mgr;//initialized when rpmalloc constructs
 	/* persistent metadata and their layout */
 	BaseMeta* base_md;
 	//GC
+	Regions* _rgs;
 };
 using namespace rpmalloc;
+
 
 /* 
  * mmap the existing heap file corresponding to id. aka restart,
@@ -50,30 +50,15 @@ void RP_init(char* _id, uint64_t size){
 	string id(_id);
 	// thread_num = thd_num;
 	filepath = HEAPFILE_PREFIX + id;
-	bool restart = RegionManager::exists_test(filepath);
-	// cout<<"sizeof basemeta:"<<sizeof(BaseMeta)<<endl;
-
-	//TODO: find all heap files with this id to determine the value of restart, and assign appropriate path to filepath
-	if(restart){
-		mgr = new RegionManager(filepath, size, true);
-		void* hstart = mgr->__fetch_heap_start();
-		base_md = (BaseMeta*) hstart;
-		base_md->restart();
-		//collect if the heap is dirty
-	} else {
-		/* RegionManager init */
-		mgr = new RegionManager(filepath, size, true);
-		bool res = mgr->__nvm_region_allocator((void**)&base_md,PAGESIZE,sizeof(BaseMeta)); 
-		if(!res) assert(0&&"mgr allocation fails!");
-		mgr->__store_heap_start(base_md);
-		new (base_md) BaseMeta();
-	}
+	_rgs = new Regions();
+	_rgs->create_for<BaseMeta>(filepath, size, true);
+	base_md = (BaseMeta*)(_rgs->regions[META_IDX].__fetch_heap_start());
 	initialized = true;
 }
 
 void RP_close(){
 	base_md->cleanup();
-	delete mgr;
+	delete _rgs;
 	initialized = false;
 }
 

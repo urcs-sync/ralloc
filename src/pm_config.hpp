@@ -12,6 +12,13 @@
 // transient data in rpmalloc
 #define RP_TRANSIENT
 
+// region index
+enum RegionIndex : int {
+	META_IDX = 0,
+	DESC_IDX = 1,
+	SB_IDX = 2
+};
+
 #define LIKELY(x) __builtin_expect((x), 1)
 #define UNLIKELY(x) __builtin_expect((x), 0)
 

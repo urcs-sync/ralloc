@@ -72,6 +72,22 @@
  * 		Wentao Cai (wcai6@cs.rochester.edu)
  */
 
+// pointers to the block in region idx.
+// relative address stored in CrossPtr is the offset 
+// from the start of that region to the block.
+// template<class T, RegionIndex idx>
+// class CrossPtr {
+// 	char* off;
+// 	CrossPtr(char* real_ptr);
+// 	operator T*();
+// 	operator void*();
+// 	T& operator * ();
+// 	T* operator -> ();
+// 	CrossPtr& operator = (const CrossPtr &p);
+// 	CrossPtr& operator = (const T* p);
+// 	CrossPtr& operator = (const void* p);
+// }
+
 // superblock states
 // used in Anchor::state
 enum SuperblockState {

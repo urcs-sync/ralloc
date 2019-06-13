@@ -5,11 +5,13 @@
 #include "BaseMeta.hpp"
 
 using namespace std;
+
 namespace rpmalloc{
 	/* manager to map, remap, and unmap the heap */
-	extern RegionManager* mgr;//initialized when rpmalloc constructs
+	extern Regions* _rgs;//initialized when rpmalloc constructs
 	//GC
 };
+
 using namespace rpmalloc;
 BaseMeta::BaseMeta() noexcept
 : 
@@ -75,7 +77,7 @@ uint64_t BaseMeta::new_space(int i, size_t sz){
 			assert(0&&"incorrect space index!");
 	}
 	void* tmp_sec_start = nullptr;
-	bool res = mgr->__nvm_region_allocator(&tmp_sec_start,PAGESIZE, space_size);
+	bool res = _rgs->expand(META_IDX,&tmp_sec_start,PAGESIZE, space_size);
 	if(!res) assert(0&&"region allocation fails!");
 	spaces[i][my_space_num].sec_start = tmp_sec_start;
 	spaces[i][my_space_num].sec_bytes = space_size;
@@ -633,8 +635,7 @@ void* BaseMeta::do_malloc(size_t size){
 	return cache->pop_block();
 }
 void BaseMeta::do_free(void* ptr){
-	char* curr = mgr->curr_addr_ptr->load();
-	assert(ptr>=mgr->base_addr && ptr<=curr);
+	assert(_rgs->in_range(META_IDX,ptr));
 	PageInfo info = get_page_info_for_ptr(ptr);
 	Descriptor* desc = info.get_desc();
 	// @todo: this can happen with dynamic loading
