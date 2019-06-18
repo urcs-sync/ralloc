@@ -50,9 +50,23 @@ void RP_init(char* _id, uint64_t size){
 	string id(_id);
 	// thread_num = thd_num;
 	filepath = HEAPFILE_PREFIX + id;
+	assert(sizeof(Descriptor) == DESCSIZE); // check desc size
+	assert(size >= MAX_SB_REGION_SIZE); // ensure user input is >=MAX_SB_REGION_SIZE
+	uint64_t num_sb = size/SBSIZE;
 	_rgs = new Regions();
-	_rgs->create_for<BaseMeta>(filepath, size, true);
-	base_md = (BaseMeta*)(_rgs->regions[META_IDX].__fetch_heap_start());
+	for(int i=0; i<LAST_IDX;i++){
+	switch(i){
+	case DESC_IDX:
+		_rgs->create(filepath+"_desc", num_sb*DESCSIZE, true, true);
+		break;
+	case SB_IDX:
+		_rgs->create(filepath+"_sb", num_sb*SBSIZE, true, false);
+		break;
+	case META_IDX:
+		base_md = _rgs->create_for<BaseMeta>(filepath+"_basemd", sizeof(BaseMeta), true);
+		break;
+	} // switch
+	}
 	initialized = true;
 }
 

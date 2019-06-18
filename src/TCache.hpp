@@ -17,15 +17,10 @@
  *
  * Note by Wentao Cai (wcai6@cs.rochester.edu)
  */
-namespace rpmalloc{
-	extern Regions* _rgs;
-	extern bool initialized;
-}
-
 struct TCacheBin
 {
 private:
-	uint64_t _block;
+	char* _block;//absolute address of block
 	uint32_t _block_num;
 
 public:
@@ -38,10 +33,10 @@ public:
 	// manually popped list of blocks and now need to update cache
 	// `block` is the new head
 	void pop_list(char* block, uint32_t length);
-	char* peek_block() const { return _block==0 ? nullptr : rpmalloc::_rgs->translate(META_IDX,_block); }
+	char* peek_block() const { return _block; }
 
 	uint32_t get_block_num() const { return _block_num; }
-	TCacheBin() noexcept:_block(0), _block_num(0) {};
+	TCacheBin() noexcept:_block(nullptr), _block_num(0) {};
 	// slow operations like fill/flush handled in cache user
 };
 

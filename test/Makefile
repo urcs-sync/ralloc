@@ -63,7 +63,7 @@ cache-thrash_test: ./benchmark/cache-thrash.cpp librpmalloc.a
 cache-scratch_test: ./benchmark/cache-scratch.cpp librpmalloc.a
 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
 
-librpmalloc.a:../obj/SizeClass.o ../obj/RegionManager.o ../obj/PageMap.o ../obj/TCache.o ../obj/BaseMeta.o ../obj/rpmalloc.o
+librpmalloc.a:../obj/SizeClass.o ../obj/RegionManager.o ../obj/TCache.o ../obj/BaseMeta.o ../obj/rpmalloc.o
 	ar -rcs $@ $^
 
 clean:

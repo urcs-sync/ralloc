@@ -91,4 +91,3 @@ namespace rpmalloc{
 	extern bool initialized;
 }
 #endif // __PAGEMAP_H
-

@@ -52,22 +52,35 @@ public:
 	atomic_pptr<char>* curr_addr_ptr;//this always points to the place of base_addr
 	bool persist;
 
-	RegionManager(const std::string& file_path, uint64_t size = MAX_FILESIZE, bool p = true):
-		FILESIZE(size+PAGESIZE),
+	RegionManager(const std::string& file_path, uint64_t size, bool p = true, bool imm_expand = true):
+		FILESIZE(((size/PAGESIZE)+2)*PAGESIZE), // size should align to page
 		HEAPFILE(file_path),
 		curr_addr_ptr(nullptr),
 		persist(p){
+		assert(size%CACHELINE_SIZE == 0); // size should be multiple of cache line size
 		if(persist){
 			if(exists_test(HEAPFILE)){
 				__remap_persistent_region();
 			} else {
 				__map_persistent_region();
+				if(imm_expand){//expand immediately
+					void* t;
+					bool res = __nvm_region_allocator(&t,CACHELINE_SIZE,size); 
+					if(!res) assert(0&&"region allocation fails!");
+					__store_heap_start(t);
+				}
 			}
 		} else {
 			if(exists_test(HEAPFILE)){
 				__remap_transient_region();
 			} else {
 				__map_transient_region();
+				if(imm_expand){//expand immediately
+					void* t;
+					bool res = __nvm_region_allocator(&t,CACHELINE_SIZE,size); 
+					if(!res) assert(0&&"region allocation fails!");
+					__store_heap_start(t);
+				}
 			}
 		}
 	};
@@ -130,7 +143,7 @@ public:
 
 class Regions{
 public:
-	std::vector<RegionManager> regions;
+	std::vector<RegionManager*> regions;
 	std::vector<char*> regions_address; // base address of each region
 	Regions():
 		regions(),
@@ -138,6 +151,7 @@ public:
 			regions_address.reserve(8);// a cache line
 		};
 	~Regions(){
+		for(auto it:regions) delete(it);
 		regions.clear();
 		regions_address.clear();
 	}
@@ -148,40 +162,38 @@ public:
 	}
 
 	void destroy(){
+		for(auto it:regions) delete(it);
 		regions.clear();
 		regions_address.clear();
 	}
 
-	void create(const std::string& file_path, uint64_t size = MAX_FILESIZE, bool p = true){
+	void create(const std::string& file_path, uint64_t size, bool p = true, bool imm_expand = true){
 		assert(regions.size() == regions_address.size());
-		regions.emplace_back(file_path, size, p);
-		regions_address.emplace_back(regions.back().base_addr);
+		RegionManager* new_mgr = new RegionManager(file_path,size,p,imm_expand);
+		regions.push_back(new_mgr);
+		if(imm_expand)
+			regions_address.push_back((char*)new_mgr->__fetch_heap_start());
+		else
+			regions_address.push_back(nullptr);
 		return;
 	}
 
 	template<class T>
-	void create_for(const std::string& file_path, uint64_t size = MAX_FILESIZE, bool p = true){
+	T* create_for(const std::string& file_path, uint64_t size, bool p = true){
 		assert(regions.size() == regions_address.size());
 
 		bool restart = exists_test(file_path);
+		RegionManager* new_mgr = new RegionManager(file_path,size,p,true);
+		regions.push_back(new_mgr);
+		T* t = (T*) new_mgr->__fetch_heap_start();
 		if(restart){
-			regions.emplace_back(file_path, size, p);
-			void* hstart = regions.back().__fetch_heap_start();
-			T* t = (T*) hstart;
 			t->restart();
 			//collect if the heap is dirty
 		} else {
-			/* RegionManager init */
-			regions.emplace_back(file_path, size, p);
-			T* t;
-			bool res = regions.back().__nvm_region_allocator((void**)&t,PAGESIZE,sizeof(T)); 
-			if(!res) assert(0&&"region allocation fails!");
-			regions.back().__store_heap_start(t);
 			new (t) T();
 		}
-		regions_address.emplace_back(regions.back().base_addr);
-
-		return;
+		regions_address.push_back((char*)t);
+		return t;
 	}
 
 	// caller should ensure regions_address is created.
@@ -195,18 +207,20 @@ public:
 	}
 
 	// caller should ensure regions_address is created.
-	inline uint64_t untranslate(int index, char* absolute_address){
-		return (uint64_t)absolute_address - (uint64_t)regions_address[index];
+	inline char* untranslate(int index, char* absolute_address){
+		return (char*)((uint64_t)absolute_address - (uint64_t)regions_address[index]);
 	}
 
-	inline int expand(int index, void** memptr, size_t alignment, size_t size){
-		return regions[index].__nvm_region_allocator(memptr, alignment, size);
+	inline bool expand(int index, void** memptr, size_t alignment, size_t size){
+		void* tmp;
+		if(memptr == nullptr) memptr = &tmp;
+		return regions[index]->__nvm_region_allocator(memptr, alignment, size);
 	}
 
 	inline bool in_range(int index, void* ptr){
 		bool ret = ptr >= regions_address[index];
 		if (!ret) return false;
-		return ret && (ptr <= regions[index].curr_addr_ptr->load());
+		return ret && (ptr <= regions[index]->curr_addr_ptr->load());
 	}
 };
 

@@ -37,6 +37,8 @@ mmap multiple regions and represent them by ids, and introduce smart ptrs using 
 
 
 change layout to the one we discussed in the meeting
+	free block list and cache are in-place linked list using pptr
+	free superblock list and partial superblock list are linked list whose nodes are descriptors, where the head is AtomicCrossPtrCnt<Descriptor,DESC_IDX> and each node is atomic_pptr<Descriptor>.
 separate things in different region and implement a constant address map for each region
 clean up things during exit
 	put blocks in caches back to superblocks

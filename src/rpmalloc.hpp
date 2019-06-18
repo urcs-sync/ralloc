@@ -26,7 +26,7 @@
 extern "C"{
 #endif
 
-void RP_init(char* _id, uint64_t size = MAX_FILESIZE);
+void RP_init(char* _id, uint64_t size = MAX_SB_REGION_SIZE);
 void RP_close();
 int RP_collect();
 void* RP_malloc(size_t sz);

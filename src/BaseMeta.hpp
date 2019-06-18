@@ -11,7 +11,6 @@
 #include "RegionManager.hpp"
 #include "SizeClass.hpp"
 #include "TCache.hpp"
-#include "PageMap.hpp"
 #include "pptr.hpp"
 
 /********class BaseMeta********
@@ -75,18 +74,94 @@
 // pointers to the block in region idx.
 // relative address stored in CrossPtr is the offset 
 // from the start of that region to the block.
-// template<class T, RegionIndex idx>
-// class CrossPtr {
-// 	char* off;
-// 	CrossPtr(char* real_ptr);
-// 	operator T*();
-// 	operator void*();
-// 	T& operator * ();
-// 	T* operator -> ();
-// 	CrossPtr& operator = (const CrossPtr &p);
-// 	CrossPtr& operator = (const T* p);
-// 	CrossPtr& operator = (const void* p);
-// }
+
+namespace rpmalloc{
+	/* manager to map, remap, and unmap the heap */
+	extern Regions* _rgs;//initialized when rpmalloc constructs
+	//GC
+};
+template<class T, RegionIndex idx>
+class CrossPtr {
+public:
+	char* off;
+	CrossPtr(T* real_ptr = nullptr) noexcept;
+	inline operator T*() const{// cast to absolute pointer
+		if(UNLIKELY(is_null())){
+			return nullptr;
+		} else{
+			return reinterpret_cast<T*>(rpmalloc::_rgs->translate(idx, off));
+		}
+	} 
+	inline operator void*() const{
+		return reinterpret_cast<void*>(static_cast<T*>(*this));
+	}
+	T& operator* ();
+	T* operator-> ();
+	inline CrossPtr& operator= (const CrossPtr<T,idx> &p){
+		off = p.off;
+		return *this;
+	}
+	inline CrossPtr& operator= (const T* p){
+		uint64_t tmp = reinterpret_cast<uint64_t>(p);//get rid of const
+		off = rpmalloc::_rgs->untranslate(idx, reinterpret_cast<char*>(tmp));
+		return *this;
+	}
+	inline CrossPtr& operator= (const void* p){
+		uint64_t tmp = reinterpret_cast<uint64_t>(p);//get rid of const
+		off = rpmalloc::_rgs->untranslate(idx, reinterpret_cast<char*>(tmp));
+		return *this;
+	}
+	inline CrossPtr& operator= (const std::nullptr_t& p){
+		off = nullptr; return *this;
+	}
+	inline bool is_null() const{
+		return off == nullptr;
+	}
+};
+
+template<class T, RegionIndex idx>
+inline bool operator==(const CrossPtr<T,idx>& lhs, const std::nullptr_t& rhs){
+	return lhs.is_null();
+}
+
+template<class T, RegionIndex idx>
+inline bool operator==(const CrossPtr<T,idx>& lhs, const CrossPtr<T,idx>& rhs){
+	return static_cast<T*>(lhs) == static_cast<T*>(rhs);
+}
+
+template <class T, RegionIndex idx>
+inline bool operator!=(const CrossPtr<T,idx>& lhs, const std::nullptr_t& rhs){
+	return !lhs.is_null();
+}
+
+
+template<class T, RegionIndex idx>
+class AtomicCrossPtr {
+public:
+	std::atomic<char*> off;
+	AtomicCrossPtr(T* real_ptr = nullptr) noexcept;
+	T* load(std::memory_order order = std::memory_order_seq_cst) const noexcept;
+	void store(T* desired, 
+		std::memory_order order = std::memory_order_seq_cst ) noexcept;
+	bool compare_exchange_weak(T*& expected, T* desired,
+		std::memory_order order = std::memory_order_seq_cst ) noexcept;
+	bool compare_exchange_strong(T*& expected, T* desired,
+		std::memory_order order = std::memory_order_seq_cst ) noexcept;
+};
+
+template<class T, RegionIndex idx>
+class AtomicCrossPtrCnt {
+public:
+	std::atomic<char*> off;
+	AtomicCrossPtrCnt(T* real_ptr = nullptr, uint64_t counter = 0) noexcept;
+	ptr_cnt<T> load(std::memory_order order = std::memory_order_seq_cst) const noexcept;
+	void store(ptr_cnt<T> desired, 
+		std::memory_order order = std::memory_order_seq_cst ) noexcept;
+	bool compare_exchange_weak(ptr_cnt<T>& expected, ptr_cnt<T> desired,
+		std::memory_order order = std::memory_order_seq_cst ) noexcept;
+	bool compare_exchange_strong(ptr_cnt<T>& expected, ptr_cnt<T> desired,
+		std::memory_order order = std::memory_order_seq_cst ) noexcept;
+};
 
 // superblock states
 // used in Anchor::state
@@ -115,57 +190,23 @@ struct Anchor{
 };
 static_assert(sizeof(Anchor) == sizeof(uint64_t), "Invalid anchor size");
 
-//todo:make it pptr
-struct DescriptorNode {
-public:
-	// ptr
-	Descriptor* _desc;//pptr
-	// aba counter
-
-	DescriptorNode(Descriptor* desc = nullptr, uint64_t counter = 0) noexcept:
-		_desc((Descriptor*)((uint64_t)desc | (counter & CACHELINE_MASK))){};
-	void set(Descriptor* desc, uint64_t counter) {
-		// desc must be cacheline aligned
-		assert(((uint64_t)desc & CACHELINE_MASK) == 0);
-		// counter may be incremented but will always be stored in
-		//  LG_CACHELINE bits
-		_desc = (Descriptor*)((uint64_t)desc | (counter & CACHELINE_MASK));
-	}
-
-	Descriptor* get_desc() const {
-		return (Descriptor*)((uint64_t)_desc & ~CACHELINE_MASK);
-	}
-
-	uint64_t get_counter() const {
-		return (uint64_t)((uint64_t)_desc & CACHELINE_MASK);
-	}
-};
-static_assert(sizeof(DescriptorNode) == sizeof(uint64_t), "Invalid descriptor node size");
-
 /* Superblock descriptor
  * needs to be cache-line aligned
  * descriptors are allocated and *never* freed
- * 
- * During recovery desc space will be scanned and
- * all desc whose in_use is true will be added
- * to pagemap again.
  */
 struct Descriptor {
-	// list node pointers
-	// used in free descriptor list
-	RP_TRANSIENT atomic_pptr_cnt<Descriptor> next_free;
+	// free superblocks are linked by their descriptors
+	RP_TRANSIENT atomic_pptr<Descriptor> next_free;
 	// used in partial descriptor list
-	RP_TRANSIENT atomic_pptr_cnt<Descriptor> next_partial;
+	RP_TRANSIENT atomic_pptr<Descriptor> next_partial;
 	// anchor; is reconstructed during recovery
 	RP_TRANSIENT std::atomic<Anchor> anchor;
 
-	RP_PERSIST pptr<char> superblock;
-	RP_PERSIST pptr<ProcHeap> heap;
+	RP_PERSIST CrossPtr<char, SB_IDX> superblock;
+	RP_PERSIST CrossPtr<ProcHeap, META_IDX> heap;
 	RP_PERSIST uint32_t block_size; // block size acquired from sc
 	RP_PERSIST uint32_t maxcount; // block number acquired from sc
-	RP_PERSIST bool in_use = false; // false if it's free, true if it's in use
 	Descriptor() noexcept :
-		next_free(),
 		next_partial(),
 		anchor(){};
 }__attribute__((aligned(CACHELINE_SIZE)));
@@ -174,7 +215,7 @@ struct Descriptor {
 struct ProcHeap {
 public:
 	// ptr to descriptor, head of partial descriptor list
-	RP_TRANSIENT atomic_pptr_cnt<Descriptor> partial_list;
+	RP_TRANSIENT AtomicCrossPtrCnt<Descriptor, DESC_IDX> partial_list;
 	/* size class index; never change after init
 	 * though it's tagged RP_PERSIST, in 1/sc scheme,
 	 * we don't have to flush it at all; it's fixed.
@@ -184,20 +225,11 @@ public:
 		partial_list(){};
 }__attribute__((aligned(CACHELINE_SIZE)));
 
-//persistent sections
-struct Section {
-	RP_PERSIST pptr<char> sec_start;
-	// RP_PERSIST std::atomic<void*> sec_curr;
-	RP_PERSIST size_t sec_bytes;
-	Section() noexcept:sec_start(),sec_bytes(){};
-}__attribute__((aligned(CACHELINE_SIZE)));
-
 class BaseMeta {
 	// unused small sb
 	// RP_TRANSIENT _ArrayStack<void*, FREESTACK_CAP> free_sb;//pptr
 	// descriptor recycle list
-	RP_TRANSIENT atomic_pptr_cnt<char> avail_sb;
-	RP_TRANSIENT atomic_pptr_cnt<Descriptor> avail_desc;
+	RP_TRANSIENT AtomicCrossPtrCnt<Descriptor, DESC_IDX> avail_sb;
 	RP_PERSIST bool dirty;
 
 	// so far we don't need thread_num at all
@@ -207,11 +239,7 @@ class BaseMeta {
 	 */
 	RP_PERSIST ProcHeap heaps[MAX_SZ_IDX];
 	//persistent root
-	RP_PERSIST pptr<char> roots[MAX_ROOTS] = {nullptr};//gc_ptr_base*
-	//0:desc, 1:small sb, 2: large sb
-	RP_PERSIST std::atomic<uint64_t> space_num[3];
-	//0:desc, 1:small sb, 2: large sb
-	RP_PERSIST Section spaces[3][MAX_SECTION];
+	RP_PERSIST CrossPtr<char, SB_IDX> roots[MAX_ROOTS] = {nullptr};//gc_ptr_base*
 public:
 	BaseMeta() noexcept;
 	~BaseMeta(){
@@ -268,7 +296,10 @@ private:
 	 * sz is useful only when i == 2, 
 	 * i.e. when allocating a large block
 	 */
-	uint64_t new_space(int i, size_t sz=0);
+	void* expand_sb(size_t sz);
+	void expand_small_sb();
+	void* expand_get_small_sb();
+	void* expand_get_large_sb(size_t sz);
 
 	// func on size class
 	size_t get_sizeclass(size_t size);
@@ -282,12 +313,10 @@ private:
 	void flush_cache(size_t sc_idx, TCacheBin* cache);
 
 	// func on page map
-	void update_pagemap(ProcHeap* heap, char* ptr, Descriptor* desc, size_t sc_idx);
-	// set desc into pagemap and flush desc as used
-	void register_desc(Descriptor* desc);
-	// set sb's corresponding desc to nullptr
-	void unregister_desc(ProcHeap* heap, char* superblock);
-	PageInfo get_page_info_for_ptr(void* ptr);
+	// find desc of the block
+	Descriptor* desc_lookup(char* ptr);
+	inline Descriptor* desc_lookup(void* ptr){return desc_lookup(reinterpret_cast<char*>(ptr));}
+	char* sb_lookup(Descriptor* desc);
 
 	// helper func
 	void heap_push_partial(Descriptor* desc);
@@ -300,7 +329,7 @@ private:
 	void* alloc_large_block(size_t sz);
 
 	// add all newly allocated sbs to free_sb
-	void organize_sb_list(void* start, uint64_t count, uint64_t stride);
+	void organize_sb_list(void* start, uint64_t count);
 	// get one free sb or allocate a new space for sbs
 	void* small_sb_alloc(size_t size);
 	// free the superblock sb points to

@@ -14,9 +14,8 @@ using namespace std;
  * It's for future gc_ptr which perhaps defines filter_func in.
  */
 class ptr_base{
-protected:
-	int64_t off;
 public:
+	int64_t off;
 	// void* val;
 	ptr_base(int64_t v=0)noexcept{
 		off = v;
@@ -137,9 +136,8 @@ public:
  */
 template <class T>
 class atomic_pptr_cnt{//atomic pptr with 6 bits of counter
-protected:
-	atomic<int64_t> off;
 public:
+	atomic<int64_t> off;
 	atomic_pptr_cnt(T* v=nullptr, uint64_t counter=0)noexcept: //default constructor
 		off(v==nullptr ? 0 : (((uint64_t)v | (counter & CACHELINE_MASK)) - ((uint64_t)this))) {};
 	inline ptr_cnt<T> load(memory_order order = memory_order_seq_cst) const noexcept{
@@ -223,8 +221,8 @@ public:
  */
 template <class T> 
 class atomic_pptr{
-	atomic<int64_t> off;
 public:
+	atomic<int64_t> off;
 	atomic_pptr(T* v=nullptr)noexcept: //default constructor
 		off(v==nullptr ? 0 : ((int64_t)v) - ((int64_t)this)) {};
 	atomic_pptr(const pptr<T> &p)noexcept: //copy constructor
@@ -246,11 +244,10 @@ public:
 		int64_t new_off = desired==nullptr ? 0 : ((int64_t)desired) - ((int64_t)this);
 		bool ret = off.compare_exchange_weak(old_off, new_off, order);
 		if(!ret) {
-			int64_t cur_off = off.load();
-			if(cur_off == 0){
+			if(old_off == 0){
 				expected = nullptr;
 			} else{
-				expected = (T*)(cur_off + ((int64_t)this));
+				expected = (T*)(old_off + ((int64_t)this));
 			}
 		}
 		return ret;
@@ -261,11 +258,10 @@ public:
 		int64_t new_off = desired==nullptr ? 0 : ((int64_t)desired) - ((int64_t)this);
 		bool ret = off.compare_exchange_strong(old_off, new_off, order);
 		if(!ret) {
-			int64_t cur_off = off.load();
-			if(cur_off == 0){
+			if(old_off == 0){
 				expected = nullptr;
 			} else{
-				expected = (T*)(cur_off + ((int64_t)this));
+				expected = (T*)(old_off + ((int64_t)this));
 			}
 		}
 		return ret;
