@@ -207,6 +207,7 @@ struct Descriptor {
 	RP_PERSIST uint32_t block_size; // block size acquired from sc
 	RP_PERSIST uint32_t maxcount; // block number acquired from sc
 	Descriptor() noexcept :
+		next_free(),
 		next_partial(),
 		anchor(){};
 }__attribute__((aligned(CACHELINE_SIZE)));
@@ -221,6 +222,7 @@ public:
 	 * we don't have to flush it at all; it's fixed.
 	 */
 	RP_PERSIST size_t sc_idx;
+	// std::mutex lk;
 	ProcHeap() noexcept :
 		partial_list(){};
 }__attribute__((aligned(CACHELINE_SIZE)));

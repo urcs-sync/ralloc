@@ -89,7 +89,7 @@ inline ptr_cnt<T> AtomicCrossPtrCnt<T,idx>::load(memory_order order)const noexce
 	if((uint64_t)cur_off < CACHELINE_SIZE){
 		ret.ptr = (T*)cur_off;
 	} else{
-		ret.ptr = (T*)(_rgs->translate(idx, off.load(order)));
+		ret.ptr = (T*)(_rgs->translate(idx, cur_off));
 	}
 	return ret;
 }
@@ -98,7 +98,7 @@ template<class T, RegionIndex idx>
 inline void AtomicCrossPtrCnt<T,idx>::store(ptr_cnt<T> desired, memory_order order)noexcept{
 	char* new_off;
 	if(desired.get_ptr() == nullptr){
-		new_off = reinterpret_cast<char*>(desired.get_counter());
+		new_off = reinterpret_cast<char*>(desired.ptr);
 	} else{
 		new_off = _rgs->untranslate(idx, reinterpret_cast<char*>(desired.ptr));
 	}
@@ -110,12 +110,12 @@ inline bool AtomicCrossPtrCnt<T,idx>::compare_exchange_weak(ptr_cnt<T>& expected
 	char* old_off;
 	char* new_off;
 	if(expected.get_ptr() == nullptr){
-		old_off = reinterpret_cast<char*>(expected.get_counter());
+		old_off = reinterpret_cast<char*>(expected.ptr);
 	} else {
 	 	old_off = _rgs->untranslate(idx, reinterpret_cast<char*>(expected.ptr));
 	}
 	if(desired.get_ptr() == nullptr){
-		new_off = reinterpret_cast<char*>(desired.get_counter());
+		new_off = reinterpret_cast<char*>(desired.ptr);
 	} else {
 	 	new_off = _rgs->untranslate(idx, reinterpret_cast<char*>(desired.ptr));
 	}
@@ -135,12 +135,12 @@ inline bool AtomicCrossPtrCnt<T,idx>::compare_exchange_strong(ptr_cnt<T>& expect
 	char* old_off;
 	char* new_off;
 	if(expected.get_ptr() == nullptr){
-		old_off = reinterpret_cast<char*>(expected.get_counter());
+		old_off = reinterpret_cast<char*>(expected.ptr);
 	} else {
 	 	old_off = _rgs->untranslate(idx, reinterpret_cast<char*>(expected.ptr));
 	}
 	if(desired.get_ptr() == nullptr){
-		new_off = reinterpret_cast<char*>(desired.get_counter());
+		new_off = reinterpret_cast<char*>(desired.ptr);
 	} else {
 	 	new_off = _rgs->untranslate(idx, reinterpret_cast<char*>(desired.ptr));
 	}
@@ -184,7 +184,7 @@ BaseMeta::BaseMeta() noexcept
 	if(!res) assert(0&&"warmup sb allocation fails!");
 	DBG_PRINT("expand sb space for small sb allocation\n");
 	_rgs->regions[SB_IDX]->__store_heap_start(tmp_sec_start);
-	_rgs->regions_address[SB_IDX] = tmp_sec_start;
+	_rgs->regions_address[SB_IDX] = (char*)tmp_sec_start;
 	//we skip the first sb on purpose so that CrossPtr doesn't start from 0.
 	organize_sb_list(tmp_sec_start, SB_REGION_EXPAND_SIZE/SBSIZE);
 	FLUSHFENCE;
@@ -201,8 +201,7 @@ inline void* BaseMeta::expand_sb(size_t sz){
 inline void* BaseMeta::expand_get_small_sb(){
 	void* tmp_sec_start = expand_sb(SB_REGION_EXPAND_SIZE);
 	DBG_PRINT("expand sb space for small sb allocation\n");
-	organize_sb_list((void*)((uint64_t)tmp_sec_start+SBSIZE),
-				SB_REGION_EXPAND_SIZE/SBSIZE - 1);
+	organize_sb_list(tmp_sec_start, SB_REGION_EXPAND_SIZE/SBSIZE);
 	Descriptor* desc = desc_lookup(tmp_sec_start);
 	new (desc) Descriptor();
 	return tmp_sec_start;
@@ -355,11 +354,10 @@ void BaseMeta::flush_cache(size_t sc_idx, TCacheBin* cache) {
 			/* In this case, state in desc is set to be empty (aka to free)
 			 * though this desc may still be in partial list.
 			 * Others attempt to allocate from desc's sb will
-			 * fail and help retire desc.
+			 * fail and help retire both sb and desc.
 			 * 
-			 * In this routine, we retire sb.
 			 */
-			small_sb_retire(superblock, get_sizeclass(heap)->sb_size);
+
 		}
 		else if (oldanchor.state == SB_FULL)
 			heap_push_partial(desc);
@@ -383,7 +381,6 @@ char* BaseMeta::sb_lookup(Descriptor* desc){
 
 void BaseMeta::heap_push_partial(Descriptor* desc) {
 	ProcHeap* heap = desc->heap;
-
 	ptr_cnt<Descriptor> oldhead = heap->partial_list.load();
 	ptr_cnt<Descriptor> newhead;
 	do {
@@ -398,15 +395,13 @@ Descriptor* BaseMeta::heap_pop_partial(ProcHeap* heap) {
 	ptr_cnt<Descriptor> newhead;
 	do {
 		Descriptor* olddesc = oldhead.get_ptr();
-		if (!olddesc)
+		if (!olddesc){
 			return nullptr;
-		newhead = olddesc->next_partial.load();
-		Descriptor* desc = newhead.get_ptr();
+		}
+		Descriptor* desc = olddesc->next_partial.load();
 		uint64_t counter = oldhead.get_counter();
 		newhead.set(desc, counter);
 	} while (!heap->partial_list.compare_exchange_weak(oldhead, newhead));
-	assert(oldhead.get_ptr()->anchor.load().state!=SB_FULL);
-	oldhead.get_ptr()->next_partial.store(nullptr);
 	return oldhead.get_ptr();
 }
 
@@ -429,6 +424,7 @@ retry:
 	// due to free()
 	do {
 		if (oldanchor.state == SB_EMPTY) {
+			small_sb_retire(superblock, get_sizeclass(heap)->sb_size);
 			goto retry;
 		}
 
@@ -485,9 +481,9 @@ void BaseMeta::malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_
 
 	// prepare block list
 	for (uint32_t idx = 0; idx < maxcount - 1; ++idx) {
-		pptr<char>* block = reinterpret_cast<pptr<char>*>(superblock + idx * block_size);
+		pptr<char>* block = (pptr<char>*)(superblock + idx * block_size);
 		char* next = superblock + (idx + 1) * block_size;
-		*block = static_cast<pptr<char>>(next);
+		*block = next;
 	}
 
 	// push blocks to cache
@@ -516,6 +512,7 @@ inline void BaseMeta::organize_sb_list(void* start, uint64_t count){
 	// in total it's count-1 sbs
 	Descriptor* desc_start = desc_lookup((char*)((uint64_t)start+SBSIZE));
 	Descriptor* desc = desc_start;
+	new (desc) Descriptor();
 	for(uint64_t i = 1; i < count-1; i++){
 		desc->next_free.off.store(DESCSIZE);//pptr
 		desc++;
@@ -625,7 +622,6 @@ void BaseMeta::do_free(void* ptr){
 	Descriptor* desc = desc_lookup(ptr);
 	// @todo: this can happen with dynamic loading
 	// need to print correct message
-	assert(_rgs->in_range(DESC_IDX,desc));
 
 	size_t sc_idx = desc->heap->sc_idx;
  
