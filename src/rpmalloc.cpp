@@ -38,7 +38,7 @@ namespace rpmalloc{
 	Regions* _rgs;
 };
 using namespace rpmalloc;
-
+extern void public_flush_cache();
 
 /* 
  * mmap the existing heap file corresponding to id. aka restart,
@@ -70,10 +70,12 @@ void RP_init(char* _id, uint64_t size){
 	initialized = true;
 }
 
+// we assume RP_close is called by the last exiting thread.
 void RP_close(){
+	public_flush_cache();
+	initialized = false;
 	base_md->cleanup();
 	delete _rgs;
-	initialized = false;
 }
 
 //manually request to collect garbage

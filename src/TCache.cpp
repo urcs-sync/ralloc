@@ -1,7 +1,7 @@
 #include "TCache.hpp"
 
 using namespace rpmalloc;
-thread_local TCacheBin rpmalloc::t_cache[MAX_SZ_IDX];
+thread_local TCaches rpmalloc::t_caches;
 
 //TODO: optimize to avoid unnecessary translation
 void TCacheBin::push_block(char* block)

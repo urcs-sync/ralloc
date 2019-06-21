@@ -610,7 +610,7 @@ void* BaseMeta::do_malloc(size_t size){
 	// size class calculation
 	size_t sc_idx = get_sizeclass(size);
 
-	TCacheBin* cache = &t_cache[sc_idx];
+	TCacheBin* cache = &t_caches.t_cache[sc_idx];
 	// fill cache if needed
 	if (UNLIKELY(cache->get_block_num() == 0))
 		fill_cache(sc_idx, cache);
@@ -635,7 +635,7 @@ void BaseMeta::do_free(void* ptr){
 		return;
 	}
 
-	TCacheBin* cache = &t_cache[sc_idx];
+	TCacheBin* cache = &t_caches.t_cache[sc_idx];
 	SizeClassData* sc = get_sizeclass_by_idx(sc_idx);
 
 	// flush cache if need
@@ -643,4 +643,14 @@ void BaseMeta::do_free(void* ptr){
 		flush_cache(sc_idx, cache);
 
 	cache->push_block((char*)ptr);
+}
+
+
+// this can be called by TCaches
+void public_flush_cache(){
+	if(initialized) {
+		for(int i=1;i<MAX_SZ_IDX;i++){// sc 0 is reserved.
+			base_md->flush_cache(i, &t_caches.t_cache[i]);
+		}
+	}
 }

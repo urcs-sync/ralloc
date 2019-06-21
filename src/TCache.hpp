@@ -18,9 +18,16 @@
  * 
  * The head (_block) of each cache list uses absolute address while
  * the list itself is linked by pptr since block free list is linked by pptr.
+ *
+ * In the destructor of TCacheBin, all blocks will be flushed back to their 
+ * superblock as long as initialized is true.
  * 
  * Note by Wentao Cai (wcai6@cs.rochester.edu)
  */
+
+struct TCaches;
+extern void public_flush_cache();
+
 struct TCacheBin
 {
 private:
@@ -44,10 +51,17 @@ public:
 	// slow operations like fill/flush handled in cache user
 };
 
+struct TCaches
+{
+	TCacheBin t_cache[MAX_SZ_IDX];
+	~TCaches(){
+		public_flush_cache();
+	}
+};
+
 /* thread-local cache */
 namespace rpmalloc{
-	extern thread_local TCacheBin t_cache[MAX_SZ_IDX]
-		__attribute__((aligned(CACHELINE_SIZE)));
+	extern thread_local TCaches t_caches;
 }
 #endif // __TCACHE_H_
 

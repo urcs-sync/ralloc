@@ -74,10 +74,12 @@
 // pointers to the block in region idx.
 // relative address stored in CrossPtr is the offset 
 // from the start of that region to the block.
-
+class BaseMeta;
 namespace rpmalloc{
 	/* manager to map, remap, and unmap the heap */
 	extern Regions* _rgs;//initialized when rpmalloc constructs
+	extern bool initialized;
+	extern BaseMeta* base_md;
 	//GC
 };
 template<class T, RegionIndex idx>
@@ -312,8 +314,9 @@ private:
 
 	// func on cache
 	void fill_cache(size_t sc_idx, TCacheBin* cache);
+public://we need to call this function to flush TLS cache during exit
 	void flush_cache(size_t sc_idx, TCacheBin* cache);
-
+private:
 	// func on page map
 	// find desc of the block
 	Descriptor* desc_lookup(char* ptr);
