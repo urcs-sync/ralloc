@@ -14,7 +14,11 @@
  * 
  * This defines thread-local cache, and is reconstructible.
  * As a result, no need to flush at all.
- *
+ * During the exit, all cached blocks will be given back to superblocks.
+ * 
+ * The head (_block) of each cache list uses absolute address while
+ * the list itself is linked by pptr since block free list is linked by pptr.
+ * 
  * Note by Wentao Cai (wcai6@cs.rochester.edu)
  */
 struct TCacheBin

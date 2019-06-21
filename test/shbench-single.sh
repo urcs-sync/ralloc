@@ -31,7 +31,7 @@ while true ; do
   rss_sample=$(ps --no-headers -o "rss" $pid)
   (( n += 1 ))
   (( rss += rss_sample ))
-  sleep 0.05
+  sleep 0.1
   while read line; do
     if [[ $line == *"rdtsc time"* ]]; then
       exec_time=$(echo $line | awk '{print $3}')
