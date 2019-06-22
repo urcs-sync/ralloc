@@ -286,6 +286,11 @@ public:
 	}
 	void cleanup(){
 		// todo: flush everything needed before exit
+		if(rpmalloc::initialized) {
+		for(int i=1;i<MAX_SZ_IDX;i++){// sc 0 is reserved.
+				flush_cache(i, &rpmalloc::t_caches.t_cache[i]);
+			}
+		}
 		FLUSHFENCE;
 		dirty = false;
 		FLUSH(&dirty);

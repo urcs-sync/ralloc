@@ -72,9 +72,8 @@ void RP_init(char* _id, uint64_t size){
 
 // we assume RP_close is called by the last exiting thread.
 void RP_close(){
-	public_flush_cache();
-	initialized = false;
 	base_md->cleanup();
+	initialized = false;
 	delete _rgs;
 }
 
