@@ -647,7 +647,7 @@ void BaseMeta::do_free(void* ptr){
 
 
 // this can be called by TCaches
-void public_flush_cache(){
+void rpmalloc::public_flush_cache(){
 	if(initialized) {
 		for(int i=1;i<MAX_SZ_IDX;i++){// sc 0 is reserved.
 			base_md->flush_cache(i, &t_caches.t_cache[i]);

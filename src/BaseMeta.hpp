@@ -80,6 +80,7 @@ namespace rpmalloc{
 	extern Regions* _rgs;//initialized when rpmalloc constructs
 	extern bool initialized;
 	extern BaseMeta* base_md;
+	extern void public_flush_cache();
 	//GC
 };
 template<class T, RegionIndex idx>
@@ -286,11 +287,7 @@ public:
 	}
 	void cleanup(){
 		// todo: flush everything needed before exit
-		if(rpmalloc::initialized) {
-		for(int i=1;i<MAX_SZ_IDX;i++){// sc 0 is reserved.
-				flush_cache(i, &rpmalloc::t_caches.t_cache[i]);
-			}
-		}
+		rpmalloc::public_flush_cache();
 		FLUSHFENCE;
 		dirty = false;
 		FLUSH(&dirty);
