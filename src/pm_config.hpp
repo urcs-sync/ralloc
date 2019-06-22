@@ -51,7 +51,7 @@ enum RegionIndex : int {
 const int TYPE_SIZE = 4;
 const int PTR_SIZE = sizeof(void*);
 const int HEADER_SIZE = (TYPE_SIZE + PTR_SIZE);
-const int CACHELINE_SIZE = 64;
+const int CACHELINE_SIZE = 64; // in byte
 const uint64_t CACHELINE_MASK = (uint64_t)(CACHELINE_SIZE) - 1;
 const int PAGESIZE = 4096;//4K
 const uint64_t PAGE_MASK = (uint64_t)PAGESIZE - 1;

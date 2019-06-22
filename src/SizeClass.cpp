@@ -13,6 +13,7 @@
 #define SC(index, lg_grp, lg_delta, ndelta, psz, bin, pgs, lg_delta_lookup) \
 	SIZE_CLASS_bin_##bin(((1U << lg_grp) + (ndelta << lg_delta)), pgs)
 
+// this is reconstructed in every execution
 SizeClass rpmalloc::sizeclass;
 
 SizeClass::SizeClass():

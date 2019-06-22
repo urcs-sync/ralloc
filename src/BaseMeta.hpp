@@ -286,8 +286,14 @@ public:
 		dirty = true;
 	}
 	void cleanup(){
-		// todo: flush everything needed before exit
+		// give back tcached blocks
 		rpmalloc::public_flush_cache();
+		char* addr = reinterpret_cast<char*>(this);
+		// flush values in BaseMeta
+		for(size_t i = 0; i < sizeof(BaseMeta); i += CACHELINE_SIZE) {
+			addr += CACHELINE_SIZE;
+			FLUSH(addr);
+		}
 		FLUSHFENCE;
 		dirty = false;
 		FLUSH(&dirty);
@@ -351,7 +357,7 @@ private:
 	Descriptor* desc_alloc();
 	// put desc to avail_desc and flush it as unused
 	void desc_retire(Descriptor* desc);
-};
+}__attribute__((aligned(CACHELINE_SIZE)));
 
 
 #endif /* _BASE_META_HPP_ */

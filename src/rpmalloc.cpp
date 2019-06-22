@@ -46,7 +46,7 @@ extern void public_flush_cache();
  * if such a heap doesn't exist, create one. aka start.
  * id is the distinguishable identity of applications.
  */
-void RP_init(char* _id, uint64_t size){
+void RP_init(const char* _id, uint64_t size){
 	string id(_id);
 	// thread_num = thd_num;
 	filepath = HEAPFILE_PREFIX + id;
@@ -72,6 +72,8 @@ void RP_init(char* _id, uint64_t size){
 
 // we assume RP_close is called by the last exiting thread.
 void RP_close(){
+	_rgs->flush_region(DESC_IDX);
+	_rgs->flush_region(SB_IDX);
 	base_md->cleanup();
 	initialized = false;
 	delete _rgs;

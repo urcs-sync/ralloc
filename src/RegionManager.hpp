@@ -44,9 +44,9 @@
  *	(heap ends here to which curr_addr points)
  */
 class RegionManager{
+public:
 	const uint64_t FILESIZE;
 	const std::string HEAPFILE;
-public:
 	int FD = 0;
 	char *base_addr = nullptr;
 	atomic_pptr<char>* curr_addr_ptr;//this always points to the place of base_addr
@@ -171,7 +171,8 @@ public:
 		assert(regions.size() == regions_address.size());
 		RegionManager* new_mgr = new RegionManager(file_path,size,p,imm_expand);
 		regions.push_back(new_mgr);
-		if(imm_expand)
+		bool restart = exists_test(file_path);
+		if(imm_expand || restart)
 			regions_address.push_back((char*)new_mgr->__fetch_heap_start());
 		else
 			regions_address.push_back(nullptr);
@@ -221,6 +222,16 @@ public:
 		bool ret = ptr >= regions_address[index];
 		if (!ret) return false;
 		return ret && (ptr <= regions[index]->curr_addr_ptr->load());
+	}
+
+	inline void flush_region(int index){
+		RegionManager* target = regions[index];
+		char* addr = regions_address[index];
+		char* ending = target->curr_addr_ptr->load();
+		for(; addr < ending; addr += CACHELINE_SIZE) {
+			FLUSH(addr);
+		}
+		FLUSHFENCE;
 	}
 };
 
