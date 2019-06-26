@@ -620,8 +620,6 @@ void* BaseMeta::do_malloc(size_t size){
 void BaseMeta::do_free(void* ptr){
 	assert(_rgs->in_range(SB_IDX,ptr));
 	Descriptor* desc = desc_lookup(ptr);
-	// @todo: this can happen with dynamic loading
-	// need to print correct message
 
 	size_t sc_idx = desc->heap->sc_idx;
  

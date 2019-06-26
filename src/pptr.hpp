@@ -5,25 +5,9 @@
 #include <iostream>
 #include <cstddef>
 #include <atomic>
-// #include "gc.hpp"
+#include "gc.hpp"
 #include "pm_config.hpp"
 using namespace std;
-
-/*
- * Class ptr_base is the base class for pptr.
- * It's for future gc_ptr which perhaps defines filter_func in.
- */
-class ptr_base{
-public:
-	int64_t off;
-	// void* val;
-	ptr_base(int64_t v=0)noexcept{
-		off = v;
-	}
-	
-	// template<class T>
-	// operator T*(){return static_cast<T*>(val);}//cast to transient pointer
-};
 
 /*
  * Class pptr is a templated class implemented off-holder. See paper:
@@ -37,12 +21,13 @@ public:
  * as well as dereference, arrow access, assignment, and comparison.
  */
 template<class T>
-class pptr : public ptr_base{
+class pptr{
 public:
+	int64_t off;
 	pptr(T* v=nullptr)noexcept: //default constructor
-		ptr_base(v==nullptr ? 0 : ((int64_t)v) - ((int64_t)this)) {};
+		off(v==nullptr ? 0 : ((int64_t)v) - ((int64_t)this)) {};
 	pptr(const pptr<T> &p)noexcept: //copy constructor
-		ptr_base(p.is_null() ? 0 : ((int64_t)(p.off + (int64_t)&p)) - ((int64_t)this)) {};
+		off(p.is_null() ? 0 : ((int64_t)(p.off + (int64_t)&p)) - ((int64_t)this)) {};
 	inline operator T*() const{ //cast to transient pointer
 		return off==0 ? nullptr : (T*)(off + ((int64_t)this));
 	}
@@ -267,25 +252,5 @@ public:
 		return ret;
 	}
 };
-
-// struct gc_ptr_base : public ptr_base{
-// 	gc_ptr_base(void* v=nullptr):ptr_base(v){};
-// 	virtual vector<gc_ptr_base*> filter_func(GarbageCollection* gc) {
-// 		return {};
-// 	}
-// };
-
-// template<class T>
-// struct gc_ptr : public gc_ptr_base{
-// 	gc_ptr(T* v=nullptr):gc_ptr_base((void*)v){};
-// 	gc_ptr(pptr<T> v):gc_ptr_base((void*)v.val){};
-// 	operator T*(){return (T*)val;};//cast to transient pointer
-// 	T& operator *(){return *(T*)val;}//dereference
-// 	T* operator ->(){return (T*)val;}//arrow
-// 	vector<gc_ptr_base*> filter_func(GarbageCollection* gc){
-// 		std::cout << "type name:" << typeid(T).name() << std::endl;
-// 		return gc_ptr_base::filter_func(gc);
-// 	}
-// };
 
 #endif

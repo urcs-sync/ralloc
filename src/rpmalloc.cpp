@@ -24,17 +24,14 @@
 
 #include "RegionManager.hpp"
 #include "BaseMeta.hpp"
-// #include "thread_util.hpp"
 
 using namespace std;
 
 namespace rpmalloc{
 	bool initialized = false;
 	std::string filepath;
-	// uint64_t thread_num;
 	/* persistent metadata and their layout */
 	BaseMeta* base_md;
-	//GC
 	Regions* _rgs;
 };
 using namespace rpmalloc;
@@ -53,6 +50,7 @@ void RP_init(const char* _id, uint64_t size){
 	assert(sizeof(Descriptor) == DESCSIZE); // check desc size
 	assert(size >= MAX_SB_REGION_SIZE); // ensure user input is >=MAX_SB_REGION_SIZE
 	uint64_t num_sb = size/SBSIZE;
+	bool restart = Regions::exists_test(filepath+"_basemd");
 	_rgs = new Regions();
 	for(int i=0; i<LAST_IDX;i++){
 	switch(i){
@@ -67,6 +65,9 @@ void RP_init(const char* _id, uint64_t size){
 		break;
 	} // switch
 	}
+	if(restart) {
+		base_md->restart();
+	}
 	initialized = true;
 }
 
@@ -74,15 +75,9 @@ void RP_init(const char* _id, uint64_t size){
 void RP_close(){
 	_rgs->flush_region(DESC_IDX);
 	_rgs->flush_region(SB_IDX);
-	base_md->cleanup();
+	base_md->writeback();
 	initialized = false;
 	delete _rgs;
-}
-
-//manually request to collect garbage
-int RP_collect(){
-	//TODO
-	return 1;
 }
 
 void* RP_malloc(size_t sz){

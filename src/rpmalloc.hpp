@@ -28,7 +28,6 @@ extern "C"{
 
 void RP_init(const char* _id, uint64_t size = MAX_SB_REGION_SIZE);
 void RP_close();
-int RP_collect();
 void* RP_malloc(size_t sz);
 void RP_free(void* ptr);
 void* RP_set_root(void* ptr, uint64_t i);
@@ -62,9 +61,7 @@ void* RP_get_root(uint64_t i);
  * 			Set i-th root to ptr, and return old i-th root if any.
  * 		void* _get_root(uint64_t i):
  * 			Return i-th root.
- * 		bool _collect(): TODO
- * 			Manually bring rpmalloc offline and do garbage collection
- * 
+ *
  * Note: Main data is stored in *base_md and is mapped to 
  * filepath, which is $(HEAPFILE_PREFIX)$(id).
 

@@ -3,7 +3,6 @@
 using namespace rpmalloc;
 thread_local TCaches rpmalloc::t_caches;
 
-//TODO: optimize to avoid unnecessary translation
 void TCacheBin::push_block(char* block)
 {
 	// block has at least sizeof(char*)

@@ -4,6 +4,7 @@
 #include <atomic>
 #include <iostream>
 #include <mutex>
+#include <functional>
 
 #include "pm_config.hpp"
 // #include "thread_util.hpp"
@@ -12,6 +13,7 @@
 #include "SizeClass.hpp"
 #include "TCache.hpp"
 #include "pptr.hpp"
+#include "gc.hpp"
 
 /********class BaseMeta********
  * This is the file where meta data structures of
@@ -29,8 +31,8 @@
  * 		void BaseMeta::restart():
  * 			Restart the BaseMeta after data is remapped in
  *			BaseMeta. It traces and recovers free lists.
- *		void BaseMeta::cleanup():
- *			Do cleanup before program exits.
+ *		void BaseMeta::writeback():
+ *			Do writeback before program exits.
  *			It flushes free lists and marks as clean.
  *		void set_mgr(RegionManager* m):
  *			Set mgr pointer to m.
@@ -83,11 +85,13 @@ namespace rpmalloc{
 	extern void public_flush_cache();
 	//GC
 };
+
 template<class T, RegionIndex idx>
 class CrossPtr {
 public:
 	char* off;
 	CrossPtr(T* real_ptr = nullptr) noexcept;
+	CrossPtr(const CrossPtr& cptr) noexcept: off(cptr.off) {}
 	inline operator T*() const{// cast to absolute pointer
 		if(UNLIKELY(is_null())){
 			return nullptr;
@@ -237,14 +241,9 @@ class BaseMeta {
 	RP_TRANSIENT AtomicCrossPtrCnt<Descriptor, DESC_IDX> avail_sb;
 	RP_PERSIST bool dirty;
 
-	// so far we don't need thread_num at all
-	// RP_PERSIST uint64_t thread_num;
-	/* 1 heap per sc, and don't have to be persistent in this scheme
-	 * todo: alloc a transient region for it in order to share among APPs
-	 */
 	RP_PERSIST ProcHeap heaps[MAX_SZ_IDX];
-	//persistent root
-	RP_PERSIST CrossPtr<char, SB_IDX> roots[MAX_ROOTS] = {nullptr};//gc_ptr_base*
+	RP_PERSIST CrossPtr<char, SB_IDX> roots[MAX_ROOTS] = {nullptr};
+	RP_PERSIST std::function<GarbageCollection::gc_ptr_base*(const CrossPtr<char, SB_IDX>&)> roots_gc_ptr[MAX_ROOTS];
 public:
 	BaseMeta() noexcept;
 	~BaseMeta(){
@@ -252,10 +251,10 @@ public:
 		 * and will be reused in the next time
 		 */
 		std::cout<<"Warning: BaseMeta is being destructed!\n";
-		cleanup();
 	}
 	void* do_malloc(size_t size);
 	void do_free(void* ptr);
+	inline bool is_dirty(){ return dirty; }
 	inline uint64_t min(uint64_t a, uint64_t b){return a>b?b:a;}
 	inline uint64_t max(uint64_t a, uint64_t b){return a>b?a:b;}
 	inline uint64_t round_up(uint64_t numToRound, uint64_t multiple) {
@@ -263,30 +262,45 @@ public:
 		assert(multiple && ((multiple & (multiple - 1)) == 0));
 		return (numToRound + multiple - 1) & ~(multiple - 1);
 	}
-	inline void* set_root(void* ptr, uint64_t i){
+	inline void* set_root(T* ptr, uint64_t i){
 		//this is sequential
 		assert(i<MAX_ROOTS);
 		void* res = nullptr;
-		if(roots[i]!=nullptr) res = roots[i];
+		if(roots[i]!=nullptr) 
+			res = static_cast<void*>(roots[i]);
 		roots[i] = ptr;
+		roots_gc_ptr[i] = [](const CrossPtr<char, SB_IDX>& cptr){
+			// this new statement is intentionally designed to use transient allocator since it's offline
+			GarbageCollection::gc_ptr<T>* ret = new GarbageCollection::gc_ptr<T>(static_cast<char*>(cptr));
+			return ret;
+		}
 		FLUSH(&roots[i]);
+		FLUSH(&roots_gc_ptr[i]);
 		FLUSHFENCE;
 		return res;
 	}
 	inline void* get_root(uint64_t i){
 		//this is sequential
 		assert(i<MAX_ROOTS);
-		return roots[i];
+		return static_cast<void*>(roots[i]);
 	}
 	void restart(){
-		// free_desc = new ArrayQueue<Descriptor*>("rpmalloc_freedesc");
-		// free_sb = new ArrayStack<void*>("rpmalloc_freesb");
-		// todo: GC
-		assert(!dirty && "Heap is dirty and GC isn't implemented!");
+		// Restart, setting values and flags to normal
+		// Should be called during restart
+		if(dirty) {
+			GarbageCollection gc();
+			gc();
+		}
+		FLUSHFENCE;
+		// here restart is done, and "dirty" should be set to true until
+		// writeback() is called so that crash will result in a true dirty.
 		dirty = true;
+		FLUSH(&dirty);
+		FLUSHFENCE;
 	}
-	void cleanup(){
-		// give back tcached blocks
+	void writeback(){
+		// Give back tcached blocks
+		// Should be called during normal exit
 		rpmalloc::public_flush_cache();
 		char* addr = reinterpret_cast<char*>(this);
 		// flush values in BaseMeta
@@ -322,15 +336,16 @@ private:
 
 	// func on cache
 	void fill_cache(size_t sc_idx, TCacheBin* cache);
-public://we need to call this function to flush TLS cache during exit
+public:
+	// we need to call this function to flush TLS cache during exit
 	void flush_cache(size_t sc_idx, TCacheBin* cache);
-private:
-	// func on page map
 	// find desc of the block
+	// we need to call them in GC
 	Descriptor* desc_lookup(char* ptr);
 	inline Descriptor* desc_lookup(void* ptr){return desc_lookup(reinterpret_cast<char*>(ptr));}
 	char* sb_lookup(Descriptor* desc);
 
+private:
 	// helper func
 	void heap_push_partial(Descriptor* desc);
 	Descriptor* heap_pop_partial(ProcHeap* heap);
