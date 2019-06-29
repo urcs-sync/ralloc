@@ -61,6 +61,13 @@
 #define HAVE_MALLOC_SIZE 1
 #define zmalloc_size(p) memkind_malloc_usable_size(NULL,p)
 
+#elif defined(USE_RPMALLOC)
+#define ZMALLOC_LIB "rpmalloc"
+#include <rpmalloc.hpp>
+#define HAVE_MALLOC_SIZE 1
+#define zmalloc_size(p) RP_malloc(p)
+
+
 #elif defined(__APPLE__)
 #include <malloc/malloc.h>
 #define HAVE_MALLOC_SIZE 1
