@@ -141,21 +141,6 @@ inline bool operator!=(const CrossPtr<T,idx>& lhs, const std::nullptr_t& rhs){
 	return !lhs.is_null();
 }
 
-
-template<class T, RegionIndex idx>
-class AtomicCrossPtr {
-public:
-	std::atomic<char*> off;
-	AtomicCrossPtr(T* real_ptr = nullptr) noexcept;
-	T* load(std::memory_order order = std::memory_order_seq_cst) const noexcept;
-	void store(T* desired, 
-		std::memory_order order = std::memory_order_seq_cst ) noexcept;
-	bool compare_exchange_weak(T*& expected, T* desired,
-		std::memory_order order = std::memory_order_seq_cst ) noexcept;
-	bool compare_exchange_strong(T*& expected, T* desired,
-		std::memory_order order = std::memory_order_seq_cst ) noexcept;
-};
-
 template<class T, RegionIndex idx>
 class AtomicCrossPtrCnt {
 public:
@@ -216,7 +201,7 @@ struct Descriptor {
 	Descriptor() noexcept :
 		next_free(),
 		next_partial(),
-		anchor()，
+		anchor(),
 		superblock(),
 		heap(),
 		block_size(),
