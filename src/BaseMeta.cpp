@@ -27,51 +27,6 @@ inline T* CrossPtr<T,idx>::operator->(){
 }
 
 template<class T, RegionIndex idx>
-AtomicCrossPtr<T,idx>::AtomicCrossPtr(T* real_ptr) noexcept{
-	off.store(_rgs->untranslate(idx, reinterpret_cast<char*>(real_ptr)));
-}
-
-template<class T, RegionIndex idx>
-inline T* AtomicCrossPtr<T,idx>::load(memory_order order)const noexcept{
-	return reinterpret_cast<T*>(_rgs->translate(idx, off.load(order)));
-}
-
-template<class T, RegionIndex idx>
-inline void AtomicCrossPtr<T,idx>::store(T* desired, memory_order order)noexcept{
-	return off.store(_rgs->untranslate(idx, reinterpret_cast<char*>(desired)), order);
-}
-
-template<class T, RegionIndex idx>
-inline bool AtomicCrossPtr<T,idx>::compare_exchange_weak(T*& expected, T* desired, memory_order order)noexcept{
-	char* old_off = _rgs->untranslate(idx, reinterpret_cast<char*>(expected));
-	char* new_off = _rgs->untranslate(idx, reinterpret_cast<char*>(desired));
-	bool ret = off.compare_exchange_weak(old_off, new_off, order);
-	if(!ret){
-		if(old_off == nullptr){
-			expected = nullptr;
-		} else{
-			expected = _rgs->translate(idx, old_off);
-		}
-	}
-	return ret;
-}
-
-template<class T, RegionIndex idx>
-inline bool AtomicCrossPtr<T,idx>::compare_exchange_strong(T*& expected, T* desired, memory_order order)noexcept{
-	char* old_off = _rgs->untranslate(idx, reinterpret_cast<char*>(expected));
-	char* new_off = _rgs->untranslate(idx, reinterpret_cast<char*>(desired));
-	bool ret = off.compare_exchange_strong(old_off, new_off, order);
-	if(!ret){
-		if(old_off == nullptr){
-			expected = nullptr;
-		} else{
-			expected = _rgs->translate(idx, old_off);
-		}
-	}
-	return ret;
-}
-
-template<class T, RegionIndex idx>
 AtomicCrossPtrCnt<T,idx>::AtomicCrossPtrCnt(T* real_ptr, uint64_t counter)noexcept{
 	char* res;
 	if(real_ptr == nullptr) {
