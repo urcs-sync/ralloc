@@ -212,8 +212,13 @@ struct Descriptor {
 	Descriptor() noexcept :
 		next_free(),
 		next_partial(),
-		anchor(){};
+		anchor()，
+		superblock(),
+		heap(),
+		block_size(),
+		maxcount(){};
 }__attribute__((aligned(CACHELINE_SIZE)));
+static_assert(sizeof(Descriptor) == CACHELINE_SIZE, "Invalid Descriptor size");
 
 // at least one ProcHeap instance exists for each sizeclass
 struct ProcHeap {
@@ -232,8 +237,6 @@ public:
 
 class BaseMeta {
 	// unused small sb
-	// RP_TRANSIENT _ArrayStack<void*, FREESTACK_CAP> free_sb;//pptr
-	// descriptor recycle list
 	RP_TRANSIENT AtomicCrossPtrCnt<Descriptor, DESC_IDX> avail_sb;
 	RP_PERSIST bool dirty;
 
@@ -289,7 +292,7 @@ public:
 		// give back tcached blocks
 		rpmalloc::public_flush_cache();
 		char* addr = reinterpret_cast<char*>(this);
-		// flush values in BaseMeta
+		// flush values in BaseMeta, including avail_sb and partial lists
 		for(size_t i = 0; i < sizeof(BaseMeta); i += CACHELINE_SIZE) {
 			addr += CACHELINE_SIZE;
 			FLUSH(addr);

@@ -180,7 +180,7 @@ BaseMeta::BaseMeta() noexcept
 
 	// warm up small sb space 
 	void* tmp_sec_start = nullptr;
-	bool res = _rgs->expand(SB_IDX,&tmp_sec_start,SBSIZE, SB_REGION_EXPAND_SIZE);//FIXME: this causes idx starts with 0 so we can't distinguish with null!
+	bool res = _rgs->expand(SB_IDX,&tmp_sec_start,SBSIZE, SB_REGION_EXPAND_SIZE);
 	if(!res) assert(0&&"warmup sb allocation fails!");
 	DBG_PRINT("expand sb space for small sb allocation\n");
 	_rgs->regions[SB_IDX]->__store_heap_start(tmp_sec_start);
@@ -364,8 +364,7 @@ void BaseMeta::flush_cache(size_t sc_idx, TCacheBin* cache) {
 	}
 }
 
-//FIXME
-inline Descriptor* BaseMeta::desc_lookup(char* ptr){
+Finline Descriptor* BaseMeta::desc_lookup(char* ptr){
 	uint64_t sb_index = (((uint64_t)ptr)>>SB_SHIFT) - (((uint64_t)_rgs->lookup(SB_IDX))>>SB_SHIFT); // the index of sb this block in
 	Descriptor* ret = reinterpret_cast<Descriptor*>(_rgs->lookup(DESC_IDX));
 	ret+=sb_index;
@@ -486,7 +485,7 @@ void BaseMeta::malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_
 		*block = next;
 	}
 
-	// push blocks to cache
+	// push blocks to thread local cache
 	char* block = superblock; // first block
 	cache->push_list(block, maxcount);
 
@@ -494,8 +493,10 @@ void BaseMeta::malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_
 	anchor.avail = maxcount;
 	anchor.count = 0;
 	anchor.state = SB_FULL;
-
 	desc->anchor.store(anchor);
+
+	FLUSH(desc);
+	FLUSHFENCE;
 
 	assert(anchor.avail < maxcount || anchor.state == SB_FULL);
 	assert(anchor.count < maxcount);
@@ -600,8 +601,10 @@ void* BaseMeta::do_malloc(size_t size){
 		anchor.avail = 0;
 		anchor.count = 0;
 		anchor.state = SB_FULL;
-
 		desc->anchor.store(anchor);
+
+		FLUSH(&desc);
+		FLUSHFENCE;
 
 		DBG_PRINT("large, ptr: %p", ptr);
 		return (void*)ptr;
