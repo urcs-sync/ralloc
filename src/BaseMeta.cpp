@@ -547,7 +547,7 @@ void* BaseMeta::do_malloc(size_t size){
 		assert(ptr);
 		Descriptor* desc = desc_lookup(ptr);
 
-		desc->heap = nullptr;
+		desc->heap = &heaps[0];
 		desc->block_size = sbs;
 		desc->maxcount = 1;
 		desc->superblock = ptr;
