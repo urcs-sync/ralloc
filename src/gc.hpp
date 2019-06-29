@@ -1,7 +1,7 @@
 #ifndef _GC_HPP_
 #define _GC_HPP_
 
-#include <unordered_set>
+#include <set>
 #include "pptr.hpp"
 
 #include "pm_config.hpp"
@@ -15,18 +15,6 @@ namespace rpmalloc{
 class GarbageCollection{
 public:
 	GarbageCollection(){};
-	void operator() () {
-		DBG_PRINT("Start garbage collection...\n");
-
-		/* todo
-		// Step 1: mark all accessible blocks from roots
-		// Step 2: set desc accordingly
-		// Step 3: reconstruct partial list
-		// Step 4: reconstruct free list
-		todo */
-
-		DBG_PRINT("Garbage collection Completed!\n");
-	}
 	struct gc_ptr_base{
 		void* ptr;
 		size_t sz;
@@ -61,6 +49,46 @@ public:
 		}
 	};
 
+	void operator() () {
+		DBG_PRINT("Start garbage collection...\n");
+
+		// Step 0: initialize all transient data
+		base_md->avail_sb.off.store(nullptr); // initialize avail_sb
+		// todo: partial list of each heap
+		for(int i = 0; i< MAX_SZ_IDX; i++) {
+			base_md->heaps[i]
+		}
+
+		// Step 1: mark all accessible blocks from roots
+		for(int i = 0; i < MAX_ROOTS; i++) {
+			if(!(base_md->roots[i]==nullptr)) {
+				gc_ptr_base* p = base_md->roots_gc_ptr[i](base_md->roots[i]);
+				marked_blk.insert(p->ptr);
+				p->filter_func();
+			}
+		}
+
+		// Step 2: sweep phase, update variables.
+		char* curr_sb = _rgs->translate(SB_IDX, SBSIZE); // starting from first sb
+		Descriptor* curr_desc = base_md->desc_lookup(curr_sb);
+		auto curr_blk = marked_blk.begin();
+		char* sb_end = _rgs->regions[SB_IDX]->curr_addr_ptr->load();
+		for(; curr_sb < sb_end; curr_sb+=SBSIZE, curr_desc++) {
+			// todo
+
+			while (curr_blk!=marked_blk.end() && 
+					((uint64_t)curr_sb>>SB_SHIFT) == ((uint64_t)(*curr_blk)>>SB_SHIFT)) 
+			{ // curr_blk doesn't reach the end of marked_blk and curr_blk is in curr_sb
+				// update local desc info
+				curr_blk++;
+			}
+			// reconstruct blk free list
+			// update real desc info
+			// put desc to partial or free list
+		}
+		DBG_PRINT("Garbage collection Completed!\n");
+	}
+
 	template<class T>
 	void mark_func(const pptr<T>& ptr){
 		void* addr = static_cast<void*>(ptr);
@@ -74,7 +102,8 @@ public:
 		gc_p->filter_func();
 	};
 
-	std::unordered_set<void*> marked_blk;
+	std::set<void*> marked_blk;
+	std::vector<Descriptor*> free_sb;
 };
 
 #endif

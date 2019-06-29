@@ -216,8 +216,13 @@ struct Descriptor {
 	Descriptor() noexcept :
 		next_free(),
 		next_partial(),
-		anchor(){};
+		anchor()，
+		superblock(),
+		heap(),
+		block_size(),
+		maxcount(){};
 }__attribute__((aligned(CACHELINE_SIZE)));
+static_assert(sizeof(Descriptor) == CACHELINE_SIZE, "Invalid Descriptor size");
 
 // at least one ProcHeap instance exists for each sizeclass
 struct ProcHeap {
@@ -235,16 +240,15 @@ public:
 }__attribute__((aligned(CACHELINE_SIZE)));
 
 class BaseMeta {
+public:
 	// unused small sb
-	// RP_TRANSIENT _ArrayStack<void*, FREESTACK_CAP> free_sb;//pptr
-	// descriptor recycle list
 	RP_TRANSIENT AtomicCrossPtrCnt<Descriptor, DESC_IDX> avail_sb;
 	RP_PERSIST bool dirty;
 
 	RP_PERSIST ProcHeap heaps[MAX_SZ_IDX];
 	RP_PERSIST CrossPtr<char, SB_IDX> roots[MAX_ROOTS] = {nullptr};
 	RP_PERSIST std::function<GarbageCollection::gc_ptr_base*(const CrossPtr<char, SB_IDX>&)> roots_gc_ptr[MAX_ROOTS];
-public:
+	friend class GarbageCollection;
 	BaseMeta() noexcept;
 	~BaseMeta(){
 		/* usually BaseMeta shouldn't be destructed, 
@@ -303,7 +307,7 @@ public:
 		// Should be called during normal exit
 		rpmalloc::public_flush_cache();
 		char* addr = reinterpret_cast<char*>(this);
-		// flush values in BaseMeta
+		// flush values in BaseMeta, including avail_sb and partial lists
 		for(size_t i = 0; i < sizeof(BaseMeta); i += CACHELINE_SIZE) {
 			addr += CACHELINE_SIZE;
 			FLUSH(addr);
