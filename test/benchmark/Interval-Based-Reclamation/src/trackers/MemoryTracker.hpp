@@ -34,9 +34,6 @@ limitations under the License.
 #include "RangeTrackerNew.hpp"
 #include "HazardTracker.hpp"
 #include "HETracker.hpp"
-#if !(__x86_64__ || __ppc64__)
-#include "RangeTrackerTP.hpp"
-#endif
 
 
 
@@ -102,14 +99,6 @@ public:
 			type = Interval;
 		}
 		
-		// only compile in 32 bit mode
-#if !(__x86_64__ || __ppc64__)
-		else if (tracker_type == "TP"){
-			tracker = new RangeTrackerTP<T>(task_num, epoch_freq, empty_freq, collect);
-			type = Range_TP;
-		}
-#endif
-
 		else {
 			errexit("constructor - tracker type error.");
 		}

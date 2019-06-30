@@ -27,6 +27,7 @@ limitations under the License.
 #include <atomic>
 #include "ConcurrentPrimitives.hpp"
 #include "RAllocator.hpp"
+#include "AllocatorMacro.hpp"
 
 #include "BaseTracker.hpp"
 
@@ -86,7 +87,7 @@ public:
 		if(alloc_counters[tid]%(epochFreq*task_num)==0){
 			epoch.fetch_add(1,std::memory_order_acq_rel);
 		}
-		char* block = (char*) malloc(sizeof(uint64_t) + sizeof(T));
+		char* block = (char*) PM_malloc(sizeof(uint64_t) + sizeof(T));
 		uint64_t* birth_epoch = (uint64_t*)(block + sizeof(T));
 		*birth_epoch = get_epoch();
 		return (void*)block;
@@ -99,7 +100,7 @@ public:
 
 	void reclaim(T* obj){
 		obj->~T();
-		free ((char*)obj);
+		PM_free ((char*)obj);
 	}
 
 	T* read(std::atomic<T*>& obj, int idx, int tid){

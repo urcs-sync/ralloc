@@ -27,6 +27,7 @@ limitations under the License.
 #include <atomic>
 #include "ConcurrentPrimitives.hpp"
 #include "RAllocator.hpp"
+#include "AllocatorMacro.hpp"
 
 
 template<class T> class BaseTracker{
@@ -56,13 +57,13 @@ public:
 	}
 
 	virtual void* alloc(){
-		return (void*)malloc(sizeof(T));
+		return (void*)PM_malloc(sizeof(T));
 	}
 	//NOTE: reclaim shall be only used to thread-local objects.
 	virtual void reclaim(T* obj){
 		assert(obj != NULL);
 		obj->~T();
-		free(obj);
+		PM_free(obj);
 	}
 
 	//NOTE: reclaim (obj, tid) should be used on all retired objects.

@@ -27,6 +27,7 @@ limitations under the License.
 #include <atomic>
 #include "ConcurrentPrimitives.hpp"
 #include "RAllocator.hpp"
+#include "AllocatorMacro.hpp"
 
 #include "BaseTracker.hpp"
 
@@ -87,7 +88,7 @@ public:
 			epoch.fetch_add(1,std::memory_order_acq_rel);
 		}
 		//return (void*)malloc(sizeof(T));
-		char* block = (char*) malloc(sizeof(uint64_t) + sizeof(T));
+		char* block = (char*) PM_malloc(sizeof(uint64_t) + sizeof(T));
 		uint64_t* birth_epoch = (uint64_t*)(block + sizeof(T));
 		*birth_epoch = getEpoch();
 		return (void*)block;
@@ -98,7 +99,7 @@ public:
 	}
 	void reclaim(T* obj){
 		obj->~T();
-		free ((char*)obj);
+		PM_free ((char*)obj);
 	}
 	void start_op(int tid){
 		uint64_t e = epoch.load(std::memory_order_acquire);

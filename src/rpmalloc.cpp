@@ -93,7 +93,8 @@ void RP_free(void* ptr){
 	}
 	base_md->do_free(ptr);
 }
-void* RP_set_root(void* ptr, uint64_t i){
+template<class T>
+void* RP_set_root(T* ptr, uint64_t i){
 	if(UNLIKELY(initialized==false)){
 		RP_init("no_explicit_init");
 	}

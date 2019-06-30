@@ -28,6 +28,7 @@ limitations under the License.
 #include "ConcurrentPrimitives.hpp"
 #include "RAllocator.hpp"
 #include "BlockPool.hpp"
+#include "AllocatorMacro.hpp"
 
 enum UpdateType{LF, FAA, WCAS, TP};
 
@@ -127,7 +128,7 @@ public:
 		}
 		switch(type){
 			default:
-				char* block = (char*) malloc(sizeof(uint64_t) + sizeof(T));
+				char* block = (char*) PM_malloc(sizeof(uint64_t) + sizeof(T));
 				uint64_t* birth_epoch = (uint64_t*)(block + sizeof(T));
 				*birth_epoch = get_epoch();
 				return (void*)block;
@@ -143,7 +144,7 @@ public:
 	void reclaim(T* obj){
 		if (!obj) return;
 		obj->~T();
-		free ((char*)obj);
+		PM_free ((char*)obj);
 	}
 
 	void reserve(int tid){

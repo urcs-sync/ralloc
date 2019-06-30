@@ -31,6 +31,7 @@ limitations under the License.
 // #include "ssmem.h"
 #include "MemoryTracker.hpp"
 #include "RetiredMonitorable.hpp"
+#include "pptr.hpp"
 
 // //GC Method: ssmem from LPD-EPFL
 // #ifdef NGC
@@ -51,8 +52,8 @@ private:
 		int level;
 		K key;
 		V val;
-		std::atomic<Node*> left;
-		std::atomic<Node*> right;
+		atomic_pptr<Node> left;
+		atomic_pptr<Node> right;
 
 		virtual ~Node(){};
 		static Node* alloc(K k, V v, Node* l, Node* r,MemoryTracker<Node>* memory_tracker,int tid){//TODO: Switch this func to MemoryTracker one
@@ -89,8 +90,8 @@ private:
 	V defltV{};
 	// Node r{infK,defltV,nullptr,nullptr,2};
 	// Node s{infK,defltV,nullptr,nullptr,1};
-	Node* r;
-	Node* s;
+	pptr<Node> r;
+	pptr<Node> s;
 	padded<SeekRecord>* records;
 	const size_t GET_POINTER_BITS = 0xfffffffffffffffc;//for machine 64-bit or less.
 
@@ -238,9 +239,9 @@ bool NatarajanTree<K,V>::cleanup(K key, int tid){
 	Node* parent=getPtr(seekRecord->parent);
 	Node* leaf=getPtr(seekRecord->leaf);
 
-	std::atomic<Node*>* successorAddr=nullptr;
-	std::atomic<Node*>* childAddr=nullptr;
-	std::atomic<Node*>* siblingAddr=nullptr;
+	atomic_pptr<Node>* successorAddr=nullptr;
+	atomic_pptr<Node>* childAddr=nullptr;
+	atomic_pptr<Node>* siblingAddr=nullptr;
 
 	/* obtain address of field of ancestor node that will be modified */
 	if(nodeLess(&keyNode,ancestor))
@@ -333,7 +334,7 @@ optional<V> NatarajanTree<K,V>::put(K key, V val, int tid){
 
 	Node* parent=nullptr;
 	Node* leaf=nullptr;
-	std::atomic<Node*>* childAddr=nullptr;
+	atomic_pptr<Node>* childAddr=nullptr;
 	collect_retired_size(memory_tracker->get_retired_cnt(tid), tid);
 	memory_tracker->start_op(tid);
 
@@ -414,7 +415,7 @@ bool NatarajanTree<K,V>::insert(K key, V val, int tid){
 	
 	Node* parent=nullptr;
 	Node* leaf=nullptr;
-	std::atomic<Node*>* childAddr=nullptr;
+	atomic_pptr<Node>* childAddr=nullptr;
 	collect_retired_size(memory_tracker->get_retired_cnt(tid), tid);
 	memory_tracker->start_op(tid);
 	while(true){
@@ -488,7 +489,7 @@ optional<V> NatarajanTree<K,V>::remove(K key, int tid){
 	
 	Node* parent=nullptr;
 	Node* leaf=nullptr;
-	std::atomic<Node*>* childAddr=nullptr;
+	atomic_pptr<Node>* childAddr=nullptr;
 	collect_retired_size(memory_tracker->get_retired_cnt(tid), tid);
 	memory_tracker->start_op(tid);
 	while(true){
@@ -557,7 +558,7 @@ optional<V> NatarajanTree<K,V>::replace(K key, V val, int tid){
 
 	Node* parent=nullptr;
 	Node* leaf=nullptr;
-	std::atomic<Node*>* childAddr=nullptr;
+	atomic_pptr<Node>* childAddr=nullptr;
 	collect_retired_size(memory_tracker->get_retired_cnt(tid), tid);
 	memory_tracker->start_op(tid);
 	while(true){

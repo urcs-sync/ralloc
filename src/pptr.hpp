@@ -5,7 +5,6 @@
 #include <iostream>
 #include <cstddef>
 #include <atomic>
-#include "gc.hpp"
 #include "pm_config.hpp"
 using namespace std;
 
@@ -28,11 +27,9 @@ public:
 		off(v==nullptr ? 0 : ((int64_t)v) - ((int64_t)this)) {};
 	pptr(const pptr<T> &p)noexcept: //copy constructor
 		off(p.is_null() ? 0 : ((int64_t)(p.off + (int64_t)&p)) - ((int64_t)this)) {};
-	inline operator T*() const{ //cast to transient pointer
-		return off==0 ? nullptr : (T*)(off + ((int64_t)this));
-	}
-	inline operator void*() const{ //cast to transient pointer
-		return off==0 ? nullptr : (void*)(off + ((int64_t)this));
+	template<class F>
+	inline operator F*() const{ //cast to transient pointer
+		return off==0 ? nullptr : (F*)(off + ((int64_t)this));
 	}
 	inline T& operator * () { //dereference
 		return *(T*)(off + ((int64_t)this));
@@ -44,16 +41,13 @@ public:
 		off = ((int64_t)(p.off + (int64_t)&p)) - ((int64_t)this);
 		return *this;
 	}
-	inline pptr& operator = (const T* p){ //assignment
-		off = ((int64_t)p) - ((int64_t)this);
-		return *this;
-	}
-	inline pptr& operator = (const void* p){ //assignment
-		off = ((int64_t)p) - ((int64_t)this);
-		return *this;
-	}
-	inline pptr& operator = (const std::nullptr_t& p){ //assignment
-		off = 0;
+	template<class F>
+	inline pptr& operator = (const F* p){ //assignment
+		if(p == nullptr) {
+			off = 0;
+		} else {
+			off = ((int64_t)p) - ((int64_t)this);
+		}
 		return *this;
 	}
 	uint64_t get_size(){return sizeof(T);}
@@ -78,6 +72,11 @@ inline bool operator==(const pptr<T>& lhs, const pptr<T>& rhs){
 template <class T>
 inline bool operator!=(const pptr<T>& lhs, const std::nullptr_t& rhs){
 	return !lhs.is_null();
+}
+
+template <class T>
+inline bool operator!=(const pptr<T>& lhs, const pptr<T>& rhs){
+	return !((T*)lhs == (T*)rhs);
 }
 
 /* 

@@ -31,6 +31,7 @@ limitations under the License.
 #include <atomic>
 #include "ConcurrentPrimitives.hpp"
 #include "RAllocator.hpp"
+#include "AllocatorMacro.hpp"
 
 #include "BaseTracker.hpp"
 

@@ -25,16 +25,9 @@ limitations under the License.
 #include "CustomTests.hpp"
 #include "rideables/SGLUnorderedMap.hpp"
 #include "rideables/SortedUnorderedMap.hpp"
-#include "rideables/BonsaiTree.hpp"
 #include "rideables/NatarajanTree.hpp"
 #include "rideables/LinkList.hpp"
 
-#if (__x86_64__ || __ppc64__)
-#include "rideables/SortedUnorderedMapRange.hpp"
-#include "rideables/BonsaiTreeRange.hpp"
-#include "rideables/NatarajanTreeRangeTracker.hpp"
-#include "rideables/LinkListRange.hpp"
-#endif
 
 using namespace std;
 
@@ -51,15 +44,7 @@ int main(int argc, char *argv[])
 	gtc->addRideableOption(new SGLUnorderedMapFactory<std::string,std::string>(), "SGLUnorderedMap (default)");
 	gtc->addRideableOption(new SortedUnorderedMapFactory<std::string,std::string>(), "SortedUnorderedMap");
 	gtc->addRideableOption(new LinkListFactory<std::string,std::string>(), "LinkList");
-	gtc->addRideableOption(new BonsaiTreeFactory<std::string,std::string>(), "BonsaiTree");
 	gtc->addRideableOption(new NatarajanTreeFactory<std::string,std::string>(), "NatarajanTree");
-
-#if (__x86_64__ || __ppc64__)
-	gtc->addRideableOption(new SortedUnorderedMapRangeFactory<std::string,std::string>(), "SortedUnorderedMapRange");
-	gtc->addRideableOption(new LinkListRangeFactory<std::string,std::string>(), "LinkListRange");
-	gtc->addRideableOption(new BonsaiTreeRangeFactory<std::string,std::string>(), "BonsaiTreeRange");
-	gtc->addRideableOption(new NatarajanTreeRangeTrackerFactory<std::string,std::string>(), "NatarajanTreeRangeTracker");
-#endif
 	
 	//gtc->addRideableOption(new SortedUnorderedMapHazardFactory<std::string,std::string>(), "SortedUnorderedMapHazard");
 	// gtc->addRideableOption(new SortedUnorderedMapRCUFactory<std::string,std::string>(), "SortedUnorderedMapRCU");

@@ -27,6 +27,7 @@ limitations under the License.
 #include "HazardTracker.hpp"
 #include "MemoryTracker.hpp"
 #include "RetiredMonitorable.hpp"
+#include "pptr.hpp"
 #include <functional>
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,7 +44,7 @@ class SortedUnorderedMap : public RUnorderedMap<K,V>, public RetiredMonitorable{
 	struct Node;
 
 	struct MarkPtr{
-		std::atomic<Node*> ptr;
+		atomic_pptr<Node> ptr;
 		MarkPtr(Node* n):ptr(n){};
 		MarkPtr():ptr(nullptr){};
 	};

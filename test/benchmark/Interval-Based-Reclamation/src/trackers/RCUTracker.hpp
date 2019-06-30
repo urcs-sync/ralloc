@@ -27,6 +27,7 @@ limitations under the License.
 #include <atomic>
 #include "ConcurrentPrimitives.hpp"
 #include "RAllocator.hpp"
+#include "AllocatorMacro.hpp"
 
 #include "BaseTracker.hpp"
 
@@ -84,7 +85,7 @@ public:
 		if(alloc_counters[tid]%(epochFreq*task_num)==0){
 			epoch.fetch_add(1,std::memory_order_acq_rel);
 		}
-		return (void*)malloc(sizeof(T));
+		return (void*)PM_malloc(sizeof(T));
 	}
 	void start_op(int tid){
 		if (type == type_RCU){

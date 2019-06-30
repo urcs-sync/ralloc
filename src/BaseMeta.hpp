@@ -5,6 +5,8 @@
 #include <iostream>
 #include <mutex>
 #include <functional>
+#include <set>
+#include <vector>
 
 #include "pm_config.hpp"
 // #include "thread_util.hpp"
@@ -13,7 +15,6 @@
 #include "SizeClass.hpp"
 #include "TCache.hpp"
 #include "pptr.hpp"
-#include "gc.hpp"
 
 /********class BaseMeta********
  * This is the file where meta data structures of
@@ -92,28 +93,23 @@ public:
 	char* off;
 	CrossPtr(T* real_ptr = nullptr) noexcept;
 	CrossPtr(const CrossPtr& cptr) noexcept: off(cptr.off) {}
-	inline operator T*() const{// cast to absolute pointer
+
+	template<class F>
+	inline operator F*() const{// cast to absolute pointer
 		if(UNLIKELY(is_null())){
 			return nullptr;
 		} else{
-			return reinterpret_cast<T*>(rpmalloc::_rgs->translate(idx, off));
+			return reinterpret_cast<F*>(rpmalloc::_rgs->translate(idx, off));
 		}
 	} 
-	inline operator void*() const{
-		return reinterpret_cast<void*>(static_cast<T*>(*this));
-	}
 	T& operator* ();
 	T* operator-> ();
 	inline CrossPtr& operator= (const CrossPtr<T,idx> &p){
 		off = p.off;
 		return *this;
 	}
-	inline CrossPtr& operator= (const T* p){
-		uint64_t tmp = reinterpret_cast<uint64_t>(p);//get rid of const
-		off = rpmalloc::_rgs->untranslate(idx, reinterpret_cast<char*>(tmp));
-		return *this;
-	}
-	inline CrossPtr& operator= (const void* p){
+	template<class F>
+	inline CrossPtr& operator= (const F* p){
 		uint64_t tmp = reinterpret_cast<uint64_t>(p);//get rid of const
 		off = rpmalloc::_rgs->untranslate(idx, reinterpret_cast<char*>(tmp));
 		return *this;
@@ -224,6 +220,34 @@ public:
 		partial_list(){};
 }__attribute__((aligned(CACHELINE_SIZE)));
 
+struct GarbageCollection{
+	std::set<char*> marked_blk;
+	std::vector<Descriptor*> free_sb;
+
+	GarbageCollection():marked_blk(), free_sb(){};
+
+	void operator() ();
+
+	template<class T>
+	void mark_func(const pptr<T>& ptr);
+};
+
+struct gc_ptr_base{
+	void* ptr;
+	size_t sz;
+	gc_ptr_base(void* p=nullptr, size_t s=0):ptr(p), sz(s){};
+	virtual void filter_func(GarbageCollection& gc) {
+		char* curr = reinterpret_cast<char*>(ptr);
+		for(size_t i=0;i<sz;i++){
+			gc.mark_func(*(reinterpret_cast<pptr<char>*>(curr)));
+			curr++;
+		}
+	}
+};
+
+template<class T>
+struct gc_ptr;
+
 class BaseMeta {
 public:
 	// unused small sb
@@ -231,8 +255,8 @@ public:
 	RP_PERSIST bool dirty;
 
 	RP_PERSIST ProcHeap heaps[MAX_SZ_IDX];
-	RP_PERSIST CrossPtr<char, SB_IDX> roots[MAX_ROOTS] = {nullptr};
-	RP_PERSIST std::function<GarbageCollection::gc_ptr_base*(const CrossPtr<char, SB_IDX>&)> roots_gc_ptr[MAX_ROOTS];
+	RP_PERSIST CrossPtr<char, SB_IDX> roots[MAX_ROOTS];
+	RP_PERSIST std::function<gc_ptr_base*(const CrossPtr<char, SB_IDX>&)> roots_gc_ptr[MAX_ROOTS];
 	friend class GarbageCollection;
 	BaseMeta() noexcept;
 	~BaseMeta(){
@@ -251,7 +275,8 @@ public:
 		assert(multiple && ((multiple & (multiple - 1)) == 0));
 		return (numToRound + multiple - 1) & ~(multiple - 1);
 	}
-	inline void* set_root(T* ptr, uint64_t i){
+	template<class T>
+	void* set_root(T* ptr, uint64_t i){
 		//this is sequential
 		assert(i<MAX_ROOTS);
 		void* res = nullptr;
@@ -260,9 +285,9 @@ public:
 		roots[i] = ptr;
 		roots_gc_ptr[i] = [](const CrossPtr<char, SB_IDX>& cptr){
 			// this new statement is intentionally designed to use transient allocator since it's offline
-			GarbageCollection::gc_ptr<T>* ret = new GarbageCollection::gc_ptr<T>(static_cast<char*>(cptr));
+			gc_ptr<T>* ret = new gc_ptr<T>(static_cast<char*>(cptr));
 			return ret;
-		}
+		};
 		FLUSH(&roots[i]);
 		FLUSH(&roots_gc_ptr[i]);
 		FLUSHFENCE;
@@ -277,7 +302,7 @@ public:
 		// Restart, setting values and flags to normal
 		// Should be called during restart
 		if(dirty) {
-			GarbageCollection gc();
+			GarbageCollection gc;
 			gc();
 		}
 		FLUSHFENCE;
@@ -363,5 +388,21 @@ private:
 	void desc_retire(Descriptor* desc);
 }__attribute__((aligned(CACHELINE_SIZE)));
 
+// persistent roots are gc_ptr with cross to be true
+template<class T>
+struct gc_ptr : public gc_ptr_base{
+	template<class F>
+	explicit gc_ptr(F* v){
+		ptr = (void*)v;
+		Descriptor* desc = rpmalloc::base_md->desc_lookup((char*)v);
+		sz = desc->block_size;
+	};
+	operator T*(){return (T*)ptr;};//cast to transient pointer
+	T& operator *(){return *(T*)ptr;}//dereference
+	T* operator ->(){return (T*)ptr;}//arrow
+	virtual void filter_func(GarbageCollection& gc){
+		return gc_ptr_base::filter_func(gc);
+	}
+};
 
 #endif /* _BASE_META_HPP_ */
