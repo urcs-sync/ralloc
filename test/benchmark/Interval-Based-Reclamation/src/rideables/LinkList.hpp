@@ -21,6 +21,7 @@ limitations under the License.
 #define LINK_LIST
 
 #include "SortedUnorderedMap.hpp"
+#include "trackers/AllocatorMacro.hpp"
 
 #ifdef NGC
 #define COLLECT false
@@ -30,8 +31,16 @@ limitations under the License.
 
 template <class K, class V>
 class LinkListFactory : public RideableFactory{
-	SortedUnorderedMap<K,V>* build(GlobalTestConfig* gtc){
-		return new SortedUnorderedMap<K,V>(gtc,1);
+	SortedUnorderedMap<K,V,1>* build(GlobalTestConfig* gtc){
+		if(gtc->restart) {
+			auto ret = reinterpret_cast<SortedUnorderedMap<K,V,1>*>(get_root(2));
+			ret->restart(gtc);
+			return ret;
+		} else {
+			auto ret = new SortedUnorderedMap<K,V,1>(gtc);
+			set_root(ret, 2);
+			return ret;
+		}
 	}
 };
 

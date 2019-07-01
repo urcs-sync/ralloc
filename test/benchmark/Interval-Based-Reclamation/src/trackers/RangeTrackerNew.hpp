@@ -106,7 +106,24 @@ public:
 	T* read(std::atomic<T*>& obj, int idx, int tid){
 		return read(obj, tid);
 	}
+	T* read(const atomic_pptr<T>& obj, int idx, int tid){
+		return read(obj, tid);
+	}
     T* read(std::atomic<T*>& obj, int tid){
+        uint64_t prev_epoch = upper_reservs[tid].ui.load(std::memory_order_acquire);
+		while(true){
+			T* ptr = obj.load(std::memory_order_acquire);
+			uint64_t curr_epoch = get_epoch();
+			if (curr_epoch == prev_epoch){
+				return ptr;
+			} else {
+				// upper_reservs[tid].ui.store(curr_epoch, std::memory_order_release);
+				upper_reservs[tid].ui.store(curr_epoch, std::memory_order_seq_cst);
+				prev_epoch = curr_epoch;
+			}
+		}
+    }
+    T* read(const atomic_pptr<T>& obj, int tid){
         uint64_t prev_epoch = upper_reservs[tid].ui.load(std::memory_order_acquire);
 		while(true){
 			T* ptr = obj.load(std::memory_order_acquire);

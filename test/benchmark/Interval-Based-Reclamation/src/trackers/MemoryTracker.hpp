@@ -137,6 +137,10 @@ public:
 		return tracker->read(obj, slot_renamers[tid].ui[idx], tid);
 	}
 
+	T* read(const atomic_pptr<T>& obj, int idx, int tid){
+		return tracker->read(obj, slot_renamers[tid].ui[idx], tid);
+	}
+
 	void transfer(int src_idx, int dst_idx, int tid){
 		int tmp = slot_renamers[tid].ui[src_idx];
 		slot_renamers[tid].ui[src_idx] = slot_renamers[tid].ui[dst_idx];

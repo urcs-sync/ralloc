@@ -220,6 +220,9 @@ public:
 		partial_list(){};
 }__attribute__((aligned(CACHELINE_SIZE)));
 
+template<class T>
+struct gc_ptr;
+
 struct GarbageCollection{
 	std::set<char*> marked_blk;
 	std::vector<Descriptor*> free_sb;
@@ -228,25 +231,32 @@ struct GarbageCollection{
 
 	void operator() ();
 
+	// return true if ptr is a valid and unmarked pointer, otherwise false
 	template<class T>
-	void mark_func(const pptr<T>& ptr);
+	void mark_func(T* ptr){
+		void* addr = static_cast<void*>(ptr);
+		// Step 1: check if it's a valid pptr
+		if(UNLIKELY(!rpmalloc::_rgs->in_range(SB_IDX, addr))) 
+			return; // return if not in range
+		auto res = marked_blk.find(reinterpret_cast<char*>(addr));
+		if(res == marked_blk.end()){
+			// Step 2: mark potential pptr
+			marked_blk.insert(reinterpret_cast<char*>(addr));
+			// Step 3: construct gc_ptr<T>
+			gc_ptr<T> gcptr(ptr);
+			// Step 4: call filter function
+			gcptr.filter_func(*this);
+		}
+		return;
+	}
 };
 
 struct gc_ptr_base{
 	void* ptr;
 	size_t sz;
 	gc_ptr_base(void* p=nullptr, size_t s=0):ptr(p), sz(s){};
-	virtual void filter_func(GarbageCollection& gc) {
-		char* curr = reinterpret_cast<char*>(ptr);
-		for(size_t i=0;i<sz;i++){
-			gc.mark_func(*(reinterpret_cast<pptr<char>*>(curr)));
-			curr++;
-		}
-	}
+	virtual void filter_func(GarbageCollection& gc) = 0;
 };
-
-template<class T>
-struct gc_ptr;
 
 class BaseMeta {
 public:
@@ -397,11 +407,17 @@ struct gc_ptr : public gc_ptr_base{
 		Descriptor* desc = rpmalloc::base_md->desc_lookup((char*)v);
 		sz = desc->block_size;
 	};
-	operator T*(){return (T*)ptr;};//cast to transient pointer
-	T& operator *(){return *(T*)ptr;}//dereference
-	T* operator ->(){return (T*)ptr;}//arrow
+	template<class F>
+	operator F*() const {return (F*)ptr;};//cast to transient pointer
+	// T& operator *(){return *(T*)ptr;}//dereference
+	// T* operator ->(){return (T*)ptr;}//arrow
 	virtual void filter_func(GarbageCollection& gc){
-		return gc_ptr_base::filter_func(gc);
+		char* curr = reinterpret_cast<char*>(ptr);
+		for(size_t i=0;i<sz;i++){
+			char* curr_content = static_cast<char*>(*(reinterpret_cast<pptr<char>*>(curr)));
+			gc.mark_func(curr_content);
+			curr++;
+		}
 	}
 };
 

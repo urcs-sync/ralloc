@@ -28,6 +28,7 @@ limitations under the License.
 #include "ConcurrentPrimitives.hpp"
 #include "RAllocator.hpp"
 #include "AllocatorMacro.hpp"
+#include "pptr.hpp"
 
 
 template<class T> class BaseTracker{
@@ -78,7 +79,11 @@ public:
 	virtual T* read(std::atomic<T*>& obj, int idx, int tid){
 		return obj.load(std::memory_order_acquire);
 	}
-	
+
+	virtual T* read(const atomic_pptr<T>& obj, int idx, int tid){
+		return obj.load(std::memory_order_acquire);
+	}
+
 	virtual void transfer(int src_idx, int dst_idx, int tid){}
 
 	virtual void reserve(T* obj, int idx, int tid){}

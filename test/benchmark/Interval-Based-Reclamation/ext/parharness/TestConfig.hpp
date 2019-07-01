@@ -78,10 +78,11 @@ public:
 	std::vector<Rideable*> allocatedRideables;
 
 	long int total_operations=0;
+	bool restart;
 
 
 	
-	GlobalTestConfig();
+	GlobalTestConfig(bool r = false);
 	~GlobalTestConfig();
 
 	// for tests to access rideable objects

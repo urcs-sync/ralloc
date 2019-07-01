@@ -27,7 +27,7 @@ limitations under the License.
 #include "rideables/SortedUnorderedMap.hpp"
 #include "rideables/NatarajanTree.hpp"
 #include "rideables/LinkList.hpp"
-
+#include "trackers/AllocatorMacro.hpp"
 
 using namespace std;
 
@@ -37,8 +37,8 @@ GlobalTestConfig* gtc;
 // sets up output and tests
 int main(int argc, char *argv[])
 {
-
-	gtc = new GlobalTestConfig();
+	int restart = PM_start("ibrstr");
+	gtc = new GlobalTestConfig((bool)restart);
 
 	// additional rideables go here
 	gtc->addRideableOption(new SGLUnorderedMapFactory<std::string,std::string>(), "SGLUnorderedMap (default)");
@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 	else{
 		printf("%ld \t",gtc->total_operations/gtc->interval);
 	}
-
+	PM_close();
 	return 0;
 }
 

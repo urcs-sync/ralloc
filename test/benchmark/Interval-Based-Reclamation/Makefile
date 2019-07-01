@@ -128,8 +128,8 @@ WARNING_FLAGS:=-ftrapv -Wreturn-type -W -Wall \
 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-parameter
 
 # Default build flags.  
-CFLAGS:=-pthread -g -gdwarf-2 -fpic $(WARNING_FLAGS)
-CXXFLAGS:= -pthread -std=c++11 -g -fpic $(WARNING_FLAGS) -std=c++1y
+CFLAGS:=-pthread -g -gdwarf-2 -fPIC $(WARNING_FLAGS)
+CXXFLAGS:= -pthread -std=c++17 -g -fPIC $(WARNING_FLAGS)
 
 # linker flags
 LDFLAGS := $(WARNING_FLAGS)

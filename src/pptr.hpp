@@ -211,6 +211,19 @@ public:
 		off(v==nullptr ? 0 : ((int64_t)v) - ((int64_t)this)) {};
 	atomic_pptr(const pptr<T> &p)noexcept: //copy constructor
 		off(p.is_null() ? 0 : (int64_t)(p.off + (int64_t)&p) - ((int64_t)this)) {};
+	inline atomic_pptr& operator = (const atomic_pptr &p){ //assignment
+		off.store(((int64_t)(p.off.load() + (int64_t)&p)) - ((int64_t)this));
+		return *this;
+	}
+	template<class F>
+	inline atomic_pptr& operator = (const F* p){ //assignment
+		if(p == nullptr) {
+			off.store(0);
+		} else {
+			off.store(((int64_t)p) - ((int64_t)this));
+		}
+		return *this;
+	}
 	T* load(memory_order order = memory_order_seq_cst) const noexcept{
 		int64_t cur_off = off.load(order);
 		T* ret;

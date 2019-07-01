@@ -327,13 +327,14 @@ void* GlobalTestConfig::getArg(std::string key){
 }
 
 
-GlobalTestConfig::GlobalTestConfig():
+GlobalTestConfig::GlobalTestConfig(bool r):
 	rideableFactories(),
 	rideableNames(),
 	tests(),
 	testNames(),
 	outFile(),
-	allocatedRideables(){
+	allocatedRideables(),
+	restart(r){
 }
 
 GlobalTestConfig::~GlobalTestConfig(){

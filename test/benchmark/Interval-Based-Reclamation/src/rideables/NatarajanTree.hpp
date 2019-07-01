@@ -23,6 +23,7 @@ limitations under the License.
 #include <iostream>
 #include <atomic>
 #include <algorithm>
+#include <string>
 #include "Harness.hpp"
 #include "ConcurrentPrimitives.hpp"
 #include "ROrderedMap.hpp"
@@ -31,6 +32,7 @@ limitations under the License.
 // #include "ssmem.h"
 #include "MemoryTracker.hpp"
 #include "RetiredMonitorable.hpp"
+#include "trackers/AllocatorMacro.hpp"
 #include "pptr.hpp"
 
 // //GC Method: ssmem from LPD-EPFL
@@ -46,6 +48,8 @@ limitations under the License.
 
 template <class K, class V>
 class NatarajanTree : public ROrderedMap<K,V>, public RetiredMonitorable{
+	template<class T>
+	friend class gc_ptr;
 private:
 	/* structs*/
 	struct Node{
@@ -168,12 +172,33 @@ public:
 	optional<V> remove(K key, int tid);
 	optional<V> replace(K key, V val, int tid);
 	std::map<K, V> rangeQuery(K key1, K key2, int& len, int tid);
+	void restart(GlobalTestConfig* gtc){
+		retired_cnt = new padded<uint64_t>[gtc->task_num];
+		int epochf = gtc->getEnv("epochf").empty()? 150:stoi(gtc->getEnv("epochf"));
+		int emptyf = gtc->getEnv("emptyf").empty()? 30:stoi(gtc->getEnv("emptyf"));
+		memory_tracker = new MemoryTracker<Node>(gtc, epochf, emptyf, 5, COLLECT);
+		records = new padded<SeekRecord>[gtc->task_num]{};
+	}
+	void* operator new(size_t size){
+		return PM_malloc(size);
+	}
+	void operator delete(void* ptr){
+		PM_free(ptr);
+	}
 };
 
 template <class K, class V> 
 class NatarajanTreeFactory : public RideableFactory{
 	NatarajanTree<K,V>* build(GlobalTestConfig* gtc){
-		return new NatarajanTree<K,V>(gtc);
+		if(gtc->restart){
+			NatarajanTree<K,V>* ret = reinterpret_cast<NatarajanTree<K,V>*>(get_root(3));
+			ret->restart(gtc);
+			return ret;
+		} else {
+			NatarajanTree<K,V>* ret = new NatarajanTree<K,V>(gtc);
+			set_root(ret, 3);
+			return ret;
+		}
 	}
 };
 
@@ -630,5 +655,33 @@ void NatarajanTree<K,V>::doRangeQuery(Node& k1, Node& k2, int tid, Node* root, s
 		}
 	}
 	return;
+}
+
+template<>
+void gc_ptr<NatarajanTree<int,int>>::filter_func(GarbageCollection& gc) {
+	NatarajanTree<int,int>* curr = reinterpret_cast<NatarajanTree<int,int>*>(ptr);
+	NatarajanTree<int,int>::Node* curr_content = static_cast<NatarajanTree<int,int>::Node*>(curr->r);
+	gc.mark_func(curr_content);
+}
+
+template<>
+void gc_ptr<NatarajanTree<int,int>::Node>::filter_func(GarbageCollection& gc) {
+	NatarajanTree<int,int>::Node* curr = reinterpret_cast<NatarajanTree<int,int>::Node*>(ptr);
+	gc.mark_func(curr->left.load());
+	gc.mark_func(curr->right.load());
+}
+
+template<>
+void gc_ptr<NatarajanTree<std::string,std::string>>::filter_func(GarbageCollection& gc) {
+	NatarajanTree<std::string,std::string>* curr = reinterpret_cast<NatarajanTree<std::string,std::string>*>(ptr);
+	NatarajanTree<std::string,std::string>::Node* curr_content = static_cast<NatarajanTree<std::string,std::string>::Node*>(curr->r);
+	gc.mark_func(curr_content);
+}
+
+template<>
+void gc_ptr<NatarajanTree<std::string,std::string>::Node>::filter_func(GarbageCollection& gc) {
+	NatarajanTree<std::string,std::string>::Node* curr = reinterpret_cast<NatarajanTree<std::string,std::string>::Node*>(ptr);
+	gc.mark_func(curr->left.load());
+	gc.mark_func(curr->right.load());
 }
 #endif

@@ -319,7 +319,7 @@ void BaseMeta::flush_cache(size_t sc_idx, TCacheBin* cache) {
 	}
 }
 
-inline Descriptor* BaseMeta::desc_lookup(char* ptr){
+Descriptor* BaseMeta::desc_lookup(char* ptr){
 	uint64_t sb_index = (((uint64_t)ptr)>>SB_SHIFT) - (((uint64_t)_rgs->lookup(SB_IDX))>>SB_SHIFT); // the index of sb this block in
 	Descriptor* ret = reinterpret_cast<Descriptor*>(_rgs->lookup(DESC_IDX));
 	ret+=sb_index;
@@ -614,16 +614,19 @@ void rpmalloc::public_flush_cache(){
 }
 
 void GarbageCollection::operator() () {
-	DBG_PRINT("Start garbage collection...\n");
+	printf("Start garbage collection...\n");
 
 	// Step 0: initialize all transient data
+	printf("Initializing all transient data...");
 	base_md->avail_sb.off.store(nullptr); // initialize avail_sb
 	for(int i = 0; i< MAX_SZ_IDX; i++) {
 		// initialize partial list of each heap
 		base_md->heaps[i].partial_list.off.store(nullptr);
 	}
+	printf("Initialized!\n");
 
 	// Step 1: mark all accessible blocks from roots
+	printf("Marking reachable nodes...");
 	for(int i = 0; i < MAX_ROOTS; i++) {
 		if(!(base_md->roots[i]==nullptr)) {
 			gc_ptr_base* p = base_md->roots_gc_ptr[i](base_md->roots[i]);
@@ -631,8 +634,10 @@ void GarbageCollection::operator() () {
 			p->filter_func(*this);
 		}
 	}
+	printf("Done!\n");
 
 	// Step 2: sweep phase, update variables.
+	printf("Reconstructing metadata...");
 	char* curr_sb = _rgs->translate(SB_IDX, reinterpret_cast<char*>(SBSIZE)); // starting from first sb
 	Descriptor* curr_desc = base_md->desc_lookup(curr_sb);
 	auto curr_marked_blk = marked_blk.begin();
@@ -682,6 +687,8 @@ void GarbageCollection::operator() () {
 			new (curr_desc) Descriptor();
 			curr_desc->next_free.store(avail_sb);
 			avail_sb = curr_desc;
+			curr_sb+=SBSIZE;
+			curr_desc++;
 		} else {
 			if(curr_desc->heap->sc_idx == 0) {
 				// large sb that's in use
@@ -732,19 +739,7 @@ void GarbageCollection::operator() () {
 	// store head of new free sb list into base_md
 	ptr_cnt<Descriptor> tmp_avail_sb(avail_sb, 0);
 	base_md->avail_sb.store(tmp_avail_sb);
+	printf("Reconstructed!\n");
 	FLUSHFENCE;
-	DBG_PRINT("Garbage collection Completed!\n");
-}
-
-template<class T>
-void GarbageCollection::mark_func(const pptr<T>& ptr){
-	void* addr = static_cast<void*>(ptr);
-	// Step 1: check if it's a valid pptr
-	if(UNLIKELY(!rpmalloc::_rgs->in_range(SB_IDX, addr))) 
-		return; // return if not in range
-	// Step 2: mark potential pptr
-	marked_blk.insert(reinterpret_cast<char*>(addr));
-	// Step 3: construct gc_ptr<T> from ptr and call its filter_func
-	gc_ptr<T> gc_p(addr);
-	gc_p.filter_func(*this);
+	printf("Garbage collection Completed!\n");
 }

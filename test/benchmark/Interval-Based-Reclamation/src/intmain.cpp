@@ -28,13 +28,7 @@ limitations under the License.
 #include "rideables/SortedUnorderedMap.hpp"
 #include "rideables/NatarajanTree.hpp"
 #include "rideables/LinkList.hpp"
-
-#if (__x86_64__ || __ppc64__)
-#include "rideables/SortedUnorderedMapRange.hpp"
-#include "rideables/NatarajanTreeRangeTracker.hpp"
-#include "rideables/LinkListRange.hpp"
-#endif
-
+#include "trackers/AllocatorMacro.hpp"
 
 using namespace std;
 
@@ -44,8 +38,8 @@ GlobalTestConfig* gtc;
 // sets up output and tests
 int main(int argc, char *argv[])
 {
-
-	gtc = new GlobalTestConfig();
+	int restart = PM_start("ibrint");
+	gtc = new GlobalTestConfig((bool)restart);
 
 	// additional rideables go here
 	gtc->addRideableOption(new SGLUnorderedMapFactory<int,int>(), "SGLUnorderedMap (default)");
@@ -53,33 +47,6 @@ int main(int argc, char *argv[])
 	gtc->addRideableOption(new LinkListFactory<int,int>(), "LinkList");
 	gtc->addRideableOption(new NatarajanTreeFactory<int,int>(), "NatarajanTree");
 
-#if (__x86_64__ || __ppc64__)
-	gtc->addRideableOption(new SortedUnorderedMapRangeFactory<int,int>(), "SortedUnorderedMapRange");
-	gtc->addRideableOption(new LinkListRangeFactory<int,int>(), "LinkListRange");
-	gtc->addRideableOption(new NatarajanTreeRangeTrackerFactory<int,int>(), "NatarajanTreeRangeTracker");
-#endif
-	//gtc->addRideableOption(new SortedUnorderedMapHazardFactory<int,int>(), "SortedUnorderedMapHazard");
-	// gtc->addRideableOption(new SortedUnorderedMapRCUFactory<int,int>(), "SortedUnorderedMapRCU");
-	//gtc->addRideableOption(new SortedUnorderedMapHEFactory<int,int>(), "SortedUnorderedMapHE");
-	// gtc->addRideableOption(new BonsaiTreeRCUFactory<int,int>(), "BonsaiTreeRCU");
-	// gtc->addRideableOption(new BonsaiTreeIntervalFactory<int,int>(), "BonsaiTreeInterval");
-	// gtc->addRideableOption(new BonsaiTreeOptRCUFactory<int,int>(), "BonsaiTreeOptRCU");
-	// gtc->addRideableOption(new BonsaiTreeOptRangeFactory<int,int>(), "BonsaiTreeOptRange");
-	// gtc->addRideableOption(new BonsaiTreeOptHazardFactory<int,int>(), "BonsaiTreeOptHazard");
-	
-	// additional tests go here
-	// gtc->addTestOption(new MapChurnTest<int>(50,0,50,0,0,1000000,5000000), "MapChurn:g50p50:range=1000000:prefill=500000");
-	// gtc->addTestOption(new MapChurnTest<int>(50,0,0,50,0,65536,1024), "MapChurn:g50i50:range=65536:prefill=1024 (ASCYLIB's map test)");
-	// gtc->addTestOption(new MapChurnTest<int>(50,0,0,30,20,65536,5000), "MapChurn:g50i30rm20:range=65536:prefill=5000");
-	// // For reference, the MapChurnTest constructor:
-	// // MapChurnTest(int p_gets, int p_replace, int p_puts, int p_inserts, int p_removes, int range, int prefill)
-	// gtc->addTestOption(new MapVerifyTest<int>, "MapVerifyTest");
-	// gtc->addTestOption(new MapChurnTest<int>(50,0,50,0,0,10000000,50000000), "MapChurn:g50p50:range=10000000:prefill=5000000");
-	// gtc->addTestOption(new TopologyReport, "Topology report");
-	// gtc->addTestOption(new MapChurnTest<int>(90,0,0,10,0,65536,1024), "MapChurn:g90i10:range=65536:prefill=1024 (read most)");
-	// gtc->addTestOption(new MapChurnTest<int>(50,0,50,0,0,65536,1024), "MapChurn:g50p50:range=65536:prefill=1024");
-	// gtc->addTestOption(new MapChurnTest<int>(50,0,0,30,20,65536,1024), "MapChurn:g50i30rm20:range=65536:prefill=1024");
-	// The ObjRetire derives from MapChurnTest, with a field of retired object counts in it.
 	gtc->addTestOption(new ObjRetireTest<int>(50,0,0,30,20,65536,5000), "ObjRetire:g50i30rm20:range=65536:prefill=5000");
 	gtc->addTestOption(new ObjRetireTest<int>(50,0,50,0,0,65536,1024), "ObjRetire:g50p50:range=65536:prefill=1024");
 	gtc->addTestOption(new ObjRetireTest<int>(90,0,10,0,0,100000,50000), "ObjRetire:g90p10:range=100000:prefill=50000");
@@ -117,7 +84,7 @@ int main(int argc, char *argv[])
 	else{
 		printf("%ld \t",gtc->total_operations/gtc->interval);
 	}
-
+	// PM_close();
 	return 0;
 }
 

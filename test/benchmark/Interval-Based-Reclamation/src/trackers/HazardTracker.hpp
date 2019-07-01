@@ -105,6 +105,19 @@ public:
 		}
 	}
 
+	T* read(const atomic_pptr<T>& obj, int idx, int tid){
+		T* ret;
+		T* realptr;
+		while(true){
+			ret = obj.load(std::memory_order_acquire);
+			realptr = (T*)((size_t)ret & 0xfffffffffffffffc);
+			reserve(realptr, idx, tid);
+			if(ret == obj.load(std::memory_order_acquire)){
+				return ret;
+			}
+		}
+	}
+
 	void reserve(T* ptr, int slot, int tid){
 		slots[tid*slotsPerThread+slot] = ptr;
 	}

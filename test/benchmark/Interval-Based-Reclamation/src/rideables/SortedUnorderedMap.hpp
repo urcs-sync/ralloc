@@ -28,6 +28,7 @@ limitations under the License.
 #include "MemoryTracker.hpp"
 #include "RetiredMonitorable.hpp"
 #include "pptr.hpp"
+#include "trackers/AllocatorMacro.hpp"
 #include <functional>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,7 +40,7 @@ limitations under the License.
 #define COLLECT true
 #endif
 
-template <class K, class V>
+template <class K, class V, int idxSize>
 class SortedUnorderedMap : public RUnorderedMap<K,V>, public RetiredMonitorable{
 	struct Node;
 
@@ -58,8 +59,7 @@ class SortedUnorderedMap : public RUnorderedMap<K,V>, public RetiredMonitorable{
 	};
 private:
 	std::hash<K> hash_fn;
-	const int idxSize;
-	padded<MarkPtr>* bucket=new padded<MarkPtr>[idxSize]{};
+	padded<MarkPtr> bucket[idxSize];
 	bool findNode(MarkPtr* &prev, Node* &cur, Node* &nxt, K key, int tid);
 	
 	MemoryTracker<Node>* memory_tracker;
@@ -79,8 +79,8 @@ private:
 	}
 
 public:
-	SortedUnorderedMap(GlobalTestConfig* gtc,int idx_size):
-		RetiredMonitorable(gtc),idxSize(idx_size){
+	SortedUnorderedMap(GlobalTestConfig* gtc):
+		RetiredMonitorable(gtc){
         int epochf = gtc->getEnv("epochf").empty()? 150:stoi(gtc->getEnv("epochf"));
         int emptyf = gtc->getEnv("emptyf").empty()? 30:stoi(gtc->getEnv("emptyf"));
 		std::cout<<"emptyf:"<<emptyf<<std::endl;
@@ -93,24 +93,44 @@ public:
 		return new (ptr) Node(k, v, n);
 	}
 
-
+	void restart(GlobalTestConfig* gtc){
+		retired_cnt = new padded<uint64_t>[gtc->task_num];
+		int epochf = gtc->getEnv("epochf").empty()? 150:stoi(gtc->getEnv("epochf"));
+		int emptyf = gtc->getEnv("emptyf").empty()? 30:stoi(gtc->getEnv("emptyf"));
+		std::cout<<"emptyf:"<<emptyf<<std::endl;
+		memory_tracker = new MemoryTracker<Node>(gtc, epochf, emptyf, 3, COLLECT);
+	}
 	optional<V> get(K key, int tid);
 	optional<V> put(K key, V val, int tid);
 	bool insert(K key, V val, int tid);
 	optional<V> remove(K key, int tid);
 	optional<V> replace(K key, V val, int tid);
+	void* operator new(size_t size){
+		return PM_malloc(size);
+	}
+	void operator delete(void* ptr){
+		PM_free(ptr);
+	}
 };
 
 template <class K, class V> 
 class SortedUnorderedMapFactory : public RideableFactory{
-	SortedUnorderedMap<K,V>* build(GlobalTestConfig* gtc){
-		return new SortedUnorderedMap<K,V>(gtc,30000);
+	SortedUnorderedMap<K,V,30000>* build(GlobalTestConfig* gtc){
+		if(gtc->restart) {
+			auto ret = reinterpret_cast<SortedUnorderedMap<K,V,30000>*>(get_root(1));
+			ret->restart(gtc);
+			return ret;
+		} else {
+			auto ret = new SortedUnorderedMap<K,V,30000>(gtc);
+			set_root(ret, 1);
+			return ret;
+		}
 	}
 };
 
 //-------Definition----------
-template <class K, class V> 
-optional<V> SortedUnorderedMap<K,V>::get(K key, int tid) {
+template <class K, class V, int idxSize> 
+optional<V> SortedUnorderedMap<K,V,idxSize>::get(K key, int tid) {
 	MarkPtr* prev=nullptr;
 	Node* cur=nullptr;
 	Node* nxt=nullptr;
@@ -127,8 +147,8 @@ optional<V> SortedUnorderedMap<K,V>::get(K key, int tid) {
 	return res;
 }
 
-template <class K, class V> 
-optional<V> SortedUnorderedMap<K,V>::put(K key, V val, int tid) {
+template <class K, class V, int idxSize> 
+optional<V> SortedUnorderedMap<K,V,idxSize>::put(K key, V val, int tid) {
 	Node* tmpNode = nullptr;
 	MarkPtr* prev=nullptr;
 	Node* cur=nullptr;
@@ -167,8 +187,8 @@ optional<V> SortedUnorderedMap<K,V>::put(K key, V val, int tid) {
 	return res;
 }
 
-template <class K, class V> 
-bool SortedUnorderedMap<K,V>::insert(K key, V val, int tid){
+template <class K, class V, int idxSize> 
+bool SortedUnorderedMap<K,V,idxSize>::insert(K key, V val, int tid){
 	Node* tmpNode = nullptr;
 	MarkPtr* prev=nullptr;
 	Node* cur=nullptr;
@@ -198,8 +218,8 @@ bool SortedUnorderedMap<K,V>::insert(K key, V val, int tid){
 	return res;
 }
 
-template <class K, class V> 
-optional<V> SortedUnorderedMap<K,V>::remove(K key, int tid) {
+template <class K, class V, int idxSize> 
+optional<V> SortedUnorderedMap<K,V,idxSize>::remove(K key, int tid) {
 	MarkPtr* prev=nullptr;
 	Node* cur=nullptr;
 	Node* nxt=nullptr;
@@ -229,8 +249,8 @@ optional<V> SortedUnorderedMap<K,V>::remove(K key, int tid) {
 	return res;
 }
 
-template <class K, class V> 
-optional<V> SortedUnorderedMap<K,V>::replace(K key, V val, int tid) {
+template <class K, class V, int idxSize> 
+optional<V> SortedUnorderedMap<K,V,idxSize>::replace(K key, V val, int tid) {
 	Node* tmpNode = nullptr;
 	MarkPtr* prev=nullptr;
 	Node* cur=nullptr;
@@ -268,8 +288,8 @@ optional<V> SortedUnorderedMap<K,V>::replace(K key, V val, int tid) {
 	return res;
 }
 
-template <class K, class V> 
-bool SortedUnorderedMap<K,V>::findNode(MarkPtr* &prev, Node* &cur, Node* &nxt, K key, int tid){
+template <class K, class V, int idxSize> 
+bool SortedUnorderedMap<K,V,idxSize>::findNode(MarkPtr* &prev, Node* &cur, Node* &nxt, K key, int tid){
 	while(true){
 		size_t idx=hash_fn(key)%idxSize;
 		bool cmark=false;

@@ -23,7 +23,6 @@
 #include <algorithm>
 
 #include "RegionManager.hpp"
-#include "BaseMeta.hpp"
 
 using namespace std;
 
@@ -43,7 +42,7 @@ extern void public_flush_cache();
  * if such a heap doesn't exist, create one. aka start.
  * id is the distinguishable identity of applications.
  */
-void RP_init(const char* _id, uint64_t size){
+int RP_init(const char* _id, uint64_t size){
 	string id(_id);
 	// thread_num = thd_num;
 	filepath = HEAPFILE_PREFIX + id;
@@ -69,6 +68,7 @@ void RP_init(const char* _id, uint64_t size){
 		base_md->restart();
 	}
 	initialized = true;
+	return (int)restart;
 }
 
 // we assume RP_close is called by the last exiting thread.
@@ -93,11 +93,8 @@ void RP_free(void* ptr){
 	}
 	base_md->do_free(ptr);
 }
-template<class T>
-void* RP_set_root(T* ptr, uint64_t i){
-	if(UNLIKELY(initialized==false)){
-		RP_init("no_explicit_init");
-	}
+
+void* RP_set_root_c(void* ptr, uint64_t i){
 	return base_md->set_root(ptr,i);
 }
 void* RP_get_root(uint64_t i){

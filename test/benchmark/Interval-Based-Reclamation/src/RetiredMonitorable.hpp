@@ -28,9 +28,8 @@ limitations under the License.
 #include "RAllocator.hpp"
 
 class RetiredMonitorable{
-private:
-	padded<uint64_t>* retired_cnt;
 public:
+	padded<uint64_t>* retired_cnt;
 	RetiredMonitorable(GlobalTestConfig* gtc){
 		retired_cnt = new padded<uint64_t>[gtc->task_num];
 	}

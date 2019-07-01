@@ -119,6 +119,21 @@ public:
 		}
 	}
 
+	T* read(const atomic_pptr<T>& obj, int index, int tid){
+		uint64_t prev_epoch = reservations[tid].ui[index].load(std::memory_order_acquire);
+		while(true){
+			T* ptr = obj.load(std::memory_order_acquire);
+			uint64_t curr_epoch = getEpoch();
+			if (curr_epoch == prev_epoch){
+				return ptr;
+			} else {
+				// reservations[tid].ui[index].store(curr_epoch, std::memory_order_release);
+				reservations[tid].ui[index].store(curr_epoch, std::memory_order_seq_cst);
+				prev_epoch = curr_epoch;
+			}
+		}
+	}
+
 	void reserve_slot(T* obj, int index, int tid){
 		uint64_t prev_epoch = reservations[tid].ui[index].load(std::memory_order_acquire);
 		while(true){

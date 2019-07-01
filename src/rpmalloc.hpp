@@ -23,14 +23,31 @@
 #include "pm_config.hpp"
 
 #ifdef __cplusplus
+extern "C" int RP_init(const char* _id, uint64_t size = MAX_SB_REGION_SIZE);
+#include "BaseMeta.hpp"
+namespace rpmalloc{
+	extern bool initialized;
+	/* persistent metadata and their layout */
+	extern BaseMeta* base_md;
+};
+template<class T>
+void* RP_set_root(T* ptr, uint64_t i){
+	if(UNLIKELY(rpmalloc::initialized==false)){
+		RP_init("no_explicit_init");
+	}
+	return rpmalloc::base_md->set_root(ptr,i);
+}
 extern "C"{
+#else
+// This is a version for pure c only
+void* RP_set_root_c(void* ptr, uint64_t i);
+int RP_init(const char* _id, uint64_t size = MAX_SB_REGION_SIZE);
 #endif
 
-void RP_init(const char* _id, uint64_t size = MAX_SB_REGION_SIZE);
+/* return 1 if it's a restart, otherwise 0. */
 void RP_close();
 void* RP_malloc(size_t sz);
 void RP_free(void* ptr);
-void* RP_set_root(void* ptr, uint64_t i);
 void* RP_get_root(uint64_t i);
 
 #ifdef __cplusplus
