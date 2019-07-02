@@ -629,7 +629,7 @@ void GarbageCollection::operator() () {
 	printf("Marking reachable nodes...");
 	for(int i = 0; i < MAX_ROOTS; i++) {
 		if(base_md->roots[i]!=nullptr) {
-			base_md->roots_gc_ptr[i](base_md->roots[i], *this);
+			base_md->roots_filter_func[i](base_md->roots[i], *this);
 		}
 	}
 	printf("Done!\n");
@@ -641,7 +641,6 @@ void GarbageCollection::operator() () {
 	auto curr_marked_blk = marked_blk.begin();
 	char* sb_end = _rgs->regions[SB_IDX]->curr_addr_ptr->load();
 	Descriptor* avail_sb = nullptr; // head of new free sb list
-	Descriptor* next_partial[MAX_SZ_IDX] = {nullptr};
 
 	// go through all sb in the region
 	while(curr_sb < sb_end) {
@@ -666,20 +665,19 @@ void GarbageCollection::operator() () {
 				// small sb that's in use
 				assert(curr_desc->superblock == curr_sb);
 
+				anchor.state = SB_PARTIAL;
 				for(char* free_block = last_possible_free_block; 
 					free_block < (*curr_marked_blk); free_block+=curr_desc->block_size){
 					// put last_possible_free_block...(curr_marked_blk-1) to free blk list
 					(*reinterpret_cast<pptr<char>*>(free_block)) = free_blocks_head;
 					free_blocks_head = free_block;
 					anchor.count++;
-					anchor.state = SB_PARTIAL;
 				}
 				last_possible_free_block = (*curr_marked_blk)+curr_desc->block_size;
 			}
 			// update local desc info
 			curr_marked_blk++;
 		}
-
 		if(anchor.state == SB_EMPTY) {
 			// curr_sb isn't in use
 			new (curr_desc) Descriptor();
@@ -706,6 +704,13 @@ void GarbageCollection::operator() () {
 				curr_desc = base_md->desc_lookup(curr_sb);
 			} else {
 				// small sb that's in use
+				for(char* free_block = last_possible_free_block; 
+					free_block < curr_sb+SBSIZE; free_block+=curr_desc->block_size){
+					// put last_possible_free_block...(curr_sb+SBSIZE-1) to free blk list
+					(*reinterpret_cast<pptr<char>*>(free_block)) = free_blocks_head;
+					free_blocks_head = free_block;
+					anchor.count++;
+				}
 				if(anchor.count == 0) { 
 					// this sb is fully used
 					anchor.avail = curr_desc->maxcount;

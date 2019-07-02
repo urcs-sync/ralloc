@@ -223,9 +223,8 @@ public:
 
 struct GarbageCollection{
 	std::set<char*> marked_blk;
-	std::vector<Descriptor*> free_sb;
 
-	GarbageCollection():marked_blk(), free_sb(){};
+	GarbageCollection():marked_blk(){};
 
 	void operator() ();
 
@@ -258,7 +257,7 @@ public:
 
 	RP_PERSIST ProcHeap heaps[MAX_SZ_IDX];
 	RP_PERSIST CrossPtr<char, SB_IDX> roots[MAX_ROOTS];
-	RP_PERSIST std::function<void(const CrossPtr<char, SB_IDX>&, GarbageCollection&)> roots_gc_ptr[MAX_ROOTS];
+	RP_PERSIST std::function<void(const CrossPtr<char, SB_IDX>&, GarbageCollection&)> roots_filter_func[MAX_ROOTS];
 	friend class GarbageCollection;
 	BaseMeta() noexcept;
 	~BaseMeta(){
@@ -285,12 +284,12 @@ public:
 		if(roots[i]!=nullptr) 
 			res = static_cast<void*>(roots[i]);
 		roots[i] = ptr;
-		roots_gc_ptr[i] = [](const CrossPtr<char, SB_IDX>& cptr, GarbageCollection& gc){
+		roots_filter_func[i] = [](const CrossPtr<char, SB_IDX>& cptr, GarbageCollection& gc){
 			// this new statement is intentionally designed to use transient allocator since it's offline
 			gc.mark_func(static_cast<T*>(cptr));
 		};
 		FLUSH(&roots[i]);
-		FLUSH(&roots_gc_ptr[i]);
+		FLUSH(&roots_filter_func[i]);
 		FLUSHFENCE;
 		return res;
 	}

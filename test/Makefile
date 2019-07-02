@@ -4,7 +4,7 @@ CXX = g++
 WARNING_FLAGS:=-ftrapv -Wreturn-type -W -Wall \
 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-parameter
 
-FLAGS = -O3 -g -fpermissive -std=c++17 $(WARNING_FLAGS) #-DDESTROY
+FLAGS = -O0 -g -fpermissive -std=c++17 $(WARNING_FLAGS) #-DDESTROY
 PMMALLOC_FLAGS = $(FLAGS) -DPMMALLOC -L.
 PMMALLOC_GC_FLAGS = $(FLAGS) -DGC -DPMMALLOC -L.
 MAKALU_FLAGS = $(FLAGS) -I../ext/makalu_alloc/include -DMAKALU -L../ext/makalu_alloc/lib -lmakalu -L~/.local/lib/
