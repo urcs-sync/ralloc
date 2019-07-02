@@ -628,10 +628,8 @@ void GarbageCollection::operator() () {
 	// Step 1: mark all accessible blocks from roots
 	printf("Marking reachable nodes...");
 	for(int i = 0; i < MAX_ROOTS; i++) {
-		if(!(base_md->roots[i]==nullptr)) {
-			gc_ptr_base* p = base_md->roots_gc_ptr[i](base_md->roots[i]);
-			marked_blk.insert(reinterpret_cast<char*>(p->ptr));
-			p->filter_func(*this);
+		if(base_md->roots[i]!=nullptr) {
+			base_md->roots_gc_ptr[i](base_md->roots[i], *this);
 		}
 	}
 	printf("Done!\n");

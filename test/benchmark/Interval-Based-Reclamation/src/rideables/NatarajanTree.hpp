@@ -48,8 +48,7 @@ limitations under the License.
 
 template <class K, class V>
 class NatarajanTree : public ROrderedMap<K,V>, public RetiredMonitorable{
-	template<class T>
-	friend class gc_ptr;
+	friend class GarbageCollection;
 private:
 	/* structs*/
 	struct Node{
@@ -658,30 +657,26 @@ void NatarajanTree<K,V>::doRangeQuery(Node& k1, Node& k2, int tid, Node* root, s
 }
 
 template<>
-void gc_ptr<NatarajanTree<int,int>>::filter_func(GarbageCollection& gc) {
-	NatarajanTree<int,int>* curr = reinterpret_cast<NatarajanTree<int,int>*>(ptr);
-	NatarajanTree<int,int>::Node* curr_content = static_cast<NatarajanTree<int,int>::Node*>(curr->r);
-	gc.mark_func(curr_content);
+void GarbageCollection::filter_func(NatarajanTree<int,int>* ptr) {
+	NatarajanTree<int,int>::Node* curr = static_cast<NatarajanTree<int,int>::Node*>(ptr->r);
+	mark_func(curr);
 }
 
 template<>
-void gc_ptr<NatarajanTree<int,int>::Node>::filter_func(GarbageCollection& gc) {
-	NatarajanTree<int,int>::Node* curr = reinterpret_cast<NatarajanTree<int,int>::Node*>(ptr);
-	gc.mark_func(curr->left.load());
-	gc.mark_func(curr->right.load());
+void GarbageCollection::filter_func(NatarajanTree<int,int>::Node* ptr) {
+	mark_func(ptr->left.load());
+	mark_func(ptr->right.load());
 }
 
 template<>
-void gc_ptr<NatarajanTree<std::string,std::string>>::filter_func(GarbageCollection& gc) {
-	NatarajanTree<std::string,std::string>* curr = reinterpret_cast<NatarajanTree<std::string,std::string>*>(ptr);
-	NatarajanTree<std::string,std::string>::Node* curr_content = static_cast<NatarajanTree<std::string,std::string>::Node*>(curr->r);
-	gc.mark_func(curr_content);
+void GarbageCollection::filter_func(NatarajanTree<std::string,std::string>* ptr) {
+	NatarajanTree<std::string,std::string>::Node* curr = static_cast<NatarajanTree<std::string,std::string>::Node*>(ptr->r);
+	mark_func(curr);
 }
 
 template<>
-void gc_ptr<NatarajanTree<std::string,std::string>::Node>::filter_func(GarbageCollection& gc) {
-	NatarajanTree<std::string,std::string>::Node* curr = reinterpret_cast<NatarajanTree<std::string,std::string>::Node*>(ptr);
-	gc.mark_func(curr->left.load());
-	gc.mark_func(curr->right.load());
+void GarbageCollection::filter_func(NatarajanTree<std::string,std::string>::Node* ptr) {
+	mark_func(ptr->left.load());
+	mark_func(ptr->right.load());
 }
 #endif

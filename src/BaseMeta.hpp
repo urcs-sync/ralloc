@@ -220,8 +220,6 @@ public:
 		partial_list(){};
 }__attribute__((aligned(CACHELINE_SIZE)));
 
-template<class T>
-struct gc_ptr;
 
 struct GarbageCollection{
 	std::set<char*> marked_blk;
@@ -242,20 +240,14 @@ struct GarbageCollection{
 		if(res == marked_blk.end()){
 			// Step 2: mark potential pptr
 			marked_blk.insert(reinterpret_cast<char*>(addr));
-			// Step 3: construct gc_ptr<T>
-			gc_ptr<T> gcptr(ptr);
-			// Step 4: call filter function
-			gcptr.filter_func(*this);
+			// Step 3: call filter function
+			filter_func(ptr);
 		}
 		return;
 	}
-};
 
-struct gc_ptr_base{
-	void* ptr;
-	size_t sz;
-	gc_ptr_base(void* p=nullptr, size_t s=0):ptr(p), sz(s){};
-	virtual void filter_func(GarbageCollection& gc) = 0;
+	template<class T>
+	void filter_func(T* ptr);
 };
 
 class BaseMeta {
@@ -266,7 +258,7 @@ public:
 
 	RP_PERSIST ProcHeap heaps[MAX_SZ_IDX];
 	RP_PERSIST CrossPtr<char, SB_IDX> roots[MAX_ROOTS];
-	RP_PERSIST std::function<gc_ptr_base*(const CrossPtr<char, SB_IDX>&)> roots_gc_ptr[MAX_ROOTS];
+	RP_PERSIST std::function<void(const CrossPtr<char, SB_IDX>&, GarbageCollection&)> roots_gc_ptr[MAX_ROOTS];
 	friend class GarbageCollection;
 	BaseMeta() noexcept;
 	~BaseMeta(){
@@ -293,10 +285,9 @@ public:
 		if(roots[i]!=nullptr) 
 			res = static_cast<void*>(roots[i]);
 		roots[i] = ptr;
-		roots_gc_ptr[i] = [](const CrossPtr<char, SB_IDX>& cptr){
+		roots_gc_ptr[i] = [](const CrossPtr<char, SB_IDX>& cptr, GarbageCollection& gc){
 			// this new statement is intentionally designed to use transient allocator since it's offline
-			gc_ptr<T>* ret = new gc_ptr<T>(static_cast<char*>(cptr));
-			return ret;
+			gc.mark_func(static_cast<T*>(cptr));
 		};
 		FLUSH(&roots[i]);
 		FLUSH(&roots_gc_ptr[i]);
@@ -400,25 +391,15 @@ private:
 
 // persistent roots are gc_ptr with cross to be true
 template<class T>
-struct gc_ptr : public gc_ptr_base{
-	template<class F>
-	explicit gc_ptr(F* v){
-		ptr = (void*)v;
-		Descriptor* desc = rpmalloc::base_md->desc_lookup((char*)v);
-		sz = desc->block_size;
-	};
-	template<class F>
-	operator F*() const {return (F*)ptr;};//cast to transient pointer
-	// T& operator *(){return *(T*)ptr;}//dereference
-	// T* operator ->(){return (T*)ptr;}//arrow
-	virtual void filter_func(GarbageCollection& gc){
-		char* curr = reinterpret_cast<char*>(ptr);
-		for(size_t i=0;i<sz;i++){
-			char* curr_content = static_cast<char*>(*(reinterpret_cast<pptr<char>*>(curr)));
-			gc.mark_func(curr_content);
-			curr++;
-		}
+void GarbageCollection::filter_func(T* ptr){
+	char* curr = reinterpret_cast<char*>(ptr);
+	Descriptor* desc = rpmalloc::base_md->desc_lookup((char*)ptr);
+	size_t sz = desc->block_size;
+	for(size_t i=0;i<sz;i++){
+		char* curr_content = static_cast<char*>(*(reinterpret_cast<pptr<char>*>(curr)));
+		mark_func(curr_content);
+		curr++;
 	}
-};
+}
 
 #endif /* _BASE_META_HPP_ */
