@@ -650,7 +650,8 @@ void GarbageCollection::operator() () {
 
 		// go through all curr_marked_blk that's in this sb
 		while (curr_marked_blk!=marked_blk.end() && 
-				((uint64_t)curr_sb>>SB_SHIFT) == ((uint64_t)(*curr_marked_blk)>>SB_SHIFT)) { 
+				((uint64_t)curr_sb>>SB_SHIFT) == ((uint64_t)(*curr_marked_blk)>>SB_SHIFT)) 
+		{ 
 			// curr_marked_blk doesn't reach the end of marked_blk and curr_marked_blk is in curr_sb
 			assert(curr_desc->heap != nullptr);
 
@@ -675,7 +676,6 @@ void GarbageCollection::operator() () {
 				}
 				last_possible_free_block = (*curr_marked_blk)+curr_desc->block_size;
 			}
-			// update local desc info
 			curr_marked_blk++;
 		}
 		if(anchor.state == SB_EMPTY) {
@@ -697,7 +697,6 @@ void GarbageCollection::operator() () {
 				curr_desc->next_free.store(nullptr);
 				curr_desc->next_partial.store(nullptr);
 				curr_desc->anchor.store(anchor);
-				FLUSH(curr_desc);
 
 				// move curr_sb to the sb next to this large sb
 				curr_sb+=curr_desc->block_size;
@@ -705,7 +704,7 @@ void GarbageCollection::operator() () {
 			} else {
 				// small sb that's in use
 				for(char* free_block = last_possible_free_block; 
-					free_block < curr_sb+SBSIZE; free_block+=curr_desc->block_size){
+					free_block < curr_sb+curr_desc->maxcount*curr_desc->block_size; free_block+=curr_desc->block_size){
 					// put last_possible_free_block...(curr_sb+SBSIZE-1) to free blk list
 					(*reinterpret_cast<pptr<char>*>(free_block)) = free_blocks_head;
 					free_blocks_head = free_block;
@@ -720,10 +719,10 @@ void GarbageCollection::operator() () {
 					curr_desc->next_free.store(nullptr);
 					curr_desc->next_partial.store(nullptr);
 					curr_desc->anchor.store(anchor);
-					FLUSH(curr_desc);
 				} else {
 					// this sb is partially used
 					assert(free_blocks_head != nullptr);
+					assert((uint64_t)(free_blocks_head - curr_sb)%curr_desc->block_size == 0);
 					anchor.avail = (uint64_t)(free_blocks_head - curr_sb)/curr_desc->block_size;
 					anchor.state = SB_PARTIAL; // it must be SB_PARTIAL already but we assign it anyway
 
@@ -731,7 +730,6 @@ void GarbageCollection::operator() () {
 					curr_desc->next_free.store(nullptr);
 					base_md->heap_push_partial(curr_desc);
 					curr_desc->anchor.store(anchor);
-					FLUSH(curr_desc);
 				}
 				// move curr_sb and curr_desc to next sb
 				curr_sb+=SBSIZE;
@@ -743,6 +741,16 @@ void GarbageCollection::operator() () {
 	ptr_cnt<Descriptor> tmp_avail_sb(avail_sb, 0);
 	base_md->avail_sb.store(tmp_avail_sb);
 	printf("Reconstructed!\n");
+
+	printf("Flushing recovered data...");
+	_rgs->flush_region(DESC_IDX);
+	_rgs->flush_region(SB_IDX);
+	char* addr_to_flush = reinterpret_cast<char*>(base_md);
+	// flush values in BaseMeta, including avail_sb and partial lists
+	for(size_t i = 0; i < sizeof(BaseMeta); i += CACHELINE_SIZE) {
+		addr_to_flush += CACHELINE_SIZE;
+		FLUSH(addr_to_flush);
+	}
 	FLUSHFENCE;
 	printf("Garbage collection Completed!\n");
 }
