@@ -32,7 +32,7 @@ limitations under the License.
 template <class K, class V>
 class LinkListFactory : public RideableFactory{
 	SortedUnorderedMap<K,V,1>* build(GlobalTestConfig* gtc){
-		if(gtc->restart) {
+		if(gtc->restart && get_root(2) != nullptr) {
 			auto ret = reinterpret_cast<SortedUnorderedMap<K,V,1>*>(get_root(2));
 			ret->restart(gtc);
 			return ret;

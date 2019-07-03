@@ -189,7 +189,7 @@ public:
 template <class K, class V> 
 class NatarajanTreeFactory : public RideableFactory{
 	NatarajanTree<K,V>* build(GlobalTestConfig* gtc){
-		if(gtc->restart){
+		if(gtc->restart && get_root(3) != nullptr){
 			NatarajanTree<K,V>* ret = reinterpret_cast<NatarajanTree<K,V>*>(get_root(3));
 			ret->restart(gtc);
 			return ret;

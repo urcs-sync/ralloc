@@ -116,7 +116,7 @@ public:
 template <class K, class V> 
 class SortedUnorderedMapFactory : public RideableFactory{
 	SortedUnorderedMap<K,V,30000>* build(GlobalTestConfig* gtc){
-		if(gtc->restart) {
+		if(gtc->restart && get_root(1) != nullptr) {
 			auto ret = reinterpret_cast<SortedUnorderedMap<K,V,30000>*>(get_root(1));
 			ret->restart(gtc);
 			return ret;

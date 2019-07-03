@@ -80,8 +80,6 @@ public:
 	long int total_operations=0;
 	bool restart;
 
-
-	
 	GlobalTestConfig(bool r = false);
 	~GlobalTestConfig();
 
