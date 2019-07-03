@@ -23,7 +23,7 @@
 #include "pm_config.hpp"
 
 #ifdef __cplusplus
-extern "C" int RP_init(const char* _id, uint64_t size = MAX_SB_REGION_SIZE);
+extern "C" int RP_init(const char* _id, uint64_t size = MIN_SB_REGION_SIZE);
 #include "BaseMeta.hpp"
 namespace rpmalloc{
 	extern bool initialized;
@@ -41,7 +41,7 @@ extern "C"{
 #else
 // This is a version for pure c only
 void* RP_set_root_c(void* ptr, uint64_t i);
-int RP_init(const char* _id, uint64_t size = MAX_SB_REGION_SIZE);
+int RP_init(const char* _id, uint64_t size = MIN_SB_REGION_SIZE);
 #endif
 
 /* return 1 if it's a restart, otherwise 0. */

@@ -230,7 +230,7 @@ struct GarbageCollection{
 
 	// return true if ptr is a valid and unmarked pointer, otherwise false
 	template<class T>
-	void mark_func(T* ptr){
+	inline void mark_func(T* ptr){
 		void* addr = static_cast<void*>(ptr);
 		// Step 1: check if it's a valid pptr
 		if(UNLIKELY(!rpmalloc::_rgs->in_range(SB_IDX, addr))) 
@@ -246,7 +246,7 @@ struct GarbageCollection{
 	}
 
 	template<class T>
-	void filter_func(T* ptr);
+	inline void filter_func(T* ptr);
 };
 
 class BaseMeta {
@@ -390,13 +390,14 @@ private:
 
 // persistent roots are gc_ptr with cross to be true
 template<class T>
-void GarbageCollection::filter_func(T* ptr){
+inline void GarbageCollection::filter_func(T* ptr){
 	char* curr = reinterpret_cast<char*>(ptr);
 	Descriptor* desc = rpmalloc::base_md->desc_lookup((char*)ptr);
 	size_t sz = desc->block_size;
 	for(size_t i=0;i<sz;i++){
 		char* curr_content = static_cast<char*>(*(reinterpret_cast<pptr<char>*>(curr)));
-		mark_func(curr_content);
+		if(curr_content!=nullptr)
+			mark_func(curr_content);
 		curr++;
 	}
 }

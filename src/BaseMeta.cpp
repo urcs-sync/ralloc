@@ -470,7 +470,7 @@ inline void BaseMeta::organize_sb_list(void* start, uint64_t count){
 	Descriptor* desc = desc_start;
 	new (desc) Descriptor();
 	for(uint64_t i = 1; i < count-1; i++){
-		desc->next_free.off.store(DESCSIZE);//pptr
+		desc->next_free.store(desc+1);//pptr
 		desc++;
 		new (desc) Descriptor();
 	}

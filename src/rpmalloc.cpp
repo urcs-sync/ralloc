@@ -47,7 +47,7 @@ int RP_init(const char* _id, uint64_t size){
 	// thread_num = thd_num;
 	filepath = HEAPFILE_PREFIX + id;
 	assert(sizeof(Descriptor) == DESCSIZE); // check desc size
-	assert(size >= MAX_SB_REGION_SIZE); // ensure user input is >=MAX_SB_REGION_SIZE
+	assert(size < MAX_SB_REGION_SIZE && size >= MIN_SB_REGION_SIZE); // ensure user input is >=MAX_SB_REGION_SIZE
 	uint64_t num_sb = size/SBSIZE;
 	bool restart = Regions::exists_test(filepath+"_basemd");
 	_rgs = new Regions();
