@@ -73,8 +73,13 @@ int RP_init(const char* _id, uint64_t size){
 
 // we assume RP_close is called by the last exiting thread.
 void RP_close(){
+#ifndef MEM_CONSUME_TEST
+	// flush_region would affect the memory consumption result (rss) and 
+	// thus is disabled for benchmark testing. To enable, simply comment out
+	// -DMEM_CONSUME_TEST flag in Makefile.
 	_rgs->flush_region(DESC_IDX);
 	_rgs->flush_region(SB_IDX);
+#endif
 	base_md->writeback();
 	initialized = false;
 	delete _rgs;

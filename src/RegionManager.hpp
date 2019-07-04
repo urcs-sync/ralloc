@@ -169,9 +169,9 @@ public:
 
 	void create(const std::string& file_path, uint64_t size, bool p = true, bool imm_expand = true){
 		assert(regions.size() == regions_address.size());
+		bool restart = exists_test(file_path);
 		RegionManager* new_mgr = new RegionManager(file_path,size,p,imm_expand);
 		regions.push_back(new_mgr);
-		bool restart = exists_test(file_path);
 		if(imm_expand || restart)
 			regions_address.push_back((char*)new_mgr->__fetch_heap_start());
 		else
