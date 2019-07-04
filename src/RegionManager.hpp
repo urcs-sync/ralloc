@@ -30,7 +30,7 @@
 #include <vector>
 
 #include "pm_config.hpp"
-#include "pfence_util.hpp"
+#include "pfence_util.h"
 #include "pptr.hpp"
 
 
