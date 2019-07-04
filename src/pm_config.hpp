@@ -5,6 +5,9 @@
 #include <assert.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C"{
+#endif
 /* prefixing indicator */
 // persistent data in rpmalloc
 #define RP_PERSIST
@@ -91,4 +94,9 @@ const uint64_t PPTR_PATTERN_POS = 0x52b0;
 const uint64_t PPTR_PATTERN_NEG = 0x52b1;
 const int PPTR_PATTERN_SHIFT = 16;
 #define PPTR_PATTERN_MASK ((1<<PPTR_PATTERN_SHIFT)-2)
+
+#ifdef __cplusplus
+}
 #endif
+
+#endif // _RP_CONFIG_HPP_
