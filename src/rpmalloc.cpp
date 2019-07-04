@@ -23,6 +23,7 @@
 #include <algorithm>
 
 #include "RegionManager.hpp"
+#include "pm_config.hpp"
 
 using namespace std;
 

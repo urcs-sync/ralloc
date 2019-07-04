@@ -20,10 +20,9 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "pm_config.hpp"
 
 #ifdef __cplusplus
-extern "C" int RP_init(const char* _id, uint64_t size = MIN_SB_REGION_SIZE);
+extern "C" int RP_init(const char* _id, uint64_t size = 16*1024*1024*1024ULL);
 #include "BaseMeta.hpp"
 namespace rpmalloc{
 	extern bool initialized;
@@ -32,7 +31,7 @@ namespace rpmalloc{
 };
 template<class T>
 void* RP_set_root(T* ptr, uint64_t i){
-	if(UNLIKELY(rpmalloc::initialized==false)){
+	if(rpmalloc::initialized==false){
 		RP_init("no_explicit_init");
 	}
 	return rpmalloc::base_md->set_root(ptr,i);
