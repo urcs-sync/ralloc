@@ -4,8 +4,6 @@
 
 #include <assert.h>
 
-#include "pfence_util.h"
-
 /* prefixing indicator */
 // persistent data in rpmalloc
 #define RP_PERSIST
