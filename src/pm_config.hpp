@@ -3,6 +3,7 @@
 
 
 #include <assert.h>
+#include <stdint.h>
 
 /* prefixing indicator */
 // persistent data in rpmalloc
