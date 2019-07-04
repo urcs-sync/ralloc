@@ -13,7 +13,7 @@
 #define RP_TRANSIENT
 
 // region index
-enum RegionIndex : int {
+enum RegionIndex {
 	DESC_IDX = 0,
 	SB_IDX = 1,
 	META_IDX = 2,
