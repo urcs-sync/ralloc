@@ -48,12 +48,16 @@ enum RegionIndex {
 // #define DEBUG 1
 
 /* System Macros */
-const int TYPE_SIZE = 4;
-const int PTR_SIZE = sizeof(void*);
+// OK I HATE macros but if I use const int then c compilers would complain
+// C language really sxxks
+#define TYPE_SIZE 4
+#define PTR_SIZE sizeof(void*)
 const int HEADER_SIZE = (TYPE_SIZE + PTR_SIZE);
-const int CACHELINE_SIZE = 64; // in byte
+// in byte
+#define CACHELINE_SIZE 64
 const uint64_t CACHELINE_MASK = (uint64_t)(CACHELINE_SIZE) - 1;
-const int PAGESIZE = 4096;//4K
+//4K
+#define PAGESIZE 4096
 const uint64_t PAGE_MASK = (uint64_t)PAGESIZE - 1;
 
 /* Library Invariant */
@@ -65,14 +69,16 @@ const uint64_t SC_MASK = (1ULL << 6) - 1;
 // last size covered by a size class
 // allocations with size > MAX_SZ are not covered by a size class
 const int MAX_SZ = ((1 << 13) + (1 << 11) * 3);
-const uint64_t SBSIZE = (16 * PAGESIZE); // size of a superblock 64K
-const uint64_t DESCSIZE = CACHELINE_SIZE;
+// size of a superblock 64K
+#define SBSIZE (16 * PAGESIZE)
+#define DESCSIZE CACHELINE_SIZE
 const int SB_SHIFT = 16; // assume size of a superblock is 64K
 const int DESC_SHIFT = 6; // assume size of a descriptor is 64B
 
 /* Customizable Values */
-const uint64_t MAX_SB_AMOUNT = 256*1024ULL; // maximum of superblocks in region
-const uint64_t MAX_DESC_AMOUNT = MAX_SB_AMOUNT;
+// maximum of superblocks in region
+#define MAX_SB_AMOUNT (256*1024ULL)
+#define MAX_DESC_AMOUNT MAX_SB_AMOUNT
 const uint64_t MIN_SB_REGION_SIZE = SBSIZE*MAX_SB_AMOUNT; // min sb region size
 const int64_t MAX_SB_REGION_SIZE = 64*SBSIZE*MAX_SB_AMOUNT; // max possible sb region size to call RP_init. Currently it's 1TB which must be sufficient
 const uint64_t MAX_DESC_REGION_SIZE = DESCSIZE*MAX_DESC_AMOUNT;
@@ -85,5 +91,5 @@ const uint64_t SB_REGION_EXPAND_SIZE = 1*1024*1024*1024ULL;
 const uint64_t PPTR_PATTERN_POS = 0x52b0;
 const uint64_t PPTR_PATTERN_NEG = 0x52b1;
 const int PPTR_PATTERN_SHIFT = 16;
-const int PPTR_PATTERN_MASK = (1<<PPTR_PATTERN_SHIFT)-2;
+#define PPTR_PATTERN_MASK ((1<<PPTR_PATTERN_SHIFT)-2)
 #endif
