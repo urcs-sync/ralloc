@@ -15,8 +15,8 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#ifndef _PMMALLOC_HPP_
-#define _PMMALLOC_HPP_
+#ifndef _RPMALLOC_HPP_
+#define _RPMALLOC_HPP_
 
 #include <stddef.h>
 #include <stdint.h>
@@ -96,4 +96,4 @@ void* RP_get_root(uint64_t i);
  *
  */
 
-#endif /* _PMMALLOC_HPP_ */
+#endif /* _RPMALLOC_HPP_ */
