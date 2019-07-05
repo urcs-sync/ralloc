@@ -96,39 +96,40 @@ private:
 	pptr<Node> r;
 	pptr<Node> s;
 	padded<SeekRecord>* records;
-	const size_t GET_POINTER_BITS = 0xfffffffffffffffc;//for machine 64-bit or less.
+	//for machine 64-bit or less.
+	#define GET_POINTER_BITS 0xfffffffffffffffc
 
 	/* helper functions */
 	//flag and tags helpers
-	inline Node* getPtr(Node* mptr){
+	static inline Node* getPtr(Node* mptr){
 		return (Node*) ((size_t)mptr & GET_POINTER_BITS);
 	}
-	inline bool getFlg(Node* mptr){
+	static inline bool getFlg(Node* mptr){
 		return (bool)((size_t)mptr & 1);
 	}
-	inline bool getTg(Node* mptr){
+	static inline bool getTg(Node* mptr){
 		return (bool)((size_t)mptr & 2);
 	}
-	inline Node* mixPtrFlgTg(Node* ptr, bool flg, bool tg){
+	static inline Node* mixPtrFlgTg(Node* ptr, bool flg, bool tg){
 		return (Node*) ((size_t)ptr | flg | ((size_t)tg<<1));
 	}
 	//node comparison
-	inline bool isInf(Node* n){
+	static inline bool isInf(Node* n){
 		return getInfLevel(n)!=-1;
 	}
-	inline int getInfLevel(Node* n){
+	static inline int getInfLevel(Node* n){
 		//0 for inf0, 1 for inf1, 2 for inf2, -1 for general val
 		n=getPtr(n);
 		return n->level;
 	}
-	inline bool nodeLess(Node* n1, Node* n2){
+	static inline bool nodeLess(Node* n1, Node* n2){
 		n1=getPtr(n1);
 		n2=getPtr(n2);
 		int i1=getInfLevel(n1);
 		int i2=getInfLevel(n2);
 		return i1<i2 || (i1==-1&&i2==-1&&n1->key<n2->key);
 	}
-	inline bool nodeEqual(Node* n1, Node* n2){
+	static inline bool nodeEqual(Node* n1, Node* n2){
 		n1=getPtr(n1);
 		n2=getPtr(n2);
 		int i1=getInfLevel(n1);
@@ -138,7 +139,7 @@ private:
 		else
 			return i1==i2;
 	}
-	inline bool nodeLessEqual(Node* n1, Node* n2){
+	static inline bool nodeLessEqual(Node* n1, Node* n2){
 		return !nodeLess(n2,n1);
 	}
 
@@ -658,25 +659,25 @@ void NatarajanTree<K,V>::doRangeQuery(Node& k1, Node& k2, int tid, Node* root, s
 
 template<>
 void GarbageCollection::filter_func(NatarajanTree<int,int>* ptr) {
-	NatarajanTree<int,int>::Node* curr = static_cast<NatarajanTree<int,int>::Node*>(ptr->r);
+	NatarajanTree<int,int>::Node* curr = NatarajanTree<int,int>::getPtr(static_cast<NatarajanTree<int,int>::Node*>(ptr->r));
 	mark_func(curr);
 }
 
 template<>
 void GarbageCollection::filter_func(NatarajanTree<int,int>::Node* ptr) {
-	mark_func(ptr->left.load());
-	mark_func(ptr->right.load());
+	mark_func(NatarajanTree<int,int>::getPtr(ptr->left.load()));
+	mark_func(NatarajanTree<int,int>::getPtr(ptr->right.load()));
 }
 
 template<>
 void GarbageCollection::filter_func(NatarajanTree<std::string,std::string>* ptr) {
-	NatarajanTree<std::string,std::string>::Node* curr = static_cast<NatarajanTree<std::string,std::string>::Node*>(ptr->r);
+	NatarajanTree<std::string,std::string>::Node* curr = NatarajanTree<std::string,std::string>::getPtr(static_cast<NatarajanTree<std::string,std::string>::Node*>(ptr->r));
 	mark_func(curr);
 }
 
 template<>
 void GarbageCollection::filter_func(NatarajanTree<std::string,std::string>::Node* ptr) {
-	mark_func(ptr->left.load());
-	mark_func(ptr->right.load());
+	mark_func(NatarajanTree<std::string,std::string>::getPtr(ptr->left.load()));
+	mark_func(NatarajanTree<std::string,std::string>::getPtr(ptr->right.load()));
 }
 #endif
