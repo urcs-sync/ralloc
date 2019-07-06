@@ -173,10 +173,7 @@ void RegionManager::__remap_transient_region(){
 
 //persist the curr and base address
 void RegionManager::__close_persistent_region(){
-	//TODO： make curr_addr offset like close_transient_region does
-	// *(((intptr_t*) base_addr) + 1) = (intptr_t) curr_addr;
 	FLUSHFENCE;
-	// FLUSH( (((intptr_t*) base_addr) + 1)); 
 	FLUSH(curr_addr_ptr); 
 	FLUSHFENCE;
 	DBG_PRINT("At the end current addr: %p\n", curr_addr_ptr->load());
@@ -193,7 +190,6 @@ void RegionManager::__close_persistent_region(){
 
 //flush transient region back
 void RegionManager::__close_transient_region(){
-	// FLUSH( (((intptr_t*) base_addr) + 1)); 
 	FLUSHFENCE;
 	char* curr_addr = curr_addr_ptr->load();
 	FLUSH(curr_addr_ptr);

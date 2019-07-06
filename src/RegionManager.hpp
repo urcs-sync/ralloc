@@ -30,6 +30,7 @@
 #include <vector>
 
 #include "pm_config.hpp"
+#include "pfence_util.h"
 #include "pptr.hpp"
 
 
@@ -156,7 +157,7 @@ public:
 		regions_address.clear();
 	}
 
-	inline bool exists_test (const std::string& name){
+	inline static bool exists_test (const std::string& name){
 		std::ifstream f(name.c_str());
 		return f.good();
 	}
@@ -169,9 +170,9 @@ public:
 
 	void create(const std::string& file_path, uint64_t size, bool p = true, bool imm_expand = true){
 		assert(regions.size() == regions_address.size());
+		bool restart = exists_test(file_path);
 		RegionManager* new_mgr = new RegionManager(file_path,size,p,imm_expand);
 		regions.push_back(new_mgr);
-		bool restart = exists_test(file_path);
 		if(imm_expand || restart)
 			regions_address.push_back((char*)new_mgr->__fetch_heap_start());
 		else
@@ -187,10 +188,7 @@ public:
 		RegionManager* new_mgr = new RegionManager(file_path,size,p,true);
 		regions.push_back(new_mgr);
 		T* t = (T*) new_mgr->__fetch_heap_start();
-		if(restart){
-			t->restart();
-			//collect if the heap is dirty
-		} else {
+		if(!restart){
 			new (t) T();
 		}
 		regions_address.push_back((char*)t);
@@ -221,7 +219,7 @@ public:
 	inline bool in_range(int index, void* ptr){
 		bool ret = ptr >= regions_address[index];
 		if (!ret) return false;
-		return ret && (ptr <= regions[index]->curr_addr_ptr->load());
+		return ret && (ptr < regions[index]->curr_addr_ptr->load());
 	}
 
 	inline void flush_region(int index){

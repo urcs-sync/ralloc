@@ -17,12 +17,12 @@ CrossPtr<T,idx>::CrossPtr(T* real_ptr) noexcept{
 }
 
 template<class T, RegionIndex idx>
-inline T& CrossPtr<T,idx>::operator*(){
+T& CrossPtr<T,idx>::operator*(){
 	return *(reinterpret_cast<T*>(_rgs->translate(idx, off)));
 }
 
 template<class T, RegionIndex idx>
-inline T* CrossPtr<T,idx>::operator->(){
+T* CrossPtr<T,idx>::operator->(){
 	return reinterpret_cast<T*>(_rgs->translate(idx, off));
 }
 
@@ -319,7 +319,7 @@ void BaseMeta::flush_cache(size_t sc_idx, TCacheBin* cache) {
 	}
 }
 
-inline Descriptor* BaseMeta::desc_lookup(char* ptr){
+Descriptor* BaseMeta::desc_lookup(char* ptr){
 	uint64_t sb_index = (((uint64_t)ptr)>>SB_SHIFT) - (((uint64_t)_rgs->lookup(SB_IDX))>>SB_SHIFT); // the index of sb this block in
 	Descriptor* ret = reinterpret_cast<Descriptor*>(_rgs->lookup(DESC_IDX));
 	ret+=sb_index;
@@ -470,7 +470,7 @@ inline void BaseMeta::organize_sb_list(void* start, uint64_t count){
 	Descriptor* desc = desc_start;
 	new (desc) Descriptor();
 	for(uint64_t i = 1; i < count-1; i++){
-		desc->next_free.off.store(DESCSIZE);//pptr
+		desc->next_free.store(desc+1);//pptr
 		desc++;
 		new (desc) Descriptor();
 	}
@@ -611,4 +611,146 @@ void rpmalloc::public_flush_cache(){
 			base_md->flush_cache(i, &t_caches.t_cache[i]);
 		}
 	}
+}
+
+void GarbageCollection::operator() () {
+	printf("Start garbage collection...\n");
+
+	// Step 0: initialize all transient data
+	printf("Initializing all transient data...");
+	base_md->avail_sb.off.store(nullptr); // initialize avail_sb
+	for(int i = 0; i< MAX_SZ_IDX; i++) {
+		// initialize partial list of each heap
+		base_md->heaps[i].partial_list.off.store(nullptr);
+	}
+	printf("Initialized!\n");
+
+	// Step 1: mark all accessible blocks from roots
+	printf("Marking reachable nodes...");
+	for(int i = 0; i < MAX_ROOTS; i++) {
+		if(base_md->roots[i]!=nullptr) {
+			base_md->roots_filter_func[i](base_md->roots[i], *this);
+		}
+	}
+	printf("Done!\n");
+
+	// Step 2: sweep phase, update variables.
+	printf("Reconstructing metadata...");
+	char* curr_sb = _rgs->translate(SB_IDX, reinterpret_cast<char*>(SBSIZE)); // starting from first sb
+	Descriptor* curr_desc = base_md->desc_lookup(curr_sb);
+	auto curr_marked_blk = marked_blk.begin();
+	char* sb_end = _rgs->regions[SB_IDX]->curr_addr_ptr->load();
+	Descriptor* avail_sb = nullptr; // head of new free sb list
+
+	// go through all sb in the region
+	while(curr_sb < sb_end) {
+		Anchor anchor(0, 0, SB_EMPTY);
+		char* free_blocks_head = nullptr;
+		char* last_possible_free_block = curr_sb;
+
+		// go through all curr_marked_blk that's in this sb
+		while (curr_marked_blk!=marked_blk.end() && 
+				((uint64_t)curr_sb>>SB_SHIFT) == ((uint64_t)(*curr_marked_blk)>>SB_SHIFT)) 
+		{ 
+			// curr_marked_blk doesn't reach the end of marked_blk and curr_marked_blk is in curr_sb
+			assert(curr_desc->heap != nullptr);
+
+			if(curr_desc->heap->sc_idx == 0) {
+				// large sb that's in use
+				assert((*curr_marked_blk) == curr_sb);
+				assert(curr_desc->superblock == curr_sb);
+				assert(curr_desc->maxcount == 1);
+				anchor.state = SB_FULL; // set it as full
+			} 
+			else {
+				// small sb that's in use
+				assert(curr_desc->superblock == curr_sb);
+
+				anchor.state = SB_PARTIAL;
+				for(char* free_block = last_possible_free_block; 
+					free_block < (*curr_marked_blk); free_block+=curr_desc->block_size){
+					// put last_possible_free_block...(curr_marked_blk-1) to free blk list
+					(*reinterpret_cast<pptr<char>*>(free_block)) = free_blocks_head;
+					free_blocks_head = free_block;
+					anchor.count++;
+				}
+				last_possible_free_block = (*curr_marked_blk)+curr_desc->block_size;
+			}
+			curr_marked_blk++;
+		}
+		if(anchor.state == SB_EMPTY) {
+			// curr_sb isn't in use
+			new (curr_desc) Descriptor();
+			curr_desc->next_free.store(avail_sb);
+			avail_sb = curr_desc;
+			curr_sb+=SBSIZE;
+			curr_desc++;
+		} else {
+			if(curr_desc->heap->sc_idx == 0) {
+				// large sb that's in use
+
+				anchor.avail = 0;
+				anchor.count = 0;
+				anchor.state = SB_FULL;
+
+				// set transient variables in curr_desc
+				curr_desc->next_free.store(nullptr);
+				curr_desc->next_partial.store(nullptr);
+				curr_desc->anchor.store(anchor);
+
+				// move curr_sb to the sb next to this large sb
+				curr_sb+=curr_desc->block_size;
+				curr_desc = base_md->desc_lookup(curr_sb);
+			} else {
+				// small sb that's in use
+				for(char* free_block = last_possible_free_block; 
+					free_block < curr_sb+curr_desc->maxcount*curr_desc->block_size; free_block+=curr_desc->block_size){
+					// put last_possible_free_block...(curr_sb+SBSIZE-1) to free blk list
+					(*reinterpret_cast<pptr<char>*>(free_block)) = free_blocks_head;
+					free_blocks_head = free_block;
+					anchor.count++;
+				}
+				if(anchor.count == 0) { 
+					// this sb is fully used
+					anchor.avail = curr_desc->maxcount;
+					anchor.state = SB_FULL;
+
+					// set transient variables in curr_desc
+					curr_desc->next_free.store(nullptr);
+					curr_desc->next_partial.store(nullptr);
+					curr_desc->anchor.store(anchor);
+				} else {
+					// this sb is partially used
+					assert(free_blocks_head != nullptr);
+					assert((uint64_t)(free_blocks_head - curr_sb)%curr_desc->block_size == 0);
+					anchor.avail = (uint64_t)(free_blocks_head - curr_sb)/curr_desc->block_size;
+					anchor.state = SB_PARTIAL; // it must be SB_PARTIAL already but we assign it anyway
+
+					// set transient variables in curr_desc
+					curr_desc->next_free.store(nullptr);
+					base_md->heap_push_partial(curr_desc);
+					curr_desc->anchor.store(anchor);
+				}
+				// move curr_sb and curr_desc to next sb
+				curr_sb+=SBSIZE;
+				curr_desc++;
+			}
+		}
+	}
+	// store head of new free sb list into base_md
+	ptr_cnt<Descriptor> tmp_avail_sb(avail_sb, 0);
+	base_md->avail_sb.store(tmp_avail_sb);
+	printf("Reconstructed!\n");
+
+	printf("Flushing recovered data...");
+	_rgs->flush_region(DESC_IDX);
+	_rgs->flush_region(SB_IDX);
+	char* addr_to_flush = reinterpret_cast<char*>(base_md);
+	// flush values in BaseMeta, including avail_sb and partial lists
+	for(size_t i = 0; i < sizeof(BaseMeta); i += CACHELINE_SIZE) {
+		addr_to_flush += CACHELINE_SIZE;
+		FLUSH(addr_to_flush);
+	}
+	FLUSHFENCE;
+	printf("Garbage collection Completed!\n");
 }

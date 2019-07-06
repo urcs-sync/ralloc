@@ -4,6 +4,9 @@
 #include <atomic>
 #include <iostream>
 #include <mutex>
+#include <functional>
+#include <set>
+#include <vector>
 
 #include "pm_config.hpp"
 // #include "thread_util.hpp"
@@ -29,8 +32,8 @@
  * 		void BaseMeta::restart():
  * 			Restart the BaseMeta after data is remapped in
  *			BaseMeta. It traces and recovers free lists.
- *		void BaseMeta::cleanup():
- *			Do cleanup before program exits.
+ *		void BaseMeta::writeback():
+ *			Do writeback before program exits.
  *			It flushes free lists and marks as clean.
  *		void set_mgr(RegionManager* m):
  *			Set mgr pointer to m.
@@ -83,33 +86,30 @@ namespace rpmalloc{
 	extern void public_flush_cache();
 	//GC
 };
+
 template<class T, RegionIndex idx>
 class CrossPtr {
 public:
 	char* off;
 	CrossPtr(T* real_ptr = nullptr) noexcept;
-	inline operator T*() const{// cast to absolute pointer
+	CrossPtr(const CrossPtr& cptr) noexcept: off(cptr.off) {}
+
+	template<class F>
+	inline operator F*() const{// cast to absolute pointer
 		if(UNLIKELY(is_null())){
 			return nullptr;
 		} else{
-			return reinterpret_cast<T*>(rpmalloc::_rgs->translate(idx, off));
+			return reinterpret_cast<F*>(rpmalloc::_rgs->translate(idx, off));
 		}
 	} 
-	inline operator void*() const{
-		return reinterpret_cast<void*>(static_cast<T*>(*this));
-	}
 	T& operator* ();
 	T* operator-> ();
 	inline CrossPtr& operator= (const CrossPtr<T,idx> &p){
 		off = p.off;
 		return *this;
 	}
-	inline CrossPtr& operator= (const T* p){
-		uint64_t tmp = reinterpret_cast<uint64_t>(p);//get rid of const
-		off = rpmalloc::_rgs->untranslate(idx, reinterpret_cast<char*>(tmp));
-		return *this;
-	}
-	inline CrossPtr& operator= (const void* p){
+	template<class F>
+	inline CrossPtr& operator= (const F* p){
 		uint64_t tmp = reinterpret_cast<uint64_t>(p);//get rid of const
 		off = rpmalloc::_rgs->untranslate(idx, reinterpret_cast<char*>(tmp));
 		return *this;
@@ -220,30 +220,55 @@ public:
 		partial_list(){};
 }__attribute__((aligned(CACHELINE_SIZE)));
 
+
+struct GarbageCollection{
+	std::set<char*> marked_blk;
+
+	GarbageCollection():marked_blk(){};
+
+	void operator() ();
+
+	// return true if ptr is a valid and unmarked pointer, otherwise false
+	template<class T>
+	inline void mark_func(T* ptr){
+		void* addr = static_cast<void*>(ptr);
+		// Step 1: check if it's a valid pptr
+		if(UNLIKELY(!rpmalloc::_rgs->in_range(SB_IDX, addr))) 
+			return; // return if not in range
+		auto res = marked_blk.find(reinterpret_cast<char*>(addr));
+		if(res == marked_blk.end()){
+			// Step 2: mark potential pptr
+			marked_blk.insert(reinterpret_cast<char*>(addr));
+			// Step 3: call filter function
+			filter_func(ptr);
+		}
+		return;
+	}
+
+	template<class T>
+	inline void filter_func(T* ptr);
+};
+
 class BaseMeta {
+public:
 	// unused small sb
 	RP_TRANSIENT AtomicCrossPtrCnt<Descriptor, DESC_IDX> avail_sb;
 	RP_PERSIST bool dirty;
 
-	// so far we don't need thread_num at all
-	// RP_PERSIST uint64_t thread_num;
-	/* 1 heap per sc, and don't have to be persistent in this scheme
-	 * todo: alloc a transient region for it in order to share among APPs
-	 */
 	RP_PERSIST ProcHeap heaps[MAX_SZ_IDX];
-	//persistent root
-	RP_PERSIST CrossPtr<char, SB_IDX> roots[MAX_ROOTS] = {nullptr};//gc_ptr_base*
-public:
+	RP_PERSIST CrossPtr<char, SB_IDX> roots[MAX_ROOTS];
+	RP_PERSIST std::function<void(const CrossPtr<char, SB_IDX>&, GarbageCollection&)> roots_filter_func[MAX_ROOTS];
+	friend class GarbageCollection;
 	BaseMeta() noexcept;
 	~BaseMeta(){
 		/* usually BaseMeta shouldn't be destructed, 
 		 * and will be reused in the next time
 		 */
 		std::cout<<"Warning: BaseMeta is being destructed!\n";
-		cleanup();
 	}
 	void* do_malloc(size_t size);
 	void do_free(void* ptr);
+	inline bool is_dirty(){ return dirty; }
 	inline uint64_t min(uint64_t a, uint64_t b){return a>b?b:a;}
 	inline uint64_t max(uint64_t a, uint64_t b){return a>b?a:b;}
 	inline uint64_t round_up(uint64_t numToRound, uint64_t multiple) {
@@ -251,30 +276,45 @@ public:
 		assert(multiple && ((multiple & (multiple - 1)) == 0));
 		return (numToRound + multiple - 1) & ~(multiple - 1);
 	}
-	inline void* set_root(void* ptr, uint64_t i){
+	template<class T>
+	void* set_root(T* ptr, uint64_t i){
 		//this is sequential
 		assert(i<MAX_ROOTS);
 		void* res = nullptr;
-		if(roots[i]!=nullptr) res = roots[i];
+		if(roots[i]!=nullptr) 
+			res = static_cast<void*>(roots[i]);
 		roots[i] = ptr;
+		roots_filter_func[i] = [](const CrossPtr<char, SB_IDX>& cptr, GarbageCollection& gc){
+			// this new statement is intentionally designed to use transient allocator since it's offline
+			gc.mark_func(static_cast<T*>(cptr));
+		};
 		FLUSH(&roots[i]);
+		FLUSH(&roots_filter_func[i]);
 		FLUSHFENCE;
 		return res;
 	}
 	inline void* get_root(uint64_t i){
 		//this is sequential
 		assert(i<MAX_ROOTS);
-		return roots[i];
+		return static_cast<void*>(roots[i]);
 	}
 	void restart(){
-		// free_desc = new ArrayQueue<Descriptor*>("rpmalloc_freedesc");
-		// free_sb = new ArrayStack<void*>("rpmalloc_freesb");
-		// todo: GC
-		assert(!dirty && "Heap is dirty and GC isn't implemented!");
+		// Restart, setting values and flags to normal
+		// Should be called during restart
+		if(dirty) {
+			GarbageCollection gc;
+			gc();
+		}
+		FLUSHFENCE;
+		// here restart is done, and "dirty" should be set to true until
+		// writeback() is called so that crash will result in a true dirty.
 		dirty = true;
+		FLUSH(&dirty);
+		FLUSHFENCE;
 	}
-	void cleanup(){
-		// give back tcached blocks
+	void writeback(){
+		// Give back tcached blocks
+		// Should be called during normal exit
 		rpmalloc::public_flush_cache();
 		char* addr = reinterpret_cast<char*>(this);
 		// flush values in BaseMeta, including avail_sb and partial lists
@@ -310,15 +350,16 @@ private:
 
 	// func on cache
 	void fill_cache(size_t sc_idx, TCacheBin* cache);
-public://we need to call this function to flush TLS cache during exit
+public:
+	// we need to call this function to flush TLS cache during exit
 	void flush_cache(size_t sc_idx, TCacheBin* cache);
-private:
-	// func on page map
 	// find desc of the block
+	// we need to call them in GC
 	Descriptor* desc_lookup(char* ptr);
 	inline Descriptor* desc_lookup(void* ptr){return desc_lookup(reinterpret_cast<char*>(ptr));}
 	char* sb_lookup(Descriptor* desc);
 
+private:
 	// helper func
 	void heap_push_partial(Descriptor* desc);
 	Descriptor* heap_pop_partial(ProcHeap* heap);
@@ -347,5 +388,18 @@ private:
 	void desc_retire(Descriptor* desc);
 }__attribute__((aligned(CACHELINE_SIZE)));
 
+// persistent roots are gc_ptr with cross to be true
+template<class T>
+inline void GarbageCollection::filter_func(T* ptr){
+	char* curr = reinterpret_cast<char*>(ptr);
+	Descriptor* desc = rpmalloc::base_md->desc_lookup((char*)ptr);
+	size_t sz = desc->block_size;
+	for(size_t i=0;i<sz;i++){
+		char* curr_content = static_cast<char*>(*(reinterpret_cast<pptr<char>*>(curr)));
+		if(curr_content!=nullptr)
+			mark_func(curr_content);
+		curr++;
+	}
+}
 
 #endif /* _BASE_META_HPP_ */

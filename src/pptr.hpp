@@ -5,25 +5,8 @@
 #include <iostream>
 #include <cstddef>
 #include <atomic>
-// #include "gc.hpp"
 #include "pm_config.hpp"
 using namespace std;
-
-/*
- * Class ptr_base is the base class for pptr.
- * It's for future gc_ptr which perhaps defines filter_func in.
- */
-class ptr_base{
-public:
-	int64_t off;
-	// void* val;
-	ptr_base(int64_t v=0)noexcept{
-		off = v;
-	}
-	
-	// template<class T>
-	// operator T*(){return static_cast<T*>(val);}//cast to transient pointer
-};
 
 /*
  * Class pptr is a templated class implemented off-holder. See paper:
@@ -36,47 +19,98 @@ public:
  * Two kinds of constructors and casting to transient pointer are provided,
  * as well as dereference, arrow access, assignment, and comparison.
  */
+
+inline bool is_null_pptr(uint64_t off) {
+	return off == PPTR_PATTERN_POS;
+}
+
+inline bool is_valid_pptr(uint64_t off) {
+	return (off & PPTR_PATTERN_MASK) == PPTR_PATTERN_POS;
+}
 template<class T>
-class pptr : public ptr_base{
-public:
-	pptr(T* v=nullptr)noexcept: //default constructor
-		ptr_base(v==nullptr ? 0 : ((int64_t)v) - ((int64_t)this)) {};
-	pptr(const pptr<T> &p)noexcept: //copy constructor
-		ptr_base(p.is_null() ? 0 : ((int64_t)(p.off + (int64_t)&p)) - ((int64_t)this)) {};
-	inline operator T*() const{ //cast to transient pointer
-		return off==0 ? nullptr : (T*)(off + ((int64_t)this));
+class pptr;
+template<class T>
+class atomic_pptr;
+
+template<class T>
+inline uint64_t to_pptr_off(const T* v, const pptr<T>* p) {
+	uint64_t off;
+	if(v == nullptr) {
+		off = PPTR_PATTERN_POS;
+	} else {
+		if(v > reinterpret_cast<const T*>(p)) {
+			off = ((uint64_t)v) - ((uint64_t)p);
+			off = off << PPTR_PATTERN_SHIFT;
+			off = off | PPTR_PATTERN_POS;
+		} else {
+			off = ((uint64_t)p) - ((uint64_t)v);
+			off = off << PPTR_PATTERN_SHIFT;
+			off = off | PPTR_PATTERN_NEG;
+		}
 	}
-	inline operator void*() const{ //cast to transient pointer
-		return off==0 ? nullptr : (void*)(off + ((int64_t)this));
+	return off;
+}
+
+template<class T>
+inline T* from_pptr_off(uint64_t off, const pptr<T>* p) {
+	if(!is_valid_pptr(off) || is_null_pptr(off)) { 
+		return nullptr;
+	} else {
+		if(off & 1) { // sign bit is true (negative)
+			return (T*)(((int64_t)p) - (off>>PPTR_PATTERN_SHIFT));
+		} else {
+			return (T*)(((int64_t)p) + (off>>PPTR_PATTERN_SHIFT));
+		}
+	}
+}
+
+template<class T>
+inline uint64_t to_pptr_off(const T* v, const atomic_pptr<T>* p) {
+	return to_pptr_off(v, reinterpret_cast<const pptr<T>*>(p));
+}
+
+template<class T>
+inline T* from_pptr_off(uint64_t off, const atomic_pptr<T>* p) {
+	return from_pptr_off(off, reinterpret_cast<const pptr<T>*>(p));
+}
+
+template<class T>
+class pptr{
+public:
+	uint64_t off;
+	pptr(T* v=nullptr) noexcept { //default constructor
+		off = to_pptr_off(v, this);
+	};
+	pptr(const pptr<T> &p) noexcept { //copy constructor
+		T* v = static_cast<T*>(p);
+		off = to_pptr_off(v, this);
+	}
+
+	template<class F>
+	inline operator F*() const{ //cast to transient pointer
+		return from_pptr_off(off, this);
 	}
 	inline T& operator * () { //dereference
-		return *(T*)(off + ((int64_t)this));
+		return *static_cast<T*>(*this);
 	}
 	inline T* operator -> (){ //arrow
-		return (T*)(off + ((int64_t)this));
+		return static_cast<T*>(*this);
+	}
+	template<class F>
+	inline pptr& operator = (const F* v){ //assignment
+		off = to_pptr_off(v, this);
+		return *this;
 	}
 	inline pptr& operator = (const pptr &p){ //assignment
-		off = ((int64_t)(p.off + (int64_t)&p)) - ((int64_t)this);
+		T* v = static_cast<T*>(p);
+		off = to_pptr_off(v, this);
 		return *this;
 	}
-	inline pptr& operator = (const T* p){ //assignment
-		off = ((int64_t)p) - ((int64_t)this);
-		return *this;
+	bool is_null() const {
+		return off == PPTR_PATTERN_POS;
 	}
-	inline pptr& operator = (const void* p){ //assignment
-		off = ((int64_t)p) - ((int64_t)this);
-		return *this;
-	}
-	inline pptr& operator = (const std::nullptr_t& p){ //assignment
-		off = 0;
-		return *this;
-	}
-	uint64_t get_size(){return sizeof(T);}
-	bool is_valid_pptr() const{
-		return true;
-	}
-	bool is_null() const{
-		return off == 0;
+	bool is_valid() const {
+		return (off & PPTR_PATTERN_MASK) == PPTR_PATTERN_POS;
 	}
 };
 
@@ -95,14 +129,95 @@ inline bool operator!=(const pptr<T>& lhs, const std::nullptr_t& rhs){
 	return !lhs.is_null();
 }
 
+template <class T>
+inline bool operator!=(const pptr<T>& lhs, const pptr<T>& rhs){
+	return !((T*)lhs == (T*)rhs);
+}
+
 /* 
- * Class ptr_cnt is also a templated class, but is a wrapper of plain pointer.
+ * Class atomic_pptr is considered the atomic version of pptr.
+ * It's initialized by a pointer or pptr<T>.
+ *
+ * The member *off* stores the offset from the instance of atomic_pptr to 
+ * the object it points to.
+ *
+ * It defines load, store, compare_exchange_weak, and compare_exchange_strong
+ * with the same specification of atomic, but returns and/or takes desired and 
+ * expected value in type of T*.
+ */
+template <class T> 
+class atomic_pptr{
+public:
+	atomic<uint64_t> off;
+	atomic_pptr(T* v=nullptr) noexcept { //default constructor
+		uint64_t tmp_off = to_pptr_off(v, this);
+		off.store(tmp_off);
+	}
+	atomic_pptr(const pptr<T> &p) noexcept { //copy constructor
+		T* v = static_cast<T*>(p);
+		uint64_t tmp_off = to_pptr_off(v, this);
+		off.store(tmp_off);
+	}
+	inline atomic_pptr& operator = (const atomic_pptr &p){ //assignment
+		T* v = p.load();
+		uint64_t tmp_off = to_pptr_off(v, this);
+		off.store(tmp_off);
+		return *this;
+	}
+	template<class F>
+	inline atomic_pptr& operator = (const F* v){ //assignment
+		uint64_t tmp_off = to_pptr_off(v, this);
+		off.store(tmp_off);
+		return *this;
+	}
+	T* load(memory_order order = memory_order_seq_cst) const noexcept{
+		uint64_t cur_off = off.load(order);
+		return from_pptr_off(cur_off, this);
+	}
+	void store(T* desired, 
+		memory_order order = memory_order_seq_cst ) noexcept{
+		uint64_t new_off = to_pptr_off(desired, this);
+		off.store(new_off, order);
+	}
+	bool compare_exchange_weak(T*& expected, T* desired,
+		memory_order order = memory_order_seq_cst ) noexcept{
+		uint64_t old_off = to_pptr_off(expected, this);
+		uint64_t new_off = to_pptr_off(desired, this);
+		bool ret = off.compare_exchange_weak(old_off, new_off, order);
+		if(!ret) {
+			if(is_null_pptr(old_off)){
+				expected = nullptr;
+			} else{
+				expected = from_pptr_off(old_off, this);
+			}
+		}
+		return ret;
+	}
+	bool compare_exchange_strong(T*& expected, T* desired,
+		memory_order order = memory_order_seq_cst ) noexcept{
+		uint64_t old_off = to_pptr_off(expected, this);
+		uint64_t new_off = to_pptr_off(desired, this);
+		bool ret = off.compare_exchange_strong(old_off, new_off, order);
+		if(!ret) {
+			if(is_null_pptr(old_off)){
+				expected = nullptr;
+			} else{
+				expected = from_pptr_off(old_off, this);
+			}
+		}
+		return ret;
+	}
+};
+
+/* 
+ * Class ptr_cnt is a templated class, but is a wrapper of plain pointer.
  * The least significant 6 bits are for ABA counter, and the user should 
  * guarantee the thing we points to is always aligned to 64 byte (expected to 
  * be the cache line  size).
  * 
  * This class is mainly to store the intermediate value of operations on 
- * atomic_pptr_cnt<T> defined below, including atomic load, store, and CAS.
+ * AtomicCrossPtrCnt<T> defined in BaseMeta.hpp, including atomic load, store, 
+ * and CAS.
  */
 template <class T>
 class ptr_cnt{
@@ -121,171 +236,4 @@ public:
 		return (uint64_t)((uint64_t)ptr & CACHELINE_MASK);
 	}
 };
-
-/* 
- * Class atomic_pptr_cnt is considered the atomic and ABA-counter-added 
- * version of pptr.It's initialized by a pointer and a counter.
- *
- * The member *off* stores the offset from the instance of atomic_pptr_cnt to 
- * the object it points to PLUS the ABA counter. As a result, when you add off
- * to pointer *this*, you'll get something like ptr_cnt.
- *
- * It defines load, store, compare_exchange_weak, and compare_exchange_strong
- * with the same specification of atomic, but returns and/or takes desired and 
- * expected value in type of ptr_cnt<T>.
- */
-template <class T>
-class atomic_pptr_cnt{//atomic pptr with 6 bits of counter
-public:
-	atomic<int64_t> off;
-	atomic_pptr_cnt(T* v=nullptr, uint64_t counter=0)noexcept: //default constructor
-		off(v==nullptr ? 0 : (((uint64_t)v | (counter & CACHELINE_MASK)) - ((uint64_t)this))) {};
-	inline ptr_cnt<T> load(memory_order order = memory_order_seq_cst) const noexcept{
-		int64_t cur_off = off.load(order);
-		ptr_cnt<T> ret;
-		if(cur_off >=0 && cur_off<CACHELINE_SIZE){
-			ret.ptr = (T*)cur_off;
-		} else{
-			 ret.ptr = (T*)(cur_off + ((uint64_t)this));
-		}
-		return ret;
-	}
-	inline void store(ptr_cnt<T> desired, 
-		memory_order order = memory_order_seq_cst ) noexcept{
-		int64_t new_off;
-		if (desired.get_ptr() == nullptr){
-			new_off = desired.get_counter();
-		} else {
-			new_off = (uint64_t)desired.ptr - (uint64_t)this;
-		}
-		off.store(new_off, order);
-	}
-	inline bool compare_exchange_weak(ptr_cnt<T>& expected, ptr_cnt<T> desired,
-		memory_order order = memory_order_seq_cst ) noexcept{
-		int64_t old_off, new_off;
-		if(expected.get_ptr()==nullptr){
-			old_off = expected.get_counter();
-		} else {
-			old_off = (uint64_t)expected.ptr - (uint64_t)this;
-		}
-		if(desired.get_ptr()==nullptr){
-			new_off = desired.get_counter();
-		} else {
-			new_off = (uint64_t)desired.ptr - (uint64_t)this;
-		}
-		bool ret = off.compare_exchange_weak(old_off, new_off, order);
-		if(!ret) {
-			if(old_off >= 0 && old_off < CACHELINE_SIZE){
-				expected.ptr = (T*)old_off;
-			} else{
-				expected.ptr = (T*)(old_off + (uint64_t)this);
-			}
-		}
-		return ret;
-	}
-	inline bool compare_exchange_strong(ptr_cnt<T>& expected, ptr_cnt<T> desired,
-		memory_order order = memory_order_seq_cst ) noexcept{
-		int64_t old_off, new_off;
-		if(expected.get_ptr()==nullptr){
-			old_off = expected.get_counter();
-		} else {
-			old_off = (uint64_t)expected.ptr - (uint64_t)this;
-		}
-		if(desired.get_ptr()==nullptr){
-			new_off = desired.get_counter();
-		} else {
-			new_off = (uint64_t)desired.ptr - (uint64_t)this;
-		}
-		bool ret = off.compare_exchange_strong(old_off, new_off, order);
-		if(!ret) {
-			if(old_off >= 0 && old_off < CACHELINE_SIZE){
-				expected.ptr = (T*)old_off;
-			} else{
-				expected.ptr = (T*)(old_off + (uint64_t)this);
-			}
-		}
-		return ret;
-	}
-};
-
-/* 
- * Class atomic_pptr is considered the atomic version of pptr.
- * It's initialized by a pointer or pptr<T>.
- *
- * The member *off* stores the offset from the instance of atomic_pptr to 
- * the object it points to.
- *
- * It defines load, store, compare_exchange_weak, and compare_exchange_strong
- * with the same specification of atomic, but returns and/or takes desired and 
- * expected value in type of T*.
- */
-template <class T> 
-class atomic_pptr{
-public:
-	atomic<int64_t> off;
-	atomic_pptr(T* v=nullptr)noexcept: //default constructor
-		off(v==nullptr ? 0 : ((int64_t)v) - ((int64_t)this)) {};
-	atomic_pptr(const pptr<T> &p)noexcept: //copy constructor
-		off(p.is_null() ? 0 : (int64_t)(p.off + (int64_t)&p) - ((int64_t)this)) {};
-	T* load(memory_order order = memory_order_seq_cst) const noexcept{
-		int64_t cur_off = off.load(order);
-		T* ret;
-		ret = cur_off==0 ? nullptr : (T*)(cur_off + ((int64_t)this));
-		return ret;
-	}
-	void store(T* desired, 
-		memory_order order = memory_order_seq_cst ) noexcept{
-		int64_t new_off = desired==nullptr? 0 : ((int64_t)desired) - ((int64_t)this);
-		off.store(new_off, order);
-	}
-	bool compare_exchange_weak(T*& expected, T* desired,
-		memory_order order = memory_order_seq_cst ) noexcept{
-		int64_t old_off = expected==nullptr ? 0 : ((int64_t)expected) - ((int64_t)this);
-		int64_t new_off = desired==nullptr ? 0 : ((int64_t)desired) - ((int64_t)this);
-		bool ret = off.compare_exchange_weak(old_off, new_off, order);
-		if(!ret) {
-			if(old_off == 0){
-				expected = nullptr;
-			} else{
-				expected = (T*)(old_off + ((int64_t)this));
-			}
-		}
-		return ret;
-	}
-	bool compare_exchange_strong(T*& expected, T* desired,
-		memory_order order = memory_order_seq_cst ) noexcept{
-		int64_t old_off = expected==nullptr ? 0 : ((int64_t)expected) - ((int64_t)this);
-		int64_t new_off = desired==nullptr ? 0 : ((int64_t)desired) - ((int64_t)this);
-		bool ret = off.compare_exchange_strong(old_off, new_off, order);
-		if(!ret) {
-			if(old_off == 0){
-				expected = nullptr;
-			} else{
-				expected = (T*)(old_off + ((int64_t)this));
-			}
-		}
-		return ret;
-	}
-};
-
-// struct gc_ptr_base : public ptr_base{
-// 	gc_ptr_base(void* v=nullptr):ptr_base(v){};
-// 	virtual vector<gc_ptr_base*> filter_func(GarbageCollection* gc) {
-// 		return {};
-// 	}
-// };
-
-// template<class T>
-// struct gc_ptr : public gc_ptr_base{
-// 	gc_ptr(T* v=nullptr):gc_ptr_base((void*)v){};
-// 	gc_ptr(pptr<T> v):gc_ptr_base((void*)v.val){};
-// 	operator T*(){return (T*)val;};//cast to transient pointer
-// 	T& operator *(){return *(T*)val;}//dereference
-// 	T* operator ->(){return (T*)val;}//arrow
-// 	vector<gc_ptr_base*> filter_func(GarbageCollection* gc){
-// 		std::cout << "type name:" << typeid(T).name() << std::endl;
-// 		return gc_ptr_base::filter_func(gc);
-// 	}
-// };
-
 #endif
