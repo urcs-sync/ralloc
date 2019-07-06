@@ -81,6 +81,8 @@ const uint64_t SB_REGION_EXPAND_SIZE = 1*1024*1024*1024ULL;
 /*
  * Dig 16 least significant bits inside pptr and atomic_pptr to create unique 
  * bits pattern. The least bit is sign bit.
+ * Note: here we assume addresses on x86-64 don't use most significant 16 bits
+ * and thus we are same to shift an offset left by 16 bits.
  */
 const uint64_t PPTR_PATTERN_POS = 0x52b0;
 const uint64_t PPTR_PATTERN_NEG = 0x52b1;
