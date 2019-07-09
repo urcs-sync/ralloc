@@ -133,5 +133,10 @@ void* RP_realloc(void* ptr, size_t new_size){
 }
 
 void* RP_calloc(size_t num, size_t size){
-	return RP_malloc(num*size);
+	void* ptr = RP_malloc(num*size);
+	size_t real_size = RP_malloc_size(ptr);
+	memset(ptr, 0, real_size);
+	FLUSH(ptr);
+	FLUSHFENCE;
+	return ptr;
 }
