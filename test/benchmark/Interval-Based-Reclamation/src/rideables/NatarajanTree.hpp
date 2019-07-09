@@ -79,7 +79,7 @@ private:
 		Node(){};
 		Node(K k, V v, Node* l, Node* r,int lev):level(lev),key(k),val(v),left(l),right(r){};
 		Node(K k, V v, Node* l, Node* r):level(-1),key(k),val(v),left(l),right(r){};
-	};
+	}__attribute__((aligned(CACHELINE_SIZE)));
 	struct SeekRecord{
 		Node* ancestor;
 		Node* successor;
