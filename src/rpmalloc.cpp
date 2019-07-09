@@ -109,3 +109,9 @@ void* RP_get_root(uint64_t i){
 	}
 	return base_md->get_root(i);
 }
+
+size_t RP_malloc_size(const void* ptr){
+	assert(_rgs->in_range(SB_IDX, ptr));
+	const Descriptor* desc = base_md->desc_lookup(ptr);
+	return (size_t)desc->block_size;
+}

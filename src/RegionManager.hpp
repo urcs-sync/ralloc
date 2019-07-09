@@ -216,7 +216,7 @@ public:
 		return regions[index]->__nvm_region_allocator(memptr, alignment, size);
 	}
 
-	inline bool in_range(int index, void* ptr){
+	inline bool in_range(int index, const void* ptr){
 		bool ret = ptr >= regions_address[index];
 		if (!ret) return false;
 		return ret && (ptr < regions[index]->curr_addr_ptr->load());

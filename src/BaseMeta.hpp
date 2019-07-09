@@ -355,8 +355,8 @@ public:
 	void flush_cache(size_t sc_idx, TCacheBin* cache);
 	// find desc of the block
 	// we need to call them in GC
-	Descriptor* desc_lookup(char* ptr);
-	inline Descriptor* desc_lookup(void* ptr){return desc_lookup(reinterpret_cast<char*>(ptr));}
+	Descriptor* desc_lookup(const char* ptr);
+	inline Descriptor* desc_lookup(const void* ptr){return desc_lookup(reinterpret_cast<const char*>(ptr));}
 	char* sb_lookup(Descriptor* desc);
 
 private:

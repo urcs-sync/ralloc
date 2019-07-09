@@ -319,7 +319,7 @@ void BaseMeta::flush_cache(size_t sc_idx, TCacheBin* cache) {
 	}
 }
 
-Descriptor* BaseMeta::desc_lookup(char* ptr){
+Descriptor* BaseMeta::desc_lookup(const char* ptr){
 	uint64_t sb_index = (((uint64_t)ptr)>>SB_SHIFT) - (((uint64_t)_rgs->lookup(SB_IDX))>>SB_SHIFT); // the index of sb this block in
 	Descriptor* ret = reinterpret_cast<Descriptor*>(_rgs->lookup(DESC_IDX));
 	ret+=sb_index;
