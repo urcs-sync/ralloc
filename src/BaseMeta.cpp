@@ -632,7 +632,7 @@ void GarbageCollection::operator() () {
 			base_md->roots_filter_func[i](base_md->roots[i], *this);
 		}
 	}
-	printf("Done!\n");
+	printf("Done!%d reachable blocks in total.\n", marked_blk.size());
 
 	// Step 2: sweep phase, update variables.
 	printf("Reconstructing metadata...");
