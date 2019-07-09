@@ -234,14 +234,11 @@ void ObjRetireTest<T>::init(GlobalTestConfig* gtc){
 	gtc->recorder->addThreadField("obj_retired", &Recorder::sumInt64s);
 
 	// prefill
-	uint64_t i = 0;
-	uint64_t r = 1;
+	int i = 0;
 	// std::mt19937_64 gen(1);
 	// for testing GC we disable RNG
 	for(i = 0; i<prefill; i++){
-		// r = nextRand(r);
-		r = i;
-		T k = this->fromInt(r%range);
+		T k = this->fromInt(i%range);
 		T val = k;
 		m->put(k,val,0);
 }
