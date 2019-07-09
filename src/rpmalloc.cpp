@@ -21,6 +21,7 @@
 #include <atomic>
 #include <vector>
 #include <algorithm>
+#include <cstring>
 
 #include "RegionManager.hpp"
 #include "pm_config.hpp"
@@ -110,8 +111,27 @@ void* RP_get_root(uint64_t i){
 	return base_md->get_root(i);
 }
 
+// return the size of ptr in byte.
+// No check for whether ptr is allocated, only whether is within SB region
 size_t RP_malloc_size(const void* ptr){
 	assert(_rgs->in_range(SB_IDX, ptr));
 	const Descriptor* desc = base_md->desc_lookup(ptr);
 	return (size_t)desc->block_size;
+}
+
+void* RP_realloc(void* ptr, size_t new_size){
+	size_t old_size = RP_malloc_size(ptr);
+	if(old_size == new_size) {
+		return ptr;
+	}
+	void* new_ptr = RP_malloc(new_size);
+	memcpy(new_ptr, ptr, old_size);
+	FLUSH(new_ptr);
+	FLUSHFENCE;
+	RP_free(ptr);
+	return new_ptr;
+}
+
+void* RP_calloc(size_t num, size_t size){
+	return RP_malloc(num*size);
 }
