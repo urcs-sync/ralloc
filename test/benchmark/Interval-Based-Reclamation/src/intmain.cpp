@@ -47,11 +47,9 @@ int main(int argc, char *argv[])
 	gtc->addRideableOption(new LinkListFactory<int,int>(), "LinkList");
 	gtc->addRideableOption(new NatarajanTreeFactory<int,int>(), "NatarajanTree");
 
-	gtc->addTestOption(new ObjRetireTest<int>(50,0,0,30,20,65536,5000), "ObjRetire:g50i30rm20:range=65536:prefill=5000");
-	gtc->addTestOption(new ObjRetireTest<int>(50,0,50,0,0,65536,1024), "ObjRetire:g50p50:range=65536:prefill=1024");
-	gtc->addTestOption(new ObjRetireTest<int>(90,0,10,0,0,100000,50000), "ObjRetire:g90p10:range=100000:prefill=50000");
-	gtc->addTestOption(new ObjRetireTest<int>(0,0,0,50,50,100000,50000), "ObjRetire:i50rm50:range=100000:prefill=50000");
-	gtc->addTestOption(new ObjRetireTest<int>(0,0,0,50,50,65536,1024), "ObjRetire:i50rm50:range=65536:prefill=1024");
+	gtc->addTestOption(new ObjRetireTest<int>(50,0,50,0,0,10000000,5000000), "ObjRetire:g50p50:range=10000000:prefill=5000000");
+	gtc->addTestOption(new ObjRetireTest<int>(90,0,10,0,0,100000000,50000000), "ObjRetire:g90p10:range=100000:prefill=50000");
+	gtc->addTestOption(new ObjRetireTest<int>(0,0,0,50,50,1000000000,500000000), "ObjRetire:i50rm50:range=100000:prefill=50000");
 
 	// gtc->addTestOption(new MapOrderedGet<int>(65536, 5000), "MapOrderedGetPut:range=65536:prefill=5000");
 	// gtc->addTestOption(new MapChurnTest<int>(50,0,0,50,0,8000,1024), "MapChurn:g50i50:range=8K:prefill=1024");
