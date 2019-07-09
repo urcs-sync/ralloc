@@ -234,7 +234,7 @@ void ObjRetireTest<T>::init(GlobalTestConfig* gtc){
 	gtc->recorder->addThreadField("obj_retired", &Recorder::sumInt64s);
 
 	// prefill
-	int i = 0;
+	uint64 i = 0;
 	uint64_t r = 1;
 	// std::mt19937_64 gen(1);
 	// for testing GC we disable RNG
