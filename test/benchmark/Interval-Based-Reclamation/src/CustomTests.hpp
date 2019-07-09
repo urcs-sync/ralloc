@@ -243,7 +243,7 @@ void ObjRetireTest<T>::init(GlobalTestConfig* gtc){
 		m->put(k,val,0);
 }
 	if(gtc->verbose){
-		printf("Prefilled %lu\n",i);
+		printf("Prefilled %d\n",i);
 	}
 }
 
