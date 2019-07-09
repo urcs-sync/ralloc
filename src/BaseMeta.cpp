@@ -741,6 +741,7 @@ void GarbageCollection::operator() () {
 	ptr_cnt<Descriptor> tmp_avail_sb(avail_sb, 0);
 	base_md->avail_sb.store(tmp_avail_sb);
 	printf("Reconstructed!\n");
+	assert(curr_marked_blk == marked_blk.end());
 
 	printf("Flushing recovered data...");
 	_rgs->flush_region(DESC_IDX);
