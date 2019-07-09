@@ -235,13 +235,18 @@ void ObjRetireTest<T>::init(GlobalTestConfig* gtc){
 
 	// prefill
 	int i = 0;
-	// std::mt19937_64 gen(1);
-	// for testing GC we disable RNG
+	uint64_t r = 1;
+	std::mt19937_64 gen(1);
 	for(i = 0; i<prefill; i++){
-		T k = this->fromInt(i%range);
+		// r = nextRand(r);
+		r = gen();
+		T k = this->fromInt(r%range);
 		T val = k;
-		m->put(k,val,0);
-}
+		if(m->insert(k,val,0)){
+			// k already exists in the tree
+			i--;
+		}
+	}
 	if(gtc->verbose){
 		printf("Prefilled %d\n",i);
 	}
