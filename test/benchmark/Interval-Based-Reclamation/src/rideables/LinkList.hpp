@@ -49,7 +49,7 @@ limitations under the License.
  */
 
 template <class K, class V>
-class LinkedList : public RUnorderedMap<K,V>, public RetiredMonitorable {
+class LinkedList : public RUnorderedMap<K,V> {
 	friend class GarbageCollection;
 	struct Node{
 		K key;
@@ -96,7 +96,7 @@ public:
 	void operator delete(void* ptr){
 		PM_free(ptr);
 	}
-}
+};
 
 template <class K, class V>
 class LinkListFactory : public RideableFactory{
