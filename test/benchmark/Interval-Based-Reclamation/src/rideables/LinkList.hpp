@@ -114,14 +114,13 @@ class LinkListFactory : public RideableFactory{
 };
 
 template<>
-void GarbageCollection::filter_func(LinkedList<int,int>* ptr) {
-	LinkedList<int,int>::Node* curr = ptr->head.load();
-	mark_func(curr);
+inline void GarbageCollection::filter_func(LinkedList<int,int>* ptr) {
+	return mark_func(curr = ptr->head.load());
 }
 
 template<>
-void GarbageCollection::filter_func(LinkedList<int,int>::Node* ptr) {
-	mark_func(ptr->next.load());
+inline void GarbageCollection::filter_func(LinkedList<int,int>::Node* ptr) {
+	return mark_func(ptr->next.load());
 }
 
 #endif
