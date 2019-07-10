@@ -80,7 +80,6 @@ int main(int argc, char *argv[])
 
 	// print out results
 	long int ops = gtc->interval==0 ? 0 : gtc->total_operations/gtc->interval;
-	if(interval == 0) {}
 	if(gtc->verbose){
 		printf("Operations/sec: %ld\n",ops);
 	}
