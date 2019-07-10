@@ -99,10 +99,9 @@ class LinkListFactory : public RideableFactory{
 	LinkedList<K,V>* build(GlobalTestConfig* gtc){
 		if(gtc->restart && get_root(2) != nullptr) {
 			auto ret = reinterpret_cast<LinkedList<K,V>*>(get_root(2));
-			ret->restart(gtc);
 			return ret;
 		} else {
-			auto ret = new LinkedList<K,V>(gtc);
+			auto ret = new LinkedList<K,V>();
 			set_root(ret, 2);
 			return ret;
 		}
