@@ -64,7 +64,6 @@ class LinkedList : public RUnorderedMap<K,V>, public RetiredMonitorable {
 			PM_free(ptr);
 		}
 	}__attribute__((aligned(CACHELINE_SIZE)));
-	static_assert(sizeof(Node) == CACHELINE_SIZE, "Invalid Node size");
 	// we don't consider ABA problem since we only put Node but never delete
 	atomic_pptr<Node> head;
 public:

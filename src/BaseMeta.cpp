@@ -756,7 +756,7 @@ void GarbageCollection::operator() () {
 	auto stop = high_resolution_clock::now(); 
 	assert(curr_marked_blk == marked_blk.end());
 	auto duration = duration_cast<milliseconds>(stop - start);
-	cout << "Time elapsed on GC: " << duration.count()<<endl;
+	cout << "Time elapsed on GC: " << duration.count() <<" (ms)"<<endl;
 
 
 	printf("Flushing recovered data...");
