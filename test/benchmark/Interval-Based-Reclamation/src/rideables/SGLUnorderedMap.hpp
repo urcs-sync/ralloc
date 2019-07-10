@@ -51,7 +51,8 @@ private:
 
 public:
 
-	SGLUnorderedMap(){
+	SGLUnorderedMap(GlobalTestConfig* gtc):
+		RetiredMonitorable(gtc){
 		m = new std::unordered_map<K,V>();
 		lk.store(-1,std::memory_order::memory_order_release);
 	}
@@ -115,7 +116,7 @@ public:
 
 template <class K, class V> class SGLUnorderedMapFactory : public RideableFactory{
 	SGLUnorderedMap<K,V>* build(GlobalTestConfig* gtc){
-		return new SGLUnorderedMap<K,V>();
+		return new SGLUnorderedMap<K,V>(gtc);
 	}
 };
 
