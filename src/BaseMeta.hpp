@@ -247,7 +247,7 @@ struct GarbageCollection{
 			to_filter_node.push(reinterpret_cast<char*>(addr));
 			to_filter_func.push([](const char* ptr){
 					filter_func(reinterpret_cast<T*>(ptr));
-				})
+				});
 		}
 		return;
 	}
