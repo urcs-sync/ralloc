@@ -226,7 +226,7 @@ public:
 struct GarbageCollection{
 	std::set<char*> marked_blk;
 	std::stack<char*> to_filter_node;
-	std::stack<std::function<void(const char*)>> to_filter_func;
+	std::stack<std::function<void(char*,GarbageCollection& gc)>> to_filter_func;
 
 	GarbageCollection():marked_blk(){};
 
@@ -245,8 +245,8 @@ struct GarbageCollection{
 			marked_blk.insert(reinterpret_cast<char*>(addr));
 			// Step 3: push ptr to stack
 			to_filter_node.push(reinterpret_cast<char*>(addr));
-			to_filter_func.push([](char* ptr){
-					filter_func(reinterpret_cast<T*>(ptr));
+			to_filter_func.push([](char* ptr,GarbageCollection& gc){
+					gc.filter_func(reinterpret_cast<T*>(ptr));
 				});
 		}
 		return;

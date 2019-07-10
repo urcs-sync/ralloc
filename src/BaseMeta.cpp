@@ -636,7 +636,7 @@ void GarbageCollection::operator() () {
 	}
 	while(!to_filter_node.empty()) {
 		// pop nodes from the stack and call filter function of each node
-		to_filter_func.top()(to_filter_node.top());
+		to_filter_func.top()(to_filter_node.top(), *this);
 		to_filter_node.pop();
 		to_filter_func.pop();
 	}
