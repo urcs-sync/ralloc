@@ -1,12 +1,13 @@
 #include <sys/mman.h>
 
 #include <string>
+#include <chrono> 
 
 #include "BaseMeta.hpp"
 
 using namespace std;
 using namespace rpmalloc;
-
+using namespace std::chrono;
 template<class T, RegionIndex idx>
 CrossPtr<T,idx>::CrossPtr(T* real_ptr) noexcept{
 	if(UNLIKELY(real_ptr == nullptr)){
@@ -615,7 +616,7 @@ void rpmalloc::public_flush_cache(){
 
 void GarbageCollection::operator() () {
 	printf("Start garbage collection...\n");
-
+	auto start = high_resolution_clock::now(); 
 	// Step 0: initialize all transient data
 	printf("Initializing all transient data...");
 	base_md->avail_sb.off.store(nullptr); // initialize avail_sb
@@ -750,8 +751,12 @@ void GarbageCollection::operator() () {
 	// store head of new free sb list into base_md
 	ptr_cnt<Descriptor> tmp_avail_sb(avail_sb, 0);
 	base_md->avail_sb.store(tmp_avail_sb);
-	printf("Reconstructed!\n");
+	printf("Reconstructed! \n");
+	auto stop = high_resolution_clock::now(); 
 	assert(curr_marked_blk == marked_blk.end());
+	auto duration = duration_cast<milliseconds>(stop - start);
+	cout<<"Time elapsed on GC: "<<duration<<endl;
+
 
 	printf("Flushing recovered data...");
 	_rgs->flush_region(DESC_IDX);
