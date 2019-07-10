@@ -633,6 +633,7 @@ void GarbageCollection::operator() () {
 		}
 	}
 	printf("Done!%lu reachable blocks in total.\n", marked_blk.size());
+	marked_blk.sort();
 
 	// Step 2: sweep phase, update variables.
 	printf("Reconstructing metadata...");

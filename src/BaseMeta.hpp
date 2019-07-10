@@ -5,7 +5,7 @@
 #include <iostream>
 #include <mutex>
 #include <functional>
-#include <set>
+#include <list>
 #include <vector>
 
 #include "pm_config.hpp"
@@ -222,7 +222,7 @@ public:
 
 
 struct GarbageCollection{
-	std::set<char*> marked_blk;
+	std::list<char*> marked_blk;
 
 	GarbageCollection():marked_blk(){};
 
@@ -238,7 +238,7 @@ struct GarbageCollection{
 		auto res = marked_blk.find(reinterpret_cast<char*>(addr));
 		if(res == marked_blk.end()){
 			// Step 2: mark potential pptr
-			marked_blk.insert(reinterpret_cast<char*>(addr));
+			marked_blk.push_front(reinterpret_cast<char*>(addr));
 			// Step 3: call filter function
 			filter_func(ptr);
 		}
