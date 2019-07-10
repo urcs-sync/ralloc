@@ -67,7 +67,8 @@ class LinkedList : public RUnorderedMap<K,V> {
 	// we don't consider ABA problem since we only put Node but never delete
 	atomic_pptr<Node> head;
 public:
-	LinkedList(){};
+	LinkedList(GlobalTestConfig* gtc):
+		RetiredMonitorable(gtc){};
 	~LinkedList(){};
 
 
@@ -105,7 +106,7 @@ class LinkListFactory : public RideableFactory{
 			auto ret = reinterpret_cast<LinkedList<K,V>*>(get_root(2));
 			return ret;
 		} else {
-			auto ret = new LinkedList<K,V>();
+			auto ret = new LinkedList<K,V>(gtc);
 			set_root(ret, 2);
 			return ret;
 		}
