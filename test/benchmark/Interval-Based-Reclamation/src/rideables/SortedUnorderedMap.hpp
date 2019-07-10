@@ -65,7 +65,7 @@ private:
 	
 	MemoryTracker<Node>* memory_tracker;
 
-	const size_t GET_POINTER_BITS = 0xfffffffffffffffe;
+	#define GET_POINTER_BITS 0xfffffffffffffffe;
 	inline static Node* getPtr(Node* mptr){
 		return (Node*) ((size_t)mptr & GET_POINTER_BITS);
 	}
