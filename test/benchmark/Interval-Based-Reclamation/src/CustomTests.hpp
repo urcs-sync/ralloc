@@ -242,7 +242,7 @@ void ObjRetireTest<T>::init(GlobalTestConfig* gtc){
 		r = gen();
 		T k = this->fromInt(r%range);
 		T val = k;
-		if(m->insert(k,val,0)){
+		if(!m->insert(k,val,0)){
 			// k already exists in the tree
 			i--;
 		}
