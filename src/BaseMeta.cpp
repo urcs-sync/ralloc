@@ -627,13 +627,20 @@ void GarbageCollection::operator() () {
 
 	// Step 1: mark all accessible blocks from roots
 	printf("Marking reachable nodes...");
+
+	// First mark all root nodes
 	for(int i = 0; i < MAX_ROOTS; i++) {
 		if(base_md->roots[i]!=nullptr) {
 			base_md->roots_filter_func[i](base_md->roots[i], *this);
 		}
 	}
+	while(!to_filter_node.empty()) {
+		// pop nodes from the stack and call filter function of each node
+		to_filter_func.top()(to_filter_node.top());
+		to_filter_node.pop();
+		to_filter_func.pop();
+	}
 	printf("Done!%lu reachable blocks in total.\n", marked_blk.size());
-	marked_blk.sort();
 
 	// Step 2: sweep phase, update variables.
 	printf("Reconstructing metadata...");

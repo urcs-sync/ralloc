@@ -5,8 +5,10 @@
 #include <iostream>
 #include <mutex>
 #include <functional>
-#include <list>
+#include <set>
 #include <vector>
+#include <stack>
+#include <utility>
 
 #include "pm_config.hpp"
 // #include "thread_util.hpp"
@@ -222,7 +224,9 @@ public:
 
 
 struct GarbageCollection{
-	std::list<char*> marked_blk;
+	std::set<char*> marked_blk;
+	std::stack<char*> to_filter_node;
+	std::stack<std::function<void(const char*)>> to_filter_func;
 
 	GarbageCollection():marked_blk(){};
 
@@ -238,9 +242,12 @@ struct GarbageCollection{
 		auto res = marked_blk.find(reinterpret_cast<char*>(addr));
 		if(res == marked_blk.end()){
 			// Step 2: mark potential pptr
-			marked_blk.push_front(reinterpret_cast<char*>(addr));
-			// Step 3: call filter function
-			filter_func(ptr);
+			marked_blk.insert(reinterpret_cast<char*>(addr));
+			// Step 3: push ptr to stack
+			to_filter_node.push(reinterpret_cast<char*>(addr));
+			to_filter_func.push([](const char* ptr){
+					filter_func(reinterpret_cast<T*>(ptr));
+				})
 		}
 		return;
 	}
