@@ -339,9 +339,8 @@ void GarbageCollection::filter_func(SortedUnorderedMap<int,int,30000>::Node* ptr
 
 template<>
 void GarbageCollection::filter_func(SortedUnorderedMap<int,int,1>* ptr) {
-		SortedUnorderedMap<int,int,1>::Node* curr = SortedUnorderedMap<int,int,1>::getPtr(ptr->bucket[0].ui.ptr.load());
-		mark_func(curr);
-	}
+	SortedUnorderedMap<int,int,1>::Node* curr = SortedUnorderedMap<int,int,1>::getPtr(ptr->bucket[0].ui.ptr.load());
+	mark_func(curr);
 }
 
 template<>
