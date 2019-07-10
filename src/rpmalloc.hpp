@@ -50,6 +50,7 @@ void RP_free(void* ptr);
 void* RP_get_root(uint64_t i);
 size_t RP_malloc_size(const void* ptr);
 void* RP_calloc(size_t num, size_t size);
+void* RP_realloc(void* ptr, size_t new_size);
 
 #ifdef __cplusplus
 }
