@@ -66,6 +66,10 @@ class LinkedList : public RUnorderedMap<K,V>, public RetiredMonitorable {
 	};
 	// we don't consider ABA problem since we only put Node but never delete
 	atomic_pptr<Node> head;
+public:
+	LinkedList(){};
+	~LinkedList(){};
+
 
 	optional<V> get(K key, int tid){return {};}
 	optional<V> put(K key, V val, int tid){
