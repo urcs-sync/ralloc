@@ -63,7 +63,7 @@ class LinkedList : public RUnorderedMap<K,V>, public RetiredMonitorable {
 		void operator delete(void* ptr){
 			PM_free(ptr);
 		}
-	};
+	}__attribute__((aligned(CACHELINE_SIZE)));
 	// we don't consider ABA problem since we only put Node but never delete
 	atomic_pptr<Node> head;
 public:
