@@ -97,7 +97,7 @@ private:
 	pptr<Node> s;
 	padded<SeekRecord>* records;
 	//for machine 64-bit or less.
-	#define GET_POINTER_BITS 0xfffffffffffffffc
+	const static size_t GET_POINTER_BITS = 0xfffffffffffffffc;
 
 	/* helper functions */
 	//flag and tags helpers
