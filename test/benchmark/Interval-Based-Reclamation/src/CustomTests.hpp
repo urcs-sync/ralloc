@@ -242,7 +242,7 @@ void ObjRetireTest<T>::init(GlobalTestConfig* gtc){
 		r = gen();
 		T k = this->fromInt(r%range);
 		T val = k;
-		m->insert(k,val,0)
+		m->insert(k,val,0);
 	}
 	if(gtc->verbose){
 		printf("Prefilled %d\n",i);
