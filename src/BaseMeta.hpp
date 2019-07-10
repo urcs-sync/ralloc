@@ -245,7 +245,7 @@ struct GarbageCollection{
 			marked_blk.insert(reinterpret_cast<char*>(addr));
 			// Step 3: push ptr to stack
 			to_filter_node.push(reinterpret_cast<char*>(addr));
-			to_filter_func.push([](const char* ptr){
+			to_filter_func.push([](char* ptr){
 					filter_func(reinterpret_cast<T*>(ptr));
 				});
 		}
