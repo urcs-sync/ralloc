@@ -20,8 +20,20 @@ limitations under the License.
 #ifndef LINK_LIST
 #define LINK_LIST
 
-#include "SortedUnorderedMap.hpp"
+
+#include <atomic>
+#include "Harness.hpp"
+#include "ConcurrentPrimitives.hpp"
+#include "RUnorderedMap.hpp"
+#include "HazardTracker.hpp"
+#include "MemoryTracker.hpp"
+#include "RetiredMonitorable.hpp"
+#include "pptr.hpp"
 #include "trackers/AllocatorMacro.hpp"
+#include <functional>
+#include <stdio.h>
+#include <stdlib.h>
+#include <iostream>
 
 #ifdef NGC
 #define COLLECT false
@@ -29,19 +41,82 @@ limitations under the License.
 #define COLLECT true
 #endif
 
+
+/*
+ * This is a pure linked list that only supports put.
+ * Differing from other RUnorderedMap, put pushes a new node to the head.
+ * This is only for testing GC time in different data size.
+ */
+
+template <class K, class V>
+class LinkedList : public RUnorderedMap<K,V>, public RetiredMonitorable {
+	struct Node{
+		K key;
+		V val;
+		atomic_pptr<Node> next;
+		Node(){};
+		Node(K k, V v, Node* n):key(k),val(v),next(n){};
+		void* operator new(size_t size){
+			return PM_malloc(size);
+		}
+		void operator delete(void* ptr){
+			PM_free(ptr);
+		}
+	};
+	// we don't consider ABA problem since we only put Node but never delete
+	atomic_pptr<Node> head;
+
+	optional<V> get(K key, int tid){return {};}
+	optional<V> put(K key, V val, int tid){
+		Node* old_head = head.load();
+		Node* new_head = new Node(key,val,old_head);
+		do {
+			new_head->next.store(old_head);
+		} while(!head.compare_exchange_weak(old_head, new_head));
+		return {};
+	}
+	bool insert(K key, V val, int tid){
+		Node* old_head = head.load();
+		Node* new_head = new Node(key,val,old_head);
+		do {
+			new_head->next.store(old_head);
+		} while(!head.compare_exchange_weak(old_head, new_head));
+		return true;
+	}
+	optional<V> remove(K key, int tid){return {};}
+	optional<V> replace(K key, V val, int tid){return {};}
+	void* operator new(size_t size){
+		return PM_malloc(size);
+	}
+	void operator delete(void* ptr){
+		PM_free(ptr);
+	}
+}
+
 template <class K, class V>
 class LinkListFactory : public RideableFactory{
-	SortedUnorderedMap<K,V,1>* build(GlobalTestConfig* gtc){
+	LinkedList<K,V>* build(GlobalTestConfig* gtc){
 		if(gtc->restart && get_root(2) != nullptr) {
-			auto ret = reinterpret_cast<SortedUnorderedMap<K,V,1>*>(get_root(2));
+			auto ret = reinterpret_cast<LinkedList<K,V>*>(get_root(2));
 			ret->restart(gtc);
 			return ret;
 		} else {
-			auto ret = new SortedUnorderedMap<K,V,1>(gtc);
+			auto ret = new LinkedList<K,V>(gtc);
 			set_root(ret, 2);
 			return ret;
 		}
 	}
 };
+
+template<>
+void GarbageCollection::filter_func(LinkedList<int,int>* ptr) {
+	LinkedList<int,int>::Node* curr = ptr->head.load();
+	mark_func(curr);
+}
+
+template<>
+void GarbageCollection::filter_func(LinkedList<int,int>::Node* ptr) {
+	mark_func(ptr->next.load());
+}
 
 #endif

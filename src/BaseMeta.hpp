@@ -231,7 +231,7 @@ struct GarbageCollection{
 	// return true if ptr is a valid and unmarked pointer, otherwise false
 	template<class T>
 	inline void mark_func(T* ptr){
-		void* addr = static_cast<void*>(ptr);
+		void* addr = reinterpret_cast<void*>(ptr);
 		// Step 1: check if it's a valid pptr
 		if(UNLIKELY(!rpmalloc::_rgs->in_range(SB_IDX, addr))) 
 			return; // return if not in range

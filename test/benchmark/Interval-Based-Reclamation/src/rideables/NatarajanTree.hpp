@@ -669,15 +669,16 @@ void GarbageCollection::filter_func(NatarajanTree<int,int>::Node* ptr) {
 	mark_func(NatarajanTree<int,int>::getPtr(ptr->right.load()));
 }
 
-template<>
-void GarbageCollection::filter_func(NatarajanTree<std::string,std::string>* ptr) {
-	NatarajanTree<std::string,std::string>::Node* curr = NatarajanTree<std::string,std::string>::getPtr(static_cast<NatarajanTree<std::string,std::string>::Node*>(ptr->r));
-	mark_func(curr);
-}
+// GC doesn't support std::string since std::string is allocated somewhere else
+// template<>
+// void GarbageCollection::filter_func(NatarajanTree<std::string,std::string>* ptr) {
+// 	NatarajanTree<std::string,std::string>::Node* curr = NatarajanTree<std::string,std::string>::getPtr(static_cast<NatarajanTree<std::string,std::string>::Node*>(ptr->r));
+// 	mark_func(curr);
+// }
 
-template<>
-void GarbageCollection::filter_func(NatarajanTree<std::string,std::string>::Node* ptr) {
-	mark_func(NatarajanTree<std::string,std::string>::getPtr(ptr->left.load()));
-	mark_func(NatarajanTree<std::string,std::string>::getPtr(ptr->right.load()));
-}
+// template<>
+// void GarbageCollection::filter_func(NatarajanTree<std::string,std::string>::Node* ptr) {
+// 	mark_func(NatarajanTree<std::string,std::string>::getPtr(ptr->left.load()));
+// 	mark_func(NatarajanTree<std::string,std::string>::getPtr(ptr->right.load()));
+// }
 #endif

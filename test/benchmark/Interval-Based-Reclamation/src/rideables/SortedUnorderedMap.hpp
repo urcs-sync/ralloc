@@ -321,4 +321,30 @@ bool SortedUnorderedMap<K,V,idxSize>::findNode(MarkPtr* &prev, Node* &cur, Node*
 		}
 	}
 }
+
+
+template<>
+void GarbageCollection::filter_func(SortedUnorderedMap<int,int,30000>* ptr) {
+	for(int i=0; i < 30000; i++) {
+		SortedUnorderedMap<int,int,30000>::Node* curr = SortedUnorderedMap<int,int,30000>::getPtr(ptr->bucket[i].ui.ptr.load());
+		mark_func(curr);
+	}
+}
+
+template<>
+void GarbageCollection::filter_func(SortedUnorderedMap<int,int,30000>::Node* ptr) {
+	mark_func(SortedUnorderedMap<int,int,30000>::getPtr(ptr->next.ptr.load()));
+}
+
+template<>
+void GarbageCollection::filter_func(SortedUnorderedMap<int,int,1>* ptr) {
+		SortedUnorderedMap<int,int,1>::Node* curr = SortedUnorderedMap<int,int,1>::getPtr(ptr->bucket[0].ui.ptr.load());
+		mark_func(curr);
+	}
+}
+
+template<>
+void GarbageCollection::filter_func(SortedUnorderedMap<int,int,1>::Node* ptr) {
+	mark_func(SortedUnorderedMap<int,int,1>::getPtr(ptr->next.ptr.load()));
+}
 #endif
