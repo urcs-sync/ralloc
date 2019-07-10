@@ -115,7 +115,7 @@ class LinkListFactory : public RideableFactory{
 
 template<>
 inline void GarbageCollection::filter_func(LinkedList<int,int>* ptr) {
-	return mark_func(curr = ptr->head.load());
+	return mark_func(ptr->head.load());
 }
 
 template<>
