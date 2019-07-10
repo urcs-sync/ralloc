@@ -50,6 +50,7 @@ limitations under the License.
 
 template <class K, class V>
 class LinkedList : public RUnorderedMap<K,V>, public RetiredMonitorable {
+	friend class GarbageCollection;
 	struct Node{
 		K key;
 		V val;

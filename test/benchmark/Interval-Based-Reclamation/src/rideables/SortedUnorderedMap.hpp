@@ -42,6 +42,7 @@ limitations under the License.
 
 template <class K, class V, int idxSize>
 class SortedUnorderedMap : public RUnorderedMap<K,V>, public RetiredMonitorable{
+	friend class GarbageCollection;
 	struct Node;
 
 	struct MarkPtr{
@@ -65,16 +66,16 @@ private:
 	MemoryTracker<Node>* memory_tracker;
 
 	const size_t GET_POINTER_BITS = 0xfffffffffffffffe;
-	inline Node* getPtr(Node* mptr){
+	inline static Node* getPtr(Node* mptr){
 		return (Node*) ((size_t)mptr & GET_POINTER_BITS);
 	}
-	inline bool getMk(Node* mptr){
+	inline static bool getMk(Node* mptr){
 		return (bool)((size_t)mptr & 1);
 	}
-	inline Node* mixPtrMk(Node* ptr, bool mk){
+	inline static Node* mixPtrMk(Node* ptr, bool mk){
 		return (Node*) ((size_t)ptr | mk);
 	}
-	inline Node* setMk(Node* mptr){
+	inline static Node* setMk(Node* mptr){
 		return mixPtrMk(mptr,true);
 	}
 
