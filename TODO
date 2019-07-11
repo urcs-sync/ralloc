@@ -46,8 +46,11 @@ mmap multiple regions and represent them by ids, and introduce smart ptrs using 
 	~flush freelists (desc region)
 garbage collection
 	~remove RP_collect function() to disallow manual GC during online phase
-	filter function
+	~filter function
 	parallel
+	overload new and delete for string
+	run different applications on the same heap (intmain and main)
+	design IBR test for different size of memory consumption
 benchmark
 	Intruder
 	Memcached
