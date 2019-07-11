@@ -17,7 +17,11 @@ do
 	rm -rf /dev/shm/*
 	./shbench-single.sh 16
 	rm -rf /dev/shm/*
+	./shbench-single.sh 24
+	rm -rf /dev/shm/*
 	./shbench-single.sh 32
+	rm -rf /dev/shm/*
+	./shbench-single.sh 40
 	rm -rf /dev/shm/*
 	./shbench-single.sh 48
 	rm -rf /dev/shm/*

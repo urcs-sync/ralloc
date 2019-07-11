@@ -7,9 +7,9 @@ WARNING_FLAGS:=-ftrapv -Wreturn-type -W -Wall \
 FLAGS = -O3 -g -fpermissive -std=c++17 $(WARNING_FLAGS) -DMEM_CONSUME_TEST -DDESTROY
 PMMALLOC_FLAGS = $(FLAGS) -DPMMALLOC -L.
 PMMALLOC_GC_FLAGS = $(FLAGS) -DGC -DPMMALLOC -L.
-MAKALU_FLAGS = $(FLAGS) -I../ext/makalu_alloc/include -DMAKALU -L../ext/makalu_alloc/lib -lmakalu -L~/.local/lib/
-CXXFLAGS = $(PMMALLOC_GC_FLAGS) -ljemalloc 
-# CXXFLAGS = $(MAKALU_FLAGS) -ljemalloc 
+MAKALU_FLAGS = $(FLAGS) -I../ext/makalu_alloc/include -DMAKALU -L../ext/makalu_alloc/lib -lmakalu 
+# CXXFLAGS = $(PMMALLOC_GC_FLAGS) -ljemalloc 
+CXXFLAGS = $(MAKALU_FLAGS) -ljemalloc 
 # CXXFLAGS = $(FLAGS) -ljemalloc
 # CXXFLAGS = $(FLAGS) -L../../lrmalloc -l:lrmalloc.a -ldl# for built-in malloc
 LIBS = -pthread -lstdc++ -latomic -fPIC 
@@ -61,6 +61,9 @@ cache-thrash_test: ./benchmark/cache-thrash.cpp librpmalloc.a
 
 # Passive false sharing
 cache-scratch_test: ./benchmark/cache-scratch.cpp librpmalloc.a
+	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
+
+prod-con_test: ./benchmark/prod-con.cpp librpmalloc.a
 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
 
 librpmalloc.a:../obj/SizeClass.o ../obj/RegionManager.o ../obj/TCache.o ../obj/BaseMeta.o ../obj/rpmalloc.o
