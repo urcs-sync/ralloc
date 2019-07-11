@@ -8,8 +8,8 @@ FLAGS = -O3 -g -fpermissive -std=c++17 $(WARNING_FLAGS) -DMEM_CONSUME_TEST -DDES
 PMMALLOC_FLAGS = $(FLAGS) -DPMMALLOC -L.
 PMMALLOC_GC_FLAGS = $(FLAGS) -DGC -DPMMALLOC -L.
 MAKALU_FLAGS = $(FLAGS) -I../ext/makalu_alloc/include -DMAKALU -L../ext/makalu_alloc/lib -lmakalu 
-# CXXFLAGS = $(PMMALLOC_GC_FLAGS) -ljemalloc 
-CXXFLAGS = $(MAKALU_FLAGS) -ljemalloc 
+CXXFLAGS = $(PMMALLOC_GC_FLAGS) -ljemalloc 
+# CXXFLAGS = $(MAKALU_FLAGS) -ljemalloc 
 # CXXFLAGS = $(FLAGS) -ljemalloc
 # CXXFLAGS = $(FLAGS) -L../../lrmalloc -l:lrmalloc.a -ldl# for built-in malloc
 LIBS = -pthread -lstdc++ -latomic -fPIC 

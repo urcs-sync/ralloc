@@ -183,8 +183,6 @@ int main (int argc, char * argv[]){
 
 	for(i = 0; i < nthreads/2; i++) {
 		threads[i<<1].create (&producer, (void *) &wArg[i<<1]);
-	}
-	for(i = 0; i < nthreads/2; i++) {
 		threads[(i<<1)+1].create (&consumer, (void *) &wArg[(i<<1)+1]);
 	}
 	for (i = 0; i < nthreads; i++) {
