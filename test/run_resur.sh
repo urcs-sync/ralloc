@@ -15,9 +15,8 @@ do
 			fi
 			if [[ $line == *"Prefill time"* ]]; then
 				prefill_time=$(echo $line | awk '{print $4}')
-				break
 			fi
-		done < /tmp/prod-con
+		done < /tmp/resur
 
 		./bin/intmain -r2 -m$MODE -i0 -v > /tmp/resur
 		while read line; do
@@ -25,7 +24,7 @@ do
 				gc_time=$(echo $line | awk '{print $4}')
 				break
 			fi
-		done < /tmp/prod-con
+		done < /tmp/resur
 		echo "{ \"total_size\": $test_size , \"prefill_time\":  $prefill_time , \"gc_time\": $gc_time }"
 		echo "$test_size, $prefill_time, $gc_time" >> resur.csv 
 	done
