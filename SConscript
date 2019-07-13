@@ -5,7 +5,7 @@ sys.path.append('%s/library' % (Dir('#').abspath))
 Import('mainEnv')
 buildEnv = mainEnv.Clone()
 
-buildEnv.Append(CCFLAGS = ' -O3 -g -fpermissive -std=c++17 -DMEM_CONSUME_TEST -DDESTROY')
+buildEnv.Append(CCFLAGS = ' -O3 -g -fpermissive -std=c++17 -DMEM_CONSUME_TEST -DDESTROY -fPIC')
 
 buildEnv.Append(CPPPATH = ['src'])
 
