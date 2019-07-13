@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 	gtc->parseCommandLine(argc,argv);
 
 	if(gtc->verbose){
-		fprintf(stdout, "Testing:  %d threads for %lu seconds with %s\n Test size = %s ",
+		fprintf(stdout, "Testing:  %d threads for %lu seconds with %s\nTest size = %s ",
 		  gtc->task_num,gtc->interval,gtc->getRideableName().c_str(),gtc->getTestName().c_str());
 	}
 
