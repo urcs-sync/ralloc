@@ -237,12 +237,16 @@ void ObjRetireTest<T>::init(GlobalTestConfig* gtc){
 	int i = 0;
 	uint64_t r = 1;
 	std::mt19937_64 gen(1);
+	std::mt19937_64 gen2(7);
 	for(i = 0; i<prefill; i++){
 		// r = nextRand(r);
 		r = gen();
 		T k = this->fromInt(r%range);
 		T val = k;
 		m->insert(k,val,0);
+		if(gen2()%2) {
+			m->remove(k,0);
+		}
 	}
 	if(gtc->verbose){
 		printf("Prefilled %d\n",i);
