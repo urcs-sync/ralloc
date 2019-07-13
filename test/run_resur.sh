@@ -1,5 +1,6 @@
 #!/bin/bash
 
+make clean;make threadtest_test
 cd benchmark/Interval-Based-Reclamation; make clean;make; 
 echo "total_size(MB, 50% retained), prefill_time(ms), gc_time(ms)" >> resur.csv
 for i in {1..3}
@@ -7,7 +8,7 @@ do
 	for MODE in {0..5}
 	do
 		rm -rf /dev/shm/*
-		./bin/intmain/ -r2 -m$MODE -i0 -v > /tmp/resur
+		./bin/intmain -r2 -m$MODE -i0 -v > /tmp/resur
 		while read line; do
 			if [[ $line == *"Test size"* ]]; then
 				test_size=$(echo $line | awk '{print $4}')
@@ -18,7 +19,7 @@ do
 			fi
 		done < /tmp/prod-con
 
-		./bin/intmain/ -r2 -m$MODE -i0 -v > /tmp/resur
+		./bin/intmain -r2 -m$MODE -i0 -v > /tmp/resur
 		while read line; do
 			if [[ $line == *"Time elapsed"* ]]; then
 				gc_time=$(echo $line | awk '{print $4}')
