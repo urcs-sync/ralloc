@@ -73,6 +73,10 @@ ifeq ($(USE_MEMKIND),yes)
 	MALLOC=memkind
 endif
 
+ifeq ($(USE_RPMALLOC),yes)
+	MALLOC=rpmalloc
+endif
+
 # Override default settings if possible
 -include .make-settings
 
@@ -152,6 +156,14 @@ endif
 ifeq ($(MALLOC),memkind)
 	FINAL_CFLAGS+= -DUSE_MEMKIND
 	FINAL_LIBS+= -lmemkind
+endif
+
+ifeq ($(MALLOC),rpmalloc)
+	# assume that reddis is in rpmalloc/test/benchmark
+	FINAL_CFLAGS+= -DUSE_RPMALLOC -I../../../../src/
+	FINAL_LIBS := ../../../librpmalloc.a -lstdc++ $(FINAL_LIBS)
+	# TODO: there's gonna be a bunch of compatibility stuff. Let's see haobuhaoshiwhat we can do.
+# 	CC = g++
 endif
 
 REDIS_CC=$(QUIET_CC)$(CC) $(FINAL_CFLAGS)

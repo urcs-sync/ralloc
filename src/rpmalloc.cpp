@@ -113,7 +113,7 @@ void* RP_get_root(uint64_t i){
 
 // return the size of ptr in byte.
 // No check for whether ptr is allocated, only whether is within SB region
-size_t RP_malloc_size(const void* ptr){
+size_t RP_malloc_size(void* ptr){
 	assert(_rgs->in_range(SB_IDX, ptr));
 	const Descriptor* desc = base_md->desc_lookup(ptr);
 	return (size_t)desc->block_size;
