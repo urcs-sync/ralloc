@@ -245,6 +245,7 @@ void ObjRetireTest<T>::init(GlobalTestConfig* gtc){
 		T val = k;
 		m->insert(k,val,0);
 		if(gen2()%2) {
+			// 50% chance to delete the node just inserted
 			m->remove(k,0);
 		}
 	}

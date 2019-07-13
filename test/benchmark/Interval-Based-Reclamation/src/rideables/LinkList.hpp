@@ -60,6 +60,7 @@ class LinkedList : public RUnorderedMap<K,V>, public RetiredMonitorable {
 		Node(K k, V v, Node* n):key(k),val(v),next(n){};
 	}__attribute__((aligned(CACHELINE_SIZE)));
 	atomic_pptr<Node> head;
+	// to protect retired node and avoid ABA problem happening on head node
 	MemoryTracker<Node>* memory_tracker;
 public:
 	LinkedList(GlobalTestConfig* gtc):
@@ -117,7 +118,7 @@ public:
 		retired_cnt = new padded<uint64_t>[gtc->task_num];
 		int epochf = gtc->getEnv("epochf").empty()? 150:stoi(gtc->getEnv("epochf"));
 		int emptyf = gtc->getEnv("emptyf").empty()? 30:stoi(gtc->getEnv("emptyf"));
-		memory_tracker = new MemoryTracker<Node>(gtc, epochf, emptyf, 2, COLLECT);
+		memory_tracker = new MemoryTracker<Node>(gtc, epochf, emptyf, 1, COLLECT);
 	}
 	void* operator new(size_t size){
 		return PM_malloc(size);
