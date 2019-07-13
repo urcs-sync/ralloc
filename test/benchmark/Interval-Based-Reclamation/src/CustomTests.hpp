@@ -96,13 +96,17 @@ void MapChurnTest<T>::init(GlobalTestConfig* gtc){
 	int i = 0;
 	uint64_t r = 1;
 	std::mt19937_64 gen(1);
+	auto start = high_resolution_clock::now(); 
 	for(i = 0; i<prefill; i++){
 		// r = nextRand(r);
 		r = gen();
 		T k = this->fromInt(r%range);
 		T val = k;
 		m->put(k,val,0);
-}
+	}
+	auto stop = high_resolution_clock::now(); 
+	auto duration = duration_cast<milliseconds>(stop - start);
+	cout << "Prefill time = " << duration.count() <<" ms."<<endl;
 	if(gtc->verbose){
 		printf("Prefilled %d\n",i);
 	}
