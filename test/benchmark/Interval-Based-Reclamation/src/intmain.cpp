@@ -47,12 +47,12 @@ int main(int argc, char *argv[])
 	gtc->addRideableOption(new LinkListFactory<int,int>(), "LinkList");
 	gtc->addRideableOption(new NatarajanTreeFactory<int,int>(), "NatarajanTree");
 
-	gtc->addTestOption(new ObjRetireTest<int>(50,0,50,0,0,10000000,5000000), "300MB prefill:range=10000000");
-	gtc->addTestOption(new ObjRetireTest<int>(50,0,50,0,0,20000000,10000000), "600MB prefill:range=20000000");
-	gtc->addTestOption(new ObjRetireTest<int>(50,0,50,0,0,30000000,15000000), "900MB prefill:range=30000000");
-	gtc->addTestOption(new ObjRetireTest<int>(50,0,50,0,0,40000000,20000000), "1200MB prefill:range=40000000");
-	gtc->addTestOption(new ObjRetireTest<int>(50,0,50,0,0,80000000,40000000), "2400MB prefill:range=80000000");
-	gtc->addTestOption(new ObjRetireTest<int>(50,0,50,0,0,100000000,50000000), "3000MB prefill:range=100000000");
+	gtc->addTestOption(new ObjRetireTest<int>(50,0,50,0,0,10000000,5000000), "300 MB prefill:range=10000000");
+	gtc->addTestOption(new ObjRetireTest<int>(50,0,50,0,0,20000000,10000000), "600 MB prefill:range=20000000");
+	gtc->addTestOption(new ObjRetireTest<int>(50,0,50,0,0,30000000,15000000), "900 MB prefill:range=30000000");
+	gtc->addTestOption(new ObjRetireTest<int>(50,0,50,0,0,40000000,20000000), "1200 MB prefill:range=40000000");
+	gtc->addTestOption(new ObjRetireTest<int>(50,0,50,0,0,80000000,40000000), "2400 MB prefill:range=80000000");
+	gtc->addTestOption(new ObjRetireTest<int>(50,0,50,0,0,100000000,50000000), "3000 MB prefill:range=100000000");
 
 	// gtc->addTestOption(new MapOrderedGet<int>(65536, 5000), "MapOrderedGetPut:range=65536:prefill=5000");
 	// gtc->addTestOption(new MapChurnTest<int>(50,0,0,50,0,8000,1024), "MapChurn:g50i50:range=8K:prefill=1024");
@@ -66,8 +66,8 @@ int main(int argc, char *argv[])
 	gtc->parseCommandLine(argc,argv);
 
 	if(gtc->verbose){
-		fprintf(stdout, "Testing:  %d threads for %lu seconds on %s with %s\n",
-		  gtc->task_num,gtc->interval,gtc->getTestName().c_str(),gtc->getRideableName().c_str());
+		fprintf(stdout, "Testing:  %d threads for %lu seconds with %s\n Test size = %s ",
+		  gtc->task_num,gtc->interval,gtc->getRideableName().c_str(),gtc->getTestName().c_str());
 	}
 
 	// register fancy seg fault handler to get some

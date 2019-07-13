@@ -4,11 +4,10 @@ CXX = g++
 WARNING_FLAGS:=-ftrapv -Wreturn-type -W -Wall \
 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-parameter
 
-FLAGS = -O3 -g -fpermissive -std=c++17 $(WARNING_FLAGS) -DMEM_CONSUME_TEST -DDESTROY
+FLAGS = -O3 -g -fpermissive $(WARNING_FLAGS) -DMEM_CONSUME_TEST -DDESTROY -fno-omit-frame-pointer
 PMMALLOC_FLAGS = $(FLAGS) -DPMMALLOC -L.
-PMMALLOC_GC_FLAGS = $(FLAGS) -DGC -DPMMALLOC -L.
 MAKALU_FLAGS = $(FLAGS) -I../ext/makalu_alloc/include -DMAKALU -L../ext/makalu_alloc/lib -lmakalu 
-CXXFLAGS = $(PMMALLOC_GC_FLAGS) -ljemalloc 
+CXXFLAGS = $(PMMALLOC_FLAGS) -ljemalloc 
 # CXXFLAGS = $(MAKALU_FLAGS) -ljemalloc 
 # CXXFLAGS = $(FLAGS) -ljemalloc
 # CXXFLAGS = $(FLAGS) -L../../lrmalloc -l:lrmalloc.a -ldl# for built-in malloc

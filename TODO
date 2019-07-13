@@ -55,4 +55,5 @@ benchmark
 	Intruder
 	Memcached
 	Prod-con
+		~check mmap_cnt and munmap_cnt in lrmalloc when #thd goes high (they are good)
 	Redis with multiple instances
