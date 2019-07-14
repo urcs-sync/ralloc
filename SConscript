@@ -9,12 +9,7 @@ buildEnv.Append(CCFLAGS = ' -O3 -g -DMEM_CONSUME_TEST -DDESTROY -fPIC')
 
 buildEnv.Append(CPPPATH = ['src'])
 
-if buildEnv['PWB_TYPE'] == 'clflush':
-  buildEnv.Append(CCFLAGS='-DPWB_IS_CLFLUSH')
-elif buildEnv['PWB_TYPE'] == 'pcm':
-  buildEnv.Append(CCFLAGS='-DPWB_IS_PCM')
-else:
-  sys.exit("unknown PWB_TYPE.")
+buildEnv.Append(CCFLAGS='-DPWB_IS_CLFLUSH')
 
 C_SRC = Split("""
               src/SizeClass.cpp
