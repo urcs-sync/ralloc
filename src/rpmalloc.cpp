@@ -30,7 +30,6 @@ using namespace std;
 
 namespace rpmalloc{
 	bool initialized = false;
-	std::string filepath;
 	/* persistent metadata and their layout */
 	BaseMeta* base_md;
 	Regions* _rgs;
@@ -45,6 +44,7 @@ extern void public_flush_cache();
  * id is the distinguishable identity of applications.
  */
 int RP_init(const char* _id, uint64_t size){
+	string filepath;
 	string id(_id);
 	// thread_num = thd_num;
 	filepath = HEAPFILE_PREFIX + id;
