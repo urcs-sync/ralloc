@@ -64,7 +64,7 @@
 #elif defined(USE_RPMALLOC)
 #define ZMALLOC_LIB "rpmalloc"
 #include <rpmalloc.hpp>
-#define have_malloc_size 1
+#define HAVE_MALLOC_SIZE 1
 extern size_t RP_malloc_size(void *ptr);
 #define zmalloc_size(p) RP_malloc_size(p)
 

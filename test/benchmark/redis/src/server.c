@@ -1631,8 +1631,13 @@ void initServerConfig(void) {
     server.always_show_logo = CONFIG_DEFAULT_ALWAYS_SHOW_LOGO;
     server.lua_time_limit = LUA_SCRIPT_TIME_LIMIT;
 
+#ifdef USE_RPMALLOC
+    server.pm_dir_path = "/localdisk/hwen5/";
+    server.pm_file_size = 1024;
+#else
     server.pm_dir_path = NULL;
     server.pm_file_size = 0;
+#endif
 
     unsigned int lruclock = getLRUClock();
     atomicSet(server.lruclock,lruclock);
@@ -4020,6 +4025,10 @@ int main(int argc, char **argv) {
     struct timeval tv;
     int j;
 
+    printf("hello from main.\n");
+
+
+
 #ifdef REDIS_TEST
     if (argc == 3 && !strcasecmp(argv[1], "test")) {
         if (!strcasecmp(argv[2], "ziplist")) {
@@ -4173,10 +4182,11 @@ int main(int argc, char **argv) {
     int background = server.daemonize && !server.supervised;
     if (background) daemonize();
 
-#ifdef USE_MEMKIND
+#if defined(USE_MEMKIND) || defined(USE_RPMALLOC)
     if (!server.sentinel_mode) {
         zmalloc_init_pmem(server.pm_dir_path, server.pm_file_size);
     }
+    printf("init called.\n");
 #endif
 
     initServer();
@@ -4218,7 +4228,7 @@ int main(int argc, char **argv) {
     aeSetAfterSleepProc(server.el,afterSleep);
     aeMain(server.el);
     aeDeleteEventLoop(server.el);
-#if defined(USE_MEMKIND)
+#if defined(USE_MEMKIND) || defined(USE_RPMALLOC)
     zmalloc_destroy_pmem();
 #endif
     return 0;
