@@ -1633,7 +1633,7 @@ void initServerConfig(void) {
 
 #ifdef USE_RPMALLOC
     server.pm_dir_path = "/localdisk/hwen5/";
-    server.pm_file_size = 1024;
+    server.pm_file_size = 10240;
 #else
     server.pm_dir_path = NULL;
     server.pm_file_size = 0;
@@ -4027,7 +4027,12 @@ int main(int argc, char **argv) {
 
     printf("hello from main.\n");
 
-
+#if defined(USE_RPMALLOC)
+    if (!server.sentinel_mode) {
+        zmalloc_init_pmem("hwen5_redis", 17179869184);
+    }
+    printf("RPMalloc init called.\n");
+#endif
 
 #ifdef REDIS_TEST
     if (argc == 3 && !strcasecmp(argv[1], "test")) {
@@ -4182,11 +4187,10 @@ int main(int argc, char **argv) {
     int background = server.daemonize && !server.supervised;
     if (background) daemonize();
 
-#if defined(USE_MEMKIND) || defined(USE_RPMALLOC)
+#if defined(USE_MEMKIND)
     if (!server.sentinel_mode) {
         zmalloc_init_pmem(server.pm_dir_path, server.pm_file_size);
     }
-    printf("init called.\n");
 #endif
 
     initServer();
