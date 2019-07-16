@@ -30,7 +30,6 @@ using namespace std;
 
 namespace rpmalloc{
 	bool initialized = false;
-	std::string filepath;
 	/* persistent metadata and their layout */
 	BaseMeta* base_md;
 	Regions* _rgs;
@@ -45,6 +44,7 @@ extern void public_flush_cache();
  * id is the distinguishable identity of applications.
  */
 int RP_init(const char* _id, uint64_t size){
+	string filepath;
 	string id(_id);
 	// thread_num = thd_num;
 	filepath = HEAPFILE_PREFIX + id;
@@ -88,16 +88,12 @@ void RP_close(){
 }
 
 void* RP_malloc(size_t sz){
-	if(UNLIKELY(initialized==false)){
-		RP_init("no_explicit_init");
-	}
+	assert(initialized&&"RPMalloc isn't initialized!");
 	return base_md->do_malloc(sz);
 }
 
 void RP_free(void* ptr){
-	if(UNLIKELY(initialized==false)){
-		RP_init("no_explicit_init");
-	}
+	assert(initialized&&"RPMalloc isn't initialized!");
 	base_md->do_free(ptr);
 }
 
@@ -112,19 +108,20 @@ void* RP_get_root(uint64_t i){
 }
 
 // return the size of ptr in byte.
-// No check for whether ptr is allocated, only whether is within SB region
+// No check for whether ptr is allocated or isn't null
 size_t RP_malloc_size(void* ptr){
-	assert(_rgs->in_range(SB_IDX, ptr));
 	const Descriptor* desc = base_md->desc_lookup(ptr);
 	return (size_t)desc->block_size;
 }
 
 void* RP_realloc(void* ptr, size_t new_size){
+	if(!_rgs->in_range(SB_IDX, ptr)) return nullptr;
 	size_t old_size = RP_malloc_size(ptr);
 	if(old_size == new_size) {
 		return ptr;
 	}
 	void* new_ptr = RP_malloc(new_size);
+	if(UNLIKELY(new_ptr == nullptr)) return nullptr;
 	memcpy(new_ptr, ptr, old_size);
 	FLUSH(new_ptr);
 	FLUSHFENCE;
@@ -134,6 +131,7 @@ void* RP_realloc(void* ptr, size_t new_size){
 
 void* RP_calloc(size_t num, size_t size){
 	void* ptr = RP_malloc(num*size);
+	if(UNLIKELY(ptr == nullptr)) return nullptr;
 	size_t real_size = RP_malloc_size(ptr);
 	memset(ptr, 0, real_size);
 	FLUSH(ptr);
