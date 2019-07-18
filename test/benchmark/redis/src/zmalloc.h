@@ -67,6 +67,8 @@
 #define HAVE_MALLOC_SIZE 1
 extern size_t RP_malloc_size(void *ptr);
 #define zmalloc_size(p) RP_malloc_size(p)
+void zmalloc_init_pmem(const char* pm_dir_path, size_t pm_file_size);
+void zmalloc_destroy_pmem();
 
 #elif defined(__APPLE__)
 #include <malloc/malloc.h>
