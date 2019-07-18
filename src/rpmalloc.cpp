@@ -138,3 +138,8 @@ void* RP_calloc(size_t num, size_t size){
 	FLUSHFENCE;
 	return ptr;
 }
+
+int RP_in_prange(void* ptr){
+	if(_rgs->in_range(SB_IDX,ptr)) return 1;
+	else return 0;
+}

@@ -51,7 +51,8 @@ void* RP_get_root(uint64_t i);
 size_t RP_malloc_size(void* ptr);
 void* RP_calloc(size_t num, size_t size);
 void* RP_realloc(void* ptr, size_t new_size);
-
+/* return 1 if ptr is in range of Ralloc heap, otherwise 0. */
+int RP_in_prange(void* ptr);
 #ifdef __cplusplus
 }
 #endif
