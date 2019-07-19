@@ -124,11 +124,7 @@ void zmalloc_destroy_pmem() {
 
 #ifdef USE_RPMALLOC
 void zmalloc_init_pmem(const char* pm_dir_path, size_t pm_file_size) {
-    int err = RP_init(pm_dir_path, pm_file_size);
-    if (err == 1){
-        fprintf(stderr, "RP_init returns restart == 1. PM file exists?");
-        exit(1);
-    }
+    RP_init(pm_dir_path, pm_file_size);
 }
 void zmalloc_destroy_pmem(){
     RP_close();
