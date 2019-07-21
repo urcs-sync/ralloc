@@ -3,12 +3,12 @@
 
 #include <atomic>
 #include <iostream>
-#include <mutex>
 #include <functional>
 #include <set>
 #include <vector>
 #include <stack>
 #include <utility>
+#include <pthread.h>
 
 #include "pm_config.hpp"
 // #include "thread_util.hpp"
@@ -260,7 +260,8 @@ class BaseMeta {
 public:
 	// unused small sb
 	RP_TRANSIENT AtomicCrossPtrCnt<Descriptor, DESC_IDX> avail_sb;
-	RP_PERSIST bool dirty;
+	RP_PERSIST pthread_mutexattr_t dirty_attr;
+	RP_PERSIST pthread_mutex_t dirty_mtx;
 
 	RP_PERSIST ProcHeap heaps[MAX_SZ_IDX];
 	RP_PERSIST CrossPtr<char, SB_IDX> roots[MAX_ROOTS];
@@ -275,7 +276,10 @@ public:
 	}
 	void* do_malloc(size_t size);
 	void do_free(void* ptr);
-	inline bool is_dirty(){ return dirty; }
+	bool is_dirty();
+	// set_dirty must be called AFTER is_dirty
+	void set_dirty();
+	void set_clean();
 	inline uint64_t min(uint64_t a, uint64_t b){return a>b?b:a;}
 	inline uint64_t max(uint64_t a, uint64_t b){return a>b?a:b;}
 	inline uint64_t round_up(uint64_t numToRound, uint64_t multiple) {
@@ -308,16 +312,14 @@ public:
 	void restart(){
 		// Restart, setting values and flags to normal
 		// Should be called during restart
-		if(dirty) {
+		if(is_dirty()) {
 			GarbageCollection gc;
 			gc();
 		}
 		FLUSHFENCE;
 		// here restart is done, and "dirty" should be set to true until
 		// writeback() is called so that crash will result in a true dirty.
-		dirty = true;
-		FLUSH(&dirty);
-		FLUSHFENCE;
+		set_dirty();
 	}
 	void writeback(){
 		// Give back tcached blocks
@@ -330,9 +332,7 @@ public:
 			FLUSH(addr);
 		}
 		FLUSHFENCE;
-		dirty = false;
-		FLUSH(&dirty);
-		FLUSHFENCE;
+		set_clean();
 	}
 
 private:

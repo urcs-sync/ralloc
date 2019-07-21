@@ -112,6 +112,39 @@ inline bool AtomicCrossPtrCnt<T,idx>::compare_exchange_strong(ptr_cnt<T>& expect
 	return ret;
 }
 
+void BaseMeta::set_dirty(){
+	// this must be called AFTER is_dirty
+	int s = pthread_mutex_trylock(&dirty_mtx);
+	assert(s!=EOWNERDEAD&&"previous apps died! call is_dirty first!");
+}
+
+bool BaseMeta::is_dirty(){
+	int s = pthread_mutex_trylock(&dirty_mtx);
+	switch(s){
+	case EOWNERDEAD:
+		pthread_mutex_consistent(&dirty_mtx);
+		return true;
+	case 0:
+		// succeeds
+		pthread_mutex_unlock(&dirty_mtx);
+		return false;
+	case EBUSY:
+	case EAGAIN:
+		return true;
+	case EINVAL:
+		pthread_mutex_destroy(&dirty_mtx);
+		pthread_mutex_init(&dirty_mtx, &dirty_attr);
+		return true;
+	default:
+		printf("something unexpected happens when check dirty_mtx\n"); 
+		exit(1);
+	}// switch(s)
+}
+
+void BaseMeta::set_clean(){
+	pthread_mutex_unlock(&dirty_mtx);
+}
+
 BaseMeta::BaseMeta() noexcept
 : 
 	avail_sb(),
@@ -119,8 +152,12 @@ BaseMeta::BaseMeta() noexcept
 	// thread_num(thd_num) {
 {
 	/* allocate these persistent data into specific memory address */
-	dirty = true;
-	FLUSH(&dirty);
+	pthread_mutexattr_init(&dirty_attr);
+	pthread_mutexattr_setrobust(&dirty_attr, PTHREAD_MUTEX_ROBUST);
+	pthread_mutex_init(&dirty_mtx, &dirty_attr);
+	set_dirty();
+	FLUSH(&dirty_attr);
+	FLUSH(&dirty_mtx);
 	/* heaps init */
 	for (size_t idx = 0; idx < MAX_SZ_IDX; ++idx){
 		ProcHeap& heap = heaps[idx];
@@ -644,7 +681,7 @@ void GarbageCollection::operator() () {
 		to_filter_func.pop();
 		func(node,*this);
 	}
-	printf("Done!%lu reachable blocks in total.\n", marked_blk.size());
+	printf("Done!\nReachable blocks = %lu\n", marked_blk.size());
 
 	// Step 2: sweep phase, update variables.
 	printf("Reconstructing metadata...");
@@ -665,28 +702,28 @@ void GarbageCollection::operator() () {
 				((uint64_t)curr_sb>>SB_SHIFT) == ((uint64_t)(*curr_marked_blk)>>SB_SHIFT)) 
 		{ 
 			// curr_marked_blk doesn't reach the end of marked_blk and curr_marked_blk is in curr_sb
-			assert(curr_desc->heap != nullptr);
 
-			if(curr_desc->heap->sc_idx == 0) {
-				// large sb that's in use
-				assert((*curr_marked_blk) == curr_sb);
-				assert(curr_desc->superblock == curr_sb);
-				assert(curr_desc->maxcount == 1);
-				anchor.state = SB_FULL; // set it as full
-			} 
-			else {
-				// small sb that's in use
-				assert(curr_desc->superblock == curr_sb);
-
-				anchor.state = SB_PARTIAL;
-				for(char* free_block = last_possible_free_block; 
-					free_block < (*curr_marked_blk); free_block+=curr_desc->block_size){
-					// put last_possible_free_block...(curr_marked_blk-1) to free blk list
-					(*reinterpret_cast<pptr<char>*>(free_block)) = free_blocks_head;
-					free_blocks_head = free_block;
-					anchor.count++;
+			if(curr_desc->heap != nullptr &&
+				curr_desc->superblock == curr_sb) {
+				// false positive shouldn't enter here
+				if(curr_desc->heap->sc_idx == 0) {
+					// large sb that's in use
+					assert((*curr_marked_blk) == curr_sb);
+					assert(curr_desc->maxcount == 1);
+					anchor.state = SB_FULL; // set it as full
+				} 
+				else {
+					// small sb that's in use
+					anchor.state = SB_PARTIAL;
+					for(char* free_block = last_possible_free_block; 
+						free_block < (*curr_marked_blk); free_block+=curr_desc->block_size){
+						// put last_possible_free_block...(curr_marked_blk-1) to free blk list
+						(*reinterpret_cast<pptr<char>*>(free_block)) = free_blocks_head;
+						free_blocks_head = free_block;
+						anchor.count++;
+					}
+					last_possible_free_block = (*curr_marked_blk)+curr_desc->block_size;
 				}
-				last_possible_free_block = (*curr_marked_blk)+curr_desc->block_size;
 			}
 			curr_marked_blk++;
 		}
