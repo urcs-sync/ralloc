@@ -237,8 +237,9 @@ void ObjRetireTest<T>::init(GlobalTestConfig* gtc){
 	// prefill
 	int i = 0;
 	uint64_t r = 1;
-	std::mt19937_64 gen(1);
-	std::mt19937_64 gen2(7);
+	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+	std::mt19937_64 gen(seed);
+	std::mt19937_64 gen2(seed+7);
 	auto start = std::chrono::high_resolution_clock::now(); 
 	for(i = 0; i<prefill; i++){
 		// r = nextRand(r);
