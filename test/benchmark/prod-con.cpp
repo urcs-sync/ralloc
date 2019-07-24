@@ -107,11 +107,12 @@ public:
   int objNum;
   int objSize;
 };
-
+pthread_barrier_t barrier;
 void * producer (void * arg)
 {
 	// Producer: allocate objNum of objects in size of ObjSize, push each to msq
 	workerArg& w1 = *(workerArg *) arg;
+	pthread_barrier_wait(&barrier);
 	for (int i = 0; i < w1.objNum; i++) {
 		// Allocate the object.
 		char * obj = (char*)pm_malloc(sizeof(char)*w1.objSize);
@@ -132,6 +133,7 @@ void * consumer (void * arg)
 	// Consumer: pop objects from msq, deallocate objNum of objects
 	workerArg& w1 = *(workerArg *) arg;
 	int i = 0;
+	pthread_barrier_wait(&barrier);
 	while(i < w1.objNum) {
 		// pop from msq
 		auto obj = w1.msq->dequeue(1);
@@ -161,6 +163,7 @@ int main (int argc, char * argv[]){
 		fprintf (stderr, "Usage: %s nthreads objNum objSize\n", argv[0]);
 		return 1;
 	}
+	pthread_barrier_init(&barrier,NULL,nthreads);
 	HL::Fred * threads = new HL::Fred[nthreads];
 	HL::Fred::setConcurrency (HL::CPUInfo::getNumProcessors());
 	std::vector<MichaelScottQueue<char*>*> msqs;
