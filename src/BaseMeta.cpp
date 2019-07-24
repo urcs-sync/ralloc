@@ -344,17 +344,15 @@ void BaseMeta::flush_cache(size_t sc_idx, TCacheBin* cache) {
 		assert(newanchor.count < maxcount);
 
 		// CAS success
-		if (newanchor.state == SB_EMPTY) {
-			/* In this case, state in desc is set to be empty (aka to free)
-			 * though this desc may still be in partial list.
-			 * Others attempt to allocate from desc's sb will
-			 * fail and help retire both sb and desc.
-			 * 
-			 */
-
+		if (oldanchor.state == SB_FULL) {
+			if(newanchor.state == SB_EMPTY) {
+				// this sb becomes empty from full
+				small_sb_retire(superblock, SBSIZE);
+			} else {
+				// this sb becomes partial from full
+				heap_push_partial(desc);
+			}
 		}
-		else if (oldanchor.state == SB_FULL)
-			heap_push_partial(desc);
 	}
 }
 
@@ -546,7 +544,6 @@ void* BaseMeta::small_sb_alloc(size_t size){
 }
 inline void BaseMeta::small_sb_retire(void* sb, size_t size){
 	assert(size == SBSIZE);
-
 	Descriptor* desc = desc_lookup(sb);
 	new (desc) Descriptor(); // at this time we erase data in this desc
 	ptr_cnt<Descriptor> oldhead = avail_sb.load();
