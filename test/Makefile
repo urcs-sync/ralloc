@@ -43,7 +43,7 @@ arrayqueue_test: arrayqueue_test.cpp librpmalloc.a
 ../obj/%.o: ../src/%.cpp
 	$(CXX) -I $(SRC) -o $@ -c $^ $(CXXFLAGS)
 
-benchmark_pm: threadtest_test sh6bench_test larson_test cache-scratch_test cache-thrash_test
+benchmark_pm: threadtest_test sh6bench_test larson_test prod-con_test #cache-scratch_test cache-thrash_test
 
 threadtest_test: ./benchmark/threadtest.cpp librpmalloc.a
 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
@@ -54,13 +54,13 @@ sh6bench_test: ./benchmark/sh6bench.cpp librpmalloc.a
 larson_test: ./benchmark/larson.cpp librpmalloc.a
 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
 
-# Active false sharing
-cache-thrash_test: ./benchmark/cache-thrash.cpp librpmalloc.a
-	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
+# # Active false sharing
+# cache-thrash_test: ./benchmark/cache-thrash.cpp librpmalloc.a
+# 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
 
-# Passive false sharing
-cache-scratch_test: ./benchmark/cache-scratch.cpp librpmalloc.a
-	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
+# # Passive false sharing
+# cache-scratch_test: ./benchmark/cache-scratch.cpp librpmalloc.a
+# 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
 
 prod-con_test: ./benchmark/prod-con.cpp librpmalloc.a
 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
