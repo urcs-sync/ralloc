@@ -77,6 +77,38 @@
 
   #define pm_close() MAK_close()
 
+#elif defined(PMDK)
+
+  #include <libpmemobj.h>
+  #define HEAPFILE "/dev/shm/pmdk_heap_wcai6"
+  #define PMDK_FILESIZE 5*1024*1024*1024ULL + 24
+  thread_local PMEMoid temp_ptr;
+  PMEMobjpool* pop = nullptr;
+  struct dummy_t{
+    uint64_t a;
+  }
+  TOID_DECLARE(dummy_t, 0);
+
+  #define pm_malloc(s) ({\
+    pmemobj_zalloc(pop, &temp_ptr, s, 0);\
+    pmemobj_direct(temp_ptr);\
+  })
+  #define pm_free(p) {\
+    temp_ptr = pmemobj_oid(p);\
+    pmemobj_free(&temp_ptr);\
+  }
+
+  #define pm_init() {\
+    pop = pmemobj_create(HEAPFILE, "test", PMDK_FILESIZE, 0666);\
+    if (pop == nullptr) {\
+      perror("pmemobj_create");\
+      return 1;\
+    }\
+  }
+  #define pm_close() {\
+    pmemobj_close(pop);\
+  }
+
 #else // MAKALU ends
 
   #define pm_malloc(s) malloc(s)

@@ -7,10 +7,12 @@ WARNING_FLAGS:=-ftrapv -Wreturn-type -W -Wall \
 FLAGS = -O3 -g -fpermissive $(WARNING_FLAGS) -DMEM_CONSUME_TEST -DDESTROY -fno-omit-frame-pointer
 PMMALLOC_FLAGS = $(FLAGS) -DPMMALLOC -L.
 MAKALU_FLAGS = $(FLAGS) -I../ext/makalu_alloc/include -DMAKALU -L../ext/makalu_alloc/lib -lmakalu 
+PMDK_FLAGS = $(FLAGS) -DPMDK -lpmemobj 
 CXXFLAGS = $(PMMALLOC_FLAGS) -ljemalloc 
 # CXXFLAGS = $(MAKALU_FLAGS) -ljemalloc 
 # CXXFLAGS = $(FLAGS) -ljemalloc
 # CXXFLAGS = $(FLAGS) -L../../lrmalloc -l:lrmalloc.a -ldl# for built-in malloc
+# CXXFLAGS = $(PMDK_FLAGS) -ljemalloc
 LIBS = -pthread -lstdc++ -latomic -fPIC 
 
 
