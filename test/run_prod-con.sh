@@ -20,15 +20,5 @@ do
 	./prod-con-single.sh 24
 	rm -rf /dev/shm/*
 	./prod-con-single.sh 32
-	rm -rf /dev/shm/*
-	./prod-con-single.sh 40
-	rm -rf /dev/shm/*
-	./prod-con-single.sh 48
-	rm -rf /dev/shm/*
-	./prod-con-single.sh 64
-	rm -rf /dev/shm/*
-	./prod-con-single.sh 72
-	rm -rf /dev/shm/*
-	./prod-con-single.sh 80 
 done
 cp prod-con.csv ../data/prod-con.csv

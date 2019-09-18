@@ -20,15 +20,5 @@ do
 	./shbench-single.sh 24
 	rm -rf /dev/shm/*
 	./shbench-single.sh 32
-	rm -rf /dev/shm/*
-	./shbench-single.sh 40
-	rm -rf /dev/shm/*
-	./shbench-single.sh 48
-	rm -rf /dev/shm/*
-	./shbench-single.sh 64
-	rm -rf /dev/shm/*
-	./shbench-single.sh 72
-	rm -rf /dev/shm/*
-	./shbench-single.sh 80 
 done
 cp shbench.csv ../data/shbench.csv

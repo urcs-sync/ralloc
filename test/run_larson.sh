@@ -20,15 +20,5 @@ do
 	./larson-single.sh 24
 	rm -rf /dev/shm/*
 	./larson-single.sh 32
-	rm -rf /dev/shm/*
-	./larson-single.sh 40
-	rm -rf /dev/shm/*
-	./larson-single.sh 48
-	rm -rf /dev/shm/*
-	./larson-single.sh 64
-	rm -rf /dev/shm/*
-	./larson-single.sh 72
-	rm -rf /dev/shm/*
-	./larson-single.sh 80 
 done
 cp larson.csv ../data/larson.csv

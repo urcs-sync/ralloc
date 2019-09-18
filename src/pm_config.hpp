@@ -43,7 +43,7 @@ enum RegionIndex : int {
 #endif
 
 /* user customized macros */
-#define HEAPFILE_PREFIX "/dev/shm/"
+#define HEAPFILE_PREFIX "/mnt/pmem/"
 #define ENABLE_FILTER_FUNC 1
 // #define DEBUG 1
 
@@ -71,7 +71,7 @@ const int SB_SHIFT = 16; // assume size of a superblock is 64K
 const int DESC_SHIFT = 6; // assume size of a descriptor is 64B
 
 /* Customizable Values */
-const uint64_t MAX_SB_AMOUNT = 256*1024ULL; // maximum of superblocks in region
+const uint64_t MAX_SB_AMOUNT = 16*1024ULL; // maximum of superblocks in region
 const uint64_t MAX_DESC_AMOUNT = MAX_SB_AMOUNT;
 const uint64_t MIN_SB_REGION_SIZE = SBSIZE*MAX_SB_AMOUNT; // min sb region size
 const int64_t MAX_SB_REGION_SIZE = 64*SBSIZE*MAX_SB_AMOUNT; // max possible sb region size to call RP_init. Currently it's 1TB which must be sufficient

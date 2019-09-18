@@ -7,4 +7,4 @@
 ./run_prod-con.sh
 # testing Redis TODO
 # testing GC time consumption
-./run_resur.sh
+#./run_resur.sh

@@ -1,12 +1,17 @@
 #ifndef ALLOCATOR_MACRO
 #define ALLOCATOR_MACRO
-
+#include "pfence_util.h"
 #ifdef PMMALLOC
 
   #include "rpmalloc.hpp"
   #define pm_malloc(s) RP_malloc(s)
-  #define pm_free(p) RP_free(p)
-  #define pm_init() RP_init("test")
+  #define pm_free(p) {\
+  	RP_free(p);\
+	p = nullptr;\
+	FLUSH(&p);\
+	FLUSHFENCE;\
+  }
+  #define pm_init() RP_init("test", 3*1024*1024*1024ULL + 24)
   #define pm_close() RP_close()
 
 #elif defined(MAKALU) // PMMALLOC ends
@@ -14,10 +19,10 @@
   #include "makalu.h"
   #include <fcntl.h>
   #include <sys/mman.h>
-  #define MAKALU_FILESIZE 5*1024*1024*1024ULL + 24
+  #define MAKALU_FILESIZE 3*1024*1024*1024ULL + 24
   #define pm_malloc(s) MAK_malloc(s)
   #define pm_free(p) MAK_free(p)
-  #define HEAPFILE "/dev/shm/gc_heap_wcai6"
+  #define HEAPFILE "/mnt/pmem/gc_heap_wcai6"
 
   char *base_addr = NULL;
   static char *curr_addr = NULL;
@@ -80,14 +85,10 @@
 #elif defined(PMDK)
 
   #include <libpmemobj.h>
-  #define HEAPFILE "/dev/shm/pmdk_heap_wcai6"
-  #define PMDK_FILESIZE 5*1024*1024*1024ULL + 24
+  #define HEAPFILE "/mnt/pmem/pmdk_heap_wcai6"
+  #define PMDK_FILESIZE 3*1024*1024*1024ULL + 24
   thread_local PMEMoid temp_ptr;
   PMEMobjpool* pop = nullptr;
-  struct dummy_t{
-    uint64_t a;
-  }
-  TOID_DECLARE(dummy_t, 0);
 
   #define pm_malloc(s) ({\
     pmemobj_zalloc(pop, &temp_ptr, s, 0);\
