@@ -143,3 +143,12 @@ int RP_in_prange(void* ptr){
 	if(_rgs->in_range(SB_IDX,ptr)) return 1;
 	else return 0;
 }
+
+int RP_region_range(int idx, void** start_addr, void** end_addr){
+	if(start_addr == nullptr || end_addr == nullptr || idx>=_rgs->regions.size()){
+		return 1;
+	}
+	*start_addr = (void*)_rgs->regions_address[idx];
+	*end_addr = (void*) ((uint64_t)_rgs->regions_address[idx] + _rgs->regions[idx]->FILESIZE);
+	return 0;
+}
