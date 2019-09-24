@@ -53,6 +53,8 @@ void* RP_calloc(size_t num, size_t size);
 void* RP_realloc(void* ptr, size_t new_size);
 /* return 1 if ptr is in range of Ralloc heap, otherwise 0. */
 int RP_in_prange(void* ptr);
+/* return 1 if the query is invalid, otherwise 0 and write start and end addr to the parameter. */
+int RP_region_range(int idx, void** start_addr, void** end_addr);
 #ifdef __cplusplus
 }
 #endif
