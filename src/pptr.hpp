@@ -106,7 +106,7 @@ public:
 		off = to_pptr_off(v, this);
 		return *this;
 	}
-	inline T& operator [] (size_t ind) const { // subscript
+	inline T& operator [] (size_t idx) const { // subscript
 	        return static_cast<T*>(*this)[idx];
 	}
 	bool is_null() const {
