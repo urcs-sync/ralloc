@@ -106,6 +106,12 @@ public:
 		off = to_pptr_off(v, this);
 		return *this;
 	}
+	inline T& operator [] (size_t ind){ // subscript
+	        // get transient pointer
+		T* v = from_pptr_off(off, this); 
+		// dereference after pointer arithmetic
+		return *(v+ind);
+	}
 	bool is_null() const {
 		return off == PPTR_PATTERN_POS;
 	}
