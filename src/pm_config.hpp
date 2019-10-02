@@ -73,11 +73,11 @@ const int DESC_SHIFT = 6; // assume size of a descriptor is 64B
 /* Customizable Values */
 const uint64_t MAX_SB_AMOUNT = 16*1024ULL; // maximum of superblocks in region
 const uint64_t MAX_DESC_AMOUNT = MAX_SB_AMOUNT;
-const uint64_t MIN_SB_REGION_SIZE = SBSIZE*MAX_SB_AMOUNT; // min sb region size
-const int64_t MAX_SB_REGION_SIZE = 64*SBSIZE*MAX_SB_AMOUNT; // max possible sb region size to call RP_init. Currently it's 1TB which must be sufficient
+const uint64_t MIN_SB_REGION_SIZE = 1*1024*1024*1024ULL; // min sb region size
+const int64_t MAX_SB_REGION_SIZE = SBSIZE*MAX_SB_AMOUNT; // max possible sb region size to call RP_init. Currently it's 1TB which must be sufficient
 const uint64_t MAX_DESC_REGION_SIZE = DESCSIZE*MAX_DESC_AMOUNT;
 const int MAX_ROOTS = 1024;
-const uint64_t SB_REGION_EXPAND_SIZE = 1*1024*1024*1024ULL;
+const uint64_t SB_REGION_EXPAND_SIZE = MIN_SB_REGION_SIZE;
 /*
  * Dig 16 least significant bits inside pptr and atomic_pptr to create unique 
  * bits pattern. The least bit is sign bit.
