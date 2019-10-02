@@ -200,7 +200,7 @@ void doBench(void *arg)
 	char **save_end = mpe;
 
 	while (repeat--){ 
-	for (size_base = 1;
+	for (size_base = uMinBlockSize;
 		 size_base < uMaxBlockSize;
 		 size_base = size_base * 3 / 2 + 1){
 		for (size = size_base; size; size /= 2){
