@@ -74,4 +74,4 @@ clean:
 	rm -f *_test
 	rm -rf ../obj/*
 	rm -f librpmalloc.a
-	rm -rf /dev/shm/*
+	rm -rf /mnt/pmem/*
