@@ -22,7 +22,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" int RP_init(const char* _id, uint64_t size = 16*1024*1024*1024ULL);
+extern "C" int RP_init(const char* _id, uint64_t size = 5*1024*1024*1024ULL);
 #include "BaseMeta.hpp"
 namespace rpmalloc{
 	extern bool initialized;
