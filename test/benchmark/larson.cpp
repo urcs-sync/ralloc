@@ -206,7 +206,6 @@ int main (int argc, char *argv[])
   lran2_init(&rgen, seed) ;
   // init_space = CountReservedSpace() ;
   pm_init();
-
 #if defined(_MT) || defined(_REENTRANT)
   //#ifdef _MT
   runthreads(sleep_cnt, min_threads, max_threads, chperthread, num_rounds) ;

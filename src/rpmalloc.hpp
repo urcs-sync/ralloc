@@ -22,7 +22,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" int RP_init(const char* _id, uint64_t size = 16*1024*1024*1024ULL);
+extern "C" int RP_init(const char* _id, uint64_t size = 5*1024*1024*1024ULL);
 #include "BaseMeta.hpp"
 namespace rpmalloc{
 	extern bool initialized;
@@ -53,6 +53,8 @@ void* RP_calloc(size_t num, size_t size);
 void* RP_realloc(void* ptr, size_t new_size);
 /* return 1 if ptr is in range of Ralloc heap, otherwise 0. */
 int RP_in_prange(void* ptr);
+/* return 1 if the query is invalid, otherwise 0 and write start and end addr to the parameter. */
+int RP_region_range(int idx, void** start_addr, void** end_addr);
 #ifdef __cplusplus
 }
 #endif
