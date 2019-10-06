@@ -5,12 +5,7 @@
 
   #include "rpmalloc.hpp"
   #define pm_malloc(s) RP_malloc(s)
-  #define pm_free(p) {\
-  	RP_free(p);\
-	p = nullptr;\
-	FLUSH(&p);\
-	FLUSHFENCE;\
-  }
+  #define pm_free(p) RP_free(p)
   #define pm_init() RP_init("test", 5*1024*1024*1024ULL + 24)
   #define pm_close() RP_close()
 
