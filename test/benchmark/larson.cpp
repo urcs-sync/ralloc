@@ -244,8 +244,6 @@ void runloops(long sleep_cnt, int num_chunks )
       blk_size = min_size+lran2(&rgen)%(max_size - min_size) ;
     }
     blkp[cblks] = (char *) pm_malloc(blk_size) ;
-    FLUSH(&blkp[cblks]);
-    FLUSHFENCE;
     blksize[cblks] = blk_size ;
     assert(blkp[cblks] != NULL) ;
   }
@@ -261,8 +259,6 @@ void runloops(long sleep_cnt, int num_chunks )
 	blk_size = min_size+lran2(&rgen)%(max_size - min_size) ;
       }
       blkp[victim] = (char *) pm_malloc(blk_size) ;
-      FLUSH(&blkp[victim]);
-      FLUSHFENCE;
       blksize[victim] = blk_size ;
       assert(blkp[victim] != NULL) ;
     }
@@ -426,8 +422,6 @@ restart:
       blk_size = pdea->min_size+lran2(&pdea->rgen)%range ;
     }
     pdea->array[victim] = (char *) pm_malloc(blk_size) ;
-    FLUSH(&pdea->array[victim]);
-    FLUSHFENCE;
 
     pdea->blksize[victim] = blk_size ;
     assert(pdea->array[victim] != NULL) ;
@@ -473,8 +467,6 @@ static void warmup(char **blkp, int num_chunks )
       blk_size = min_size+lran2(&rgen)%(max_size-min_size) ;
     }
     blkp[cblks] = (char *) pm_malloc(blk_size) ;
-    FLUSH(&blkp[cblks]);
-    FLUSHFENCE;
     blksize[cblks] = blk_size ;
     assert(blkp[cblks] != NULL) ;
   }
@@ -497,8 +489,6 @@ static void warmup(char **blkp, int num_chunks )
       blk_size = min_size+lran2(&rgen)%(max_size - min_size) ;
     }
     blkp[victim] = (char *) pm_malloc(blk_size) ;
-    FLUSH(&blkp[victim]);
-    FLUSHFENCE;
     blksize[victim] = blk_size ;
     assert(blkp[victim] != NULL) ;
   }
