@@ -4,19 +4,19 @@
 #ifdef PMMALLOC
 
   #include "rpmalloc.hpp"
-  #define pm_malloc(s) RP_malloc(s)
-  #define pm_free(p) RP_free(p)
-  #define pm_init() RP_init("test", 5*1024*1024*1024ULL + 24)
-  #define pm_close() RP_close()
+  inline void* pm_malloc(size_t s) { return RP_malloc(s); }
+  inline void pm_free(void* p) { RP_free(p); }
+  inline int pm_init() { return RP_init("test", 5*1024*1024*1024ULL + 24); }
+  inline void pm_close() { RP_close(); }
 
 #elif defined(MAKALU) // PMMALLOC ends
 
   #include "makalu.h"
   #include <fcntl.h>
   #include <sys/mman.h>
-  #define MAKALU_FILESIZE 5*1024*1024*1024ULL + 24
-  #define pm_malloc(s) MAK_malloc(s)
-  #define pm_free(p) MAK_free(p)
+  #define MAKALU_FILESIZE (5*1024*1024*1024ULL + 24)
+  inline void* pm_malloc(size_t s) { return MAK_malloc(s); }
+  inline void pm_free(void* p) { MAK_free(p); }
   #define HEAPFILE "/mnt/pmem/gc_heap_wcai6"
 
   char *base_addr = NULL;
@@ -70,47 +70,49 @@
       
       return 0;
   }
-  #define pm_init() {\
-    __map_persistent_region();\
-	MAK_start(&__nvm_region_allocator);\
+  inline int pm_init() {
+    __map_persistent_region();
+    MAK_start(&__nvm_region_allocator);
+    return 0;
   }
 
-  #define pm_close() MAK_close()
+  inline void pm_close() { MAK_close(); }
 
 #elif defined(PMDK)
 
   #include <libpmemobj.h>
   #define HEAPFILE "/mnt/pmem/pmdk_heap_wcai6"
-  #define PMDK_FILESIZE 5*1024*1024*1024ULL + 24
+  #define PMDK_FILESIZE (5*1024*1024*1024ULL + 24)
   thread_local PMEMoid temp_ptr;
   PMEMobjpool* pop = nullptr;
 
-  #define pm_malloc(s) ({\
-    pmemobj_zalloc(pop, &temp_ptr, s, 0);\
-    pmemobj_direct(temp_ptr);\
-  })
-  #define pm_free(p) {\
-    temp_ptr = pmemobj_oid(p);\
-    pmemobj_free(&temp_ptr);\
+  inline void* pm_malloc(size_t s) {
+    pmemobj_zalloc(pop, &temp_ptr, s, 0);
+    return pmemobj_direct(temp_ptr);
+  }
+  inline void pm_free(void* p) {
+    temp_ptr = pmemobj_oid(p);
+    pmemobj_free(&temp_ptr);
   }
 
-  #define pm_init() {\
-    pop = pmemobj_create(HEAPFILE, "test", PMDK_FILESIZE, 0666);\
-    if (pop == nullptr) {\
-      perror("pmemobj_create");\
-      return 1;\
-    }\
+  inline int pm_init() {
+    pop = pmemobj_create(HEAPFILE, "test", PMDK_FILESIZE, 0666);
+    if (pop == nullptr) {
+      perror("pmemobj_create");
+      return 1;
+    }
+    else return 0;
   }
-  #define pm_close() {\
-    pmemobj_close(pop);\
+  inline void pm_close() {
+      pmemobj_close(pop);
   }
 
 #else // MAKALU ends
 
-  #define pm_malloc(s) malloc(s)
-  #define pm_free(p) free(p)
-  #define pm_init()
-  #define pm_close()
+  inline void* pm_malloc(size_t s) { return malloc(s); }
+  inline void pm_free(void* p) { free(p); }
+  inline int pm_init() { return 0; }
+  inline void pm_close() { return; }
 
 #endif //else ends
 
