@@ -612,6 +612,7 @@ void* BaseMeta::do_malloc(size_t size){
 	return cache->pop_block();
 }
 void BaseMeta::do_free(void* ptr){
+	if(ptr==nullptr) return;
 	assert(_rgs->in_range(SB_IDX,ptr));
 	Descriptor* desc = desc_lookup(ptr);
 	// @todo: this can happen with dynamic loading

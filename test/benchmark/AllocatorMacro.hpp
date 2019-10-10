@@ -85,12 +85,13 @@
   #define PMDK_FILESIZE (5*1024*1024*1024ULL + 24)
   thread_local PMEMoid temp_ptr;
   PMEMobjpool* pop = nullptr;
-
   inline void* pm_malloc(size_t s) {
-    pmemobj_zalloc(pop, &temp_ptr, s, 0);
+    int ret=pmemobj_alloc(pop, &temp_ptr, s, 0, nullptr,nullptr);
+    if(ret==-1)return nullptr;
     return pmemobj_direct(temp_ptr);
   }
   inline void pm_free(void* p) {
+    if(p==nullptr) return;
     temp_ptr = pmemobj_oid(p);
     pmemobj_free(&temp_ptr);
   }
