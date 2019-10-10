@@ -14,7 +14,7 @@ BINARY=./sh6bench_test
 THREADS=$1
 
 PARAMS=/tmp/shbench_params
-echo "1000000" > $PARAMS
+echo "100000" > $PARAMS
 echo "1" >> $PARAMS
 echo "8" >> $PARAMS
 echo "$THREADS" >> $PARAMS
