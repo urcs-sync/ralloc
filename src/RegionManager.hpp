@@ -196,17 +196,17 @@ public:
 	}
 
 	// caller should ensure regions_address is created.
-	inline char* lookup(int index){
+	inline char* lookup(int index) const{
 		return regions_address[index];
 	}
 
 	// caller should ensure regions_address is created.
-	inline char* translate(int index, char* relative_address){
+	inline char* translate(int index, char* relative_address) const{
 		return regions_address[index] + (size_t)relative_address;
 	}
 
 	// caller should ensure regions_address is created.
-	inline char* untranslate(int index, char* absolute_address){
+	inline char* untranslate(int index, char* absolute_address) const{
 		return (char*)((uint64_t)absolute_address - (uint64_t)regions_address[index]);
 	}
 

@@ -180,7 +180,8 @@ BaseMeta::BaseMeta() noexcept
 	_rgs->regions[SB_IDX]->__store_heap_start(tmp_sec_start);
 	_rgs->regions_address[SB_IDX] = (char*)tmp_sec_start;
 	//we skip the first sb on purpose so that CrossPtr doesn't start from 0.
-	organize_sb_list(tmp_sec_start, SB_REGION_EXPAND_SIZE/SBSIZE);
+	tmp_sec_start = (char*)((uint64_t)tmp_sec_start+SBSIZE);
+	organize_sb_list(tmp_sec_start, SB_REGION_EXPAND_SIZE/SBSIZE-1);
 	FLUSHFENCE;
 }
 
@@ -195,7 +196,8 @@ inline void* BaseMeta::expand_sb(size_t sz){
 inline void* BaseMeta::expand_get_small_sb(){
 	void* tmp_sec_start = expand_sb(SB_REGION_EXPAND_SIZE);
 	DBG_PRINT("expand sb space for small sb allocation\n");
-	organize_sb_list(tmp_sec_start, SB_REGION_EXPAND_SIZE/SBSIZE);
+	tmp_sec_start = (char*)((uint64_t)tmp_sec_start+SBSIZE);
+	organize_sb_list(tmp_sec_start, SB_REGION_EXPAND_SIZE/SBSIZE-1);
 	Descriptor* desc = desc_lookup(tmp_sec_start);
 	new (desc) Descriptor();
 	return tmp_sec_start;
@@ -501,12 +503,12 @@ void BaseMeta::malloc_from_newsb(size_t sc_idx, TCacheBin* cache, size_t& block_
 
 //for sb in the free list, their desc are all constructed.
 inline void BaseMeta::organize_sb_list(void* start, uint64_t count){
-	// put (start+1)...(start+count-1) sbs to free_sb queue
-	// in total it's count-1 sbs
-	Descriptor* desc_start = desc_lookup((char*)((uint64_t)start+SBSIZE));
+	// put (start)...(start+count-1) sbs to free_sb queue
+	// in total it's count sbs
+	Descriptor* desc_start = desc_lookup((char*)((uint64_t)start));
 	Descriptor* desc = desc_start;
 	new (desc) Descriptor();
-	for(uint64_t i = 1; i < count-1; i++){
+	for(uint64_t i = 1; i < count; i++){
 		desc->next_free.store(desc+1);//pptr
 		desc++;
 		new (desc) Descriptor();
@@ -618,7 +620,6 @@ void BaseMeta::do_free(void* ptr){
 	// need to print correct message
 
 	size_t sc_idx = desc->heap->sc_idx;
- 
 	// DBG_PRINT("Desc %p, ptr %p", desc, ptr);
 
 	// large allocation case

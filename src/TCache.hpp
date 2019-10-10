@@ -56,6 +56,7 @@ namespace rpmalloc{
 struct TCaches
 {
 	TCacheBin t_cache[MAX_SZ_IDX];
+	TCaches():t_cache(){};
 	~TCaches(){
 		rpmalloc::public_flush_cache();
 	}
