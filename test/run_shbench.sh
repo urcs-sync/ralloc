@@ -1,28 +1,28 @@
 #!/bin/bash
+if [[ $# -ne 1 ]]; then
+    ALLOC="r"
+else
+    ALLOC=$1
+fi
+ARGS="ALLOC="
+ARGS=${ARGS}${ALLOC}
+echo $ARGS
 
 make clean
-make sh6bench_test
+make sh6bench_test ${ARGS}
 rm -rf shbench.csv
-echo "thread, exec_time, rss" >> shbench.csv
+echo "thread, exec_time, rss, allocator" >> shbench.csv
 for i in {1..3}
 do
-	rm -rf /mnt/pmem/*
-	./shbench-single.sh 1
-	rm -rf /mnt/pmem/*
-	./shbench-single.sh 2
-	rm -rf /mnt/pmem/*
-	./shbench-single.sh 4
-	rm -rf /mnt/pmem/*
-	./shbench-single.sh 8
-	rm -rf /mnt/pmem/*
-	./shbench-single.sh 16
-	rm -rf /mnt/pmem/*
-	./shbench-single.sh 24
-	rm -rf /mnt/pmem/*
-	./shbench-single.sh 32
-	rm -rf /mnt/pmem/*
-	./shbench-single.sh 40
-	rm -rf /mnt/pmem/*
-	./shbench-single.sh 48
+	for threads in 1 2 4 8 12 16 24 32 40 48
+	do
+		rm -rf /mnt/pmem/*
+		./shbench-single.sh $threads
+	done
 done
-cp shbench.csv ../data/shbench.csv
+SEDARGS="2,\$s/$/"
+SEDARGS=${SEDARGS}${ALLOC}"/"
+echo $SEDARGS
+sed ${SEDARGS} -i shbench.csv
+NAME="../data/shbench/shbench_"${ALLOC}".csv"
+cp shbench.csv ${NAME}

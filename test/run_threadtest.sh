@@ -1,28 +1,27 @@
 #!/bin/bash
-
+if [[ $# -ne 1 ]]; then
+  ALLOC="r"
+else
+  ALLOC=$1
+fi
+ARGS="ALLOC="
+ARGS=${ARGS}${ALLOC}
+echo $ARGS
 make clean
-make threadtest_test
+make threadtest_test ${ARGS}
 rm -rf threadtest.csv
-echo "thread, exec_time, rss" >> threadtest.csv
-for i in {1..3}
-do
-	rm -rf /mnt/pmem/*
-	./threadtest-single.sh 1
-	rm -rf /mnt/pmem/*
-	./threadtest-single.sh 2
-	rm -rf /mnt/pmem/*
-	./threadtest-single.sh 4
-	rm -rf /mnt/pmem/*
-	./threadtest-single.sh 8
-	rm -rf /mnt/pmem/*
-	./threadtest-single.sh 16
-	rm -rf /mnt/pmem/*
-	./threadtest-single.sh 24
-	rm -rf /mnt/pmem/*
-	./threadtest-single.sh 32
-	rm -rf /mnt/pmem/*
-	./threadtest-single.sh 40
-	rm -rf /mnt/pmem/*
-	./threadtest-single.sh 48
-done
-cp threadtest.csv ../data/threadtest.csv
+echo "thread, exec_time, rss, allocator" >> threadtest.csv
+#for i in {1..3}
+#do
+#	for threads in 1 2 4 8 12 16 24 32 40 48 
+#	do
+#		rm -rf /mnt/pmem/*
+#		./threadtest-single.sh $threads
+#	done
+#done
+SEDARGS="2,\$s/$/"
+SEDARGS=${SEDARGS}${ALLOC}"/"
+echo $SEDARGS
+sed ${SEDARGS} -i threadtest.csv
+NAME="../data/threadtest/threadtest_"${ALLOC}".csv"
+cp threadtest.csv ${NAME}
