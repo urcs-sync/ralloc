@@ -2,9 +2,9 @@
 # traditional allocator benchmarks from Hoard
 for alloc in "r" "mak" "je" "lr" "pmdk"
 do
-	./run_threadtest.sh $alloc
-	./run_shbench.sh $alloc
 	./run_larson.sh $alloc
+	./run_shbench.sh $alloc
+	./run_threadtest.sh $alloc
 	# testing producer-consumer pattern
 	./run_prod-con.sh $alloc
 	# testing Redis TODO

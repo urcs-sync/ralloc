@@ -20,7 +20,7 @@ echo "thread, exec_time, rss, allocator" >> threadtest.csv
 #	done
 #done
 SEDARGS="2,\$s/$/"
-SEDARGS=${SEDARGS}${ALLOC}"/"
+SEDARGS=${SEDARGS}","${ALLOC}"/"
 echo $SEDARGS
 sed ${SEDARGS} -i threadtest.csv
 NAME="../data/threadtest/threadtest_"${ALLOC}".csv"

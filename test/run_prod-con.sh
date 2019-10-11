@@ -21,8 +21,7 @@ do
 	done
 done
 SEDARGS="2,\$s/$/"
-SEDARGS=${SEDARGS}${ALLOC}"/"
-echo $SEDARGS
+SEDARGS=${SEDARGS}","${ALLOC}"/"
 sed ${SEDARGS} -i prod-con.csv
 NAME="../data/prod-con/prod-con_"${ALLOC}".csv"
 cp prod-con.csv ${NAME}

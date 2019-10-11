@@ -17,11 +17,12 @@ do
 	for threads in 1 2 4 8 12 16 24 32 40 48
 	do
 		rm -rf /mnt/pmem/*
+		sleep 1
 		./shbench-single.sh $threads
 	done
 done
 SEDARGS="2,\$s/$/"
-SEDARGS=${SEDARGS}${ALLOC}"/"
+SEDARGS=${SEDARGS}","${ALLOC}"/"
 echo $SEDARGS
 sed ${SEDARGS} -i shbench.csv
 NAME="../data/shbench/shbench_"${ALLOC}".csv"

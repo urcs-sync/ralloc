@@ -21,7 +21,7 @@ do
 	done
 done
 SEDARGS="2,\$s/$/"
-SEDARGS=${SEDARGS}${ALLOC}"/"
+SEDARGS=${SEDARGS}","${ALLOC}"/"
 echo $SEDARGS
 sed ${SEDARGS} -i larson.csv
 NAME="../data/larson/larson_"${ALLOC}".csv"
