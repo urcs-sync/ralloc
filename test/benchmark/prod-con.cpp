@@ -44,6 +44,10 @@ void * producer (void * arg)
 	for (int i = 0; i < w1.objNum; i++) {
 		// Allocate the object.
 		char * obj = (char*)pm_malloc(sizeof(char)*w1.objSize);
+#ifndef PMDK
+		FLUSH(&obj);
+		FLUSHFENCE;
+#endif		
 		// Write into it
 		for (int k = 0; k < w1.objSize; k++) {
 			obj[k] = (char) k;

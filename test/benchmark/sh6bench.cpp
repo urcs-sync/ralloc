@@ -192,6 +192,10 @@ int main(int argc, char *argv[])
 void doBench(void *arg)
 { 
 	char **memory = pm_malloc(ulCallCount * sizeof(void *));
+#ifndef PMDK
+	FLUSH(&memory);
+	FLUSHFENCE;
+#endif
 	int	size_base, size, iterations;
 	int	repeat = ulCallCount;
 	char **mp = memory;
@@ -221,7 +225,10 @@ void doBench(void *arg)
 					printf("Out of memory\n");
 					_exit (1);
 				}
-
+#ifndef PMDK
+				FLUSH(mp-1);
+				FLUSHFENCE;
+#endif
 		/* while allocating skip over that portion of the buffer that still
 		 * holds pointers from the previous cycle
 		 */

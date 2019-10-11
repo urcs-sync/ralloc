@@ -5,7 +5,7 @@
 
   #include "rpmalloc.hpp"
   inline void* pm_malloc(size_t s) { return RP_malloc(s); }
-  inline void pm_free(void* p) { RP_free(p); }
+  inline void pm_free(void* p) { RP_free(p); p=nullptr; FLUSH(&p);FLUSHFENCE; }
   inline int pm_init() { return RP_init("test", 5*1024*1024*1024ULL + 24); }
   inline void pm_close() { RP_close(); }
 
@@ -16,7 +16,7 @@
   #include <sys/mman.h>
   #define MAKALU_FILESIZE (5*1024*1024*1024ULL + 24)
   inline void* pm_malloc(size_t s) { return MAK_malloc(s); }
-  inline void pm_free(void* p) { MAK_free(p); }
+  inline void pm_free(void* p) { MAK_free(p); p=nullptr; FLUSH(&p);FLUSHFENCE;}
   #define HEAPFILE "/mnt/pmem/gc_heap_wcai6"
 
   char *base_addr = NULL;
@@ -111,7 +111,7 @@
 #else // MAKALU ends
 
   inline void* pm_malloc(size_t s) { return malloc(s); }
-  inline void pm_free(void* p) { free(p); }
+  inline void pm_free(void* p) { free(p); p=nullptr; FLUSH(&p);FLUSHFENCE;}
   inline int pm_init() { return 0; }
   inline void pm_close() { return; }
 
