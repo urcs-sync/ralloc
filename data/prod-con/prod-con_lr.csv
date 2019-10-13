@@ -1,4 +1,4 @@
-thread, exec_time, rss
+thread, exec_time, rss,allocator
 2, 13.630095, 6326,lr
 4, 3.763133, 6806,lr
 8, 3.120129, 9114,lr

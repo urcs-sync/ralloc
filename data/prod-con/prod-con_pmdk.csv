@@ -1,4 +1,4 @@
-thread, exec_time, rss
+thread, exec_time, rss,allocator
 2, 21.776325, 12054,pmdk
 4, 12.474218, 12690,pmdk
 8, 8.549019, 12892,pmdk
