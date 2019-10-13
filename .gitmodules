@@ -1,3 +1,0 @@
-[submodule "ext/pmdk"]
-	path = ext/pmdk
-	url = git@github.com:pmem/pmdk.git
