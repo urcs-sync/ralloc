@@ -11,7 +11,7 @@ echo $ARGS
 make clean
 make prod-con_test ${ARGS}
 rm -rf prod-con.csv
-echo "thread, exec_time, rss" >> prod-con.csv
+echo "thread, exec_time, rss, allocator" >> prod-con.csv
 for i in {1..3}
 do
 	for threads in 2 4 8 12 16 24 32 40 48
