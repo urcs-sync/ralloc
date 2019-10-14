@@ -34,16 +34,16 @@ lindata$allocator<-as.factor(gsub("mne","Built-in allocator",lindata$allocator))
 
 ddply(.data=lindata,.(allocator,thread),mutate,mem=mean(rss)/1024)->lindata
 ddply(.data=lindata,.(allocator,thread),mutate,time= mean(exec_time))->lindata
-lindata$allocator <- factor(lindata$allocator, levels=c("Ralloc", "Makalu", "Built-in allocator", "JEMalloc", "LRMalloc", "libpmemobj"))
+lindata$allocator <- factor(lindata$allocator, levels=c("Ralloc", "Makalu", "Built-in allocator", "libpmemobj", "LRMalloc", "JEMalloc"))
 # Set up colors and shapes (invariant for all plots)
 color_key = c("#C11B14","#1245EA","#FF69B4", 
-               "#1BC40F", "#12E1EA", "#FF8C00")
+               "#FF8C00", "#12E1EA", "#1BC40F")
 names(color_key) <- levels(lindata$allocator)
 
-shape_key = c(18,1,0,62,2,3)
+shape_key = c(18,1,0,3,2,62)
 names(shape_key) <- levels(lindata$allocator)
 
-line_key = c(1,2,4,4,4,5)
+line_key = c(1,2,5,5,4,4)
 names(line_key) <- levels(lindata$allocator)
 
 
@@ -146,7 +146,7 @@ lindata$allocator<-as.factor(gsub("pmdk","libpmemobj",lindata$allocator))
 lindata$allocator<-as.factor(gsub("mne","Built-in allocator",lindata$allocator))
 
 ddply(.data=lindata,.(allocator,thread),mutate,mem=mean(rss)/1024)->lindata
-lindata$allocator <- factor(lindata$allocator, levels=c("Ralloc", "Makalu", "Built-in allocator", "JEMalloc", "LRMalloc", "libpmemobj"))
+lindata$allocator <- factor(lindata$allocator, levels=c("Ralloc", "Makalu", "Built-in allocator", "libpmemobj", "LRMalloc", "JEMalloc"))
 
 names(color_key) <- levels(lindata$allocator)
 
