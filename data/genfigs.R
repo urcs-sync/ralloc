@@ -36,15 +36,15 @@ ddply(.data=lindata,.(allocator,thread),mutate,mem=mean(rss)/1024)->lindata
 ddply(.data=lindata,.(allocator,thread),mutate,time= mean(exec_time))->lindata
 lindata$allocator <- factor(lindata$allocator, levels=c("Ralloc", "Makalu", "Built-in allocator", "JEMalloc", "LRMalloc", "libpmemobj"))
 # Set up colors and shapes (invariant for all plots)
-color_key = c("#12E1EA","#1245EA","#FF69B4", 
-               "#1BC40F", "#C11B14", "FF8C00")
-names(color_key) <- unique(c(as.character(lindata$allocator)))
+color_key = c("#C11B14","#1245EA","#FF69B4", 
+               "#1BC40F", "#12E1EA", "#FF8C00")
+names(color_key) <- levels(lindata$allocator)
 
 shape_key = c(18,1,0,62,2,3)
-names(shape_key) <- unique(c(as.character(lindata$allocator)))
+names(shape_key) <- levels(lindata$allocator)
 
-line_key = c(4,2,4,4,1,3)
-names(line_key) <- unique(c(as.character(lindata$allocator)))
+line_key = c(1,2,4,4,4,5)
+names(line_key) <- levels(lindata$allocator)
 
 
 ###########################################
@@ -148,12 +148,11 @@ lindata$allocator<-as.factor(gsub("mne","Built-in allocator",lindata$allocator))
 ddply(.data=lindata,.(allocator,thread),mutate,mem=mean(rss)/1024)->lindata
 lindata$allocator <- factor(lindata$allocator, levels=c("Ralloc", "Makalu", "Built-in allocator", "JEMalloc", "LRMalloc", "libpmemobj"))
 
-names(color_key) <- unique(c(as.character(lindata$allocator)))
+names(color_key) <- levels(lindata$allocator)
 
-names(shape_key) <- unique(c(as.character(lindata$allocator)))
+names(shape_key) <- levels(lindata$allocator)
 
-names(line_key) <- unique(c(as.character(lindata$allocator)))
-
+names(line_key) <- levels(lindata$allocator)
 
 
 #####################################
@@ -240,42 +239,3 @@ linchart<-ggplot(data=lindata,
 # Save all four plots to separate PDFs
 ggsave(filename = paste("./",f,"_memory.pdf",sep=""),linchart,width=8, height = 5.5, units = "in", dpi=300)
 }
-
-# #########################################
-# #### Begin charts for recovery tests ####
-# #########################################
-
-# # legend_pos=c(0.5,0.92)
-# # y_range_down = 0
-# # y_range_up = 2000
-
-# # for memory usage
-# filenames<-c("recovery_link","recovery_nat")
-# for (f in filenames){
-# read.csv(paste("./",f,".csv",sep=""))->lindata
-# ddply(.data=lindata,.(blocks),mutate,time=time/1000)->lindata
-# # Set up colors and shapes (invariant for all plots)
-# color_key = c("#C11B14")
-
-# shape_key = c(18)
-
-# line_key = c(1)
-
-# # Generate the plots
-# linchart<-ggplot(data=lindata,
-#                   aes(x=blocks,y=time))+
-#   geom_line()+xlab("Number of Reachable Blocks")+ylab("GC Time (s)")+geom_point(size=4)+
-#   scale_shape_manual(values=shape_key[0])+
-#   scale_linetype_manual(values=line_key[0])+
-#   scale_color_manual(values=color_key[0])+
-#   theme_bw()+
-#   theme(plot.margin = unit(c(.2,0,.2,0), "cm"))+
-#   theme(legend.position=legend_pos,
-#      legend.direction="horizontal")+
-#   theme(text = element_text(size = 20))+
-#   theme(axis.title.y = element_text(margin = margin(t = 0, r = 15, b = 0, l = 10)))+
-#   theme(axis.title.x = element_text(margin = margin(t = 15, r = 0, b = 10, l = 0)))
-
-# # Save all four plots to separate PDFs
-# ggsave(filename = paste("./",f,".pdf",sep=""),linchart,width=8, height = 5.5, units = "in", dpi=300)
-# }
