@@ -78,11 +78,7 @@ MAK_EXTERN void* MAK_fl_aflush_table[FL_AFLUSH_TABLE_SZ];
 
    //copy the above and redine it here
   #ifdef PWB_IS_CLFLUSH
-     #define MFENCE \
-     { \
-         MAK_INCREMENT_MFENCE_COUNT(); \
-         __asm__ __volatile__ ("mfence" ::: "memory");  \
-     }
+     #define MFENCE 
 
      #define CLFLUSH(addr) \
      { \
