@@ -78,7 +78,6 @@ linchart<-ggplot(data=lindata,
   scale_color_manual(values=color_key[names(color_key) %in% lindata$allocator])+
   scale_x_continuous(breaks=c(1,5,10,15,20,25,30,35,40,45,48),
                 minor_breaks=c(1,5,10,15,20,25,30,35,40,45,48))+
-  coord_cartesian(ylim = c(0, y_range_up))+
   theme(plot.margin = unit(c(.2,0,.2,0), "cm"))+
   theme(legend.position=legend_pos,
      legend.direction="horizontal")+
@@ -165,22 +164,8 @@ names(line_key) <- levels(lindata$allocator)
 
 # Benchmark-specific plot formatting
 legend_pos=c(0.5,0.92)
-if(f=="memcached"){
-  y_range_up=348
-  y_name="Throughput (K ops/sec)"
-}else{
-  y_range_up=95
-  y_name="Throughput (M ops/sec)"
-}
-# }else if(f=="threadtest"){
-#   y_range_up=270
-# }else if(f=="shbench"){
-#   y_range_up=240
-# }else if(f=="passive_false_sharing"){
-#   y_range_up=80
-# }else{
-#   y_range_up=20
-# }
+y_range_up=95
+y_name="Throughput (M ops/sec)"
 
 
 # Generate the plots
