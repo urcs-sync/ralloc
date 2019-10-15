@@ -112,6 +112,7 @@ public:
 	bool is_null() const {
 		return off == PPTR_PATTERN_POS;
 	}
+
 	bool is_valid() const {
 		return (off & PPTR_PATTERN_MASK) == PPTR_PATTERN_POS;
 	}

@@ -223,7 +223,8 @@ public:
 }__attribute__((aligned(CACHELINE_SIZE)));
 
 
-struct GarbageCollection{
+class GarbageCollection{
+public:
 	std::set<char*> marked_blk;
 	std::stack<char*> to_filter_node;
 	std::stack<std::function<void(char*,GarbageCollection& gc)>> to_filter_func;
