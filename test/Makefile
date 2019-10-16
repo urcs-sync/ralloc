@@ -41,7 +41,7 @@ arrayqueue_test: arrayqueue_test.cpp librpmalloc.a
 	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
 
 ../obj/%.o: ../src/%.cpp
-	$(CXX) -static -I $(SRC) -o $@ -c $^ $(CXXFLAGS)
+	$(CXX) -I $(SRC) -o $@ -c $^ $(CXXFLAGS)
 
 benchmark_pm: threadtest_test sh6bench_test larson_test prod-con_test #cache-scratch_test cache-thrash_test
 
