@@ -196,8 +196,7 @@ inline void* BaseMeta::expand_sb(size_t sz){
 inline void* BaseMeta::expand_get_small_sb(){
 	void* tmp_sec_start = expand_sb(SB_REGION_EXPAND_SIZE);
 	DBG_PRINT("expand sb space for small sb allocation\n");
-	tmp_sec_start = (char*)((uint64_t)tmp_sec_start+SBSIZE);
-	organize_sb_list(tmp_sec_start, SB_REGION_EXPAND_SIZE/SBSIZE-1);
+	organize_sb_list((char*)((uint64_t)tmp_sec_start+SBSIZE), SB_REGION_EXPAND_SIZE/SBSIZE-1);
 	Descriptor* desc = desc_lookup(tmp_sec_start);
 	new (desc) Descriptor();
 	return tmp_sec_start;
