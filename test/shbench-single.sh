@@ -16,7 +16,7 @@ THREADS=$1
 PARAMS=/tmp/shbench_params
 echo "100000" > $PARAMS
 echo "1" >> $PARAMS
-echo "8" >> $PARAMS
+echo "64" >> $PARAMS
 echo "$THREADS" >> $PARAMS
 
 rm -f /tmp/shbench
@@ -25,12 +25,7 @@ pid=$!
 
 renice -n 19 -p $$ > /dev/null
 
-n=0
-rss=0
 while true ; do
-  rss_sample=$(ps --no-headers -o "rss" $pid)
-  (( n += 1 ))
-  (( rss += rss_sample ))
   sleep 0.1
   while read line; do
     if [[ $line == *"rdtsc time"* ]]; then
@@ -39,8 +34,6 @@ while true ; do
     fi
   done < /tmp/shbench
 done
-(( rss = rss / n ))
 
-#exec_time=$(echo $line | awk '{print $4}')
-echo "{ \"threads\": $THREADS , \"time\":  $exec_time , \"rss\": $rss }"
-echo "$THREADS, $exec_time, $rss" >> shbench.csv
+echo "{ \"threads\": $THREADS , \"time\":  $exec_time }"
+echo "$THREADS, $exec_time" >> shbench.csv

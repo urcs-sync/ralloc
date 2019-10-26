@@ -14,17 +14,12 @@ BINARY=./larson_test
 THREADS=$1
 
 rm -f /tmp/larson
-$BINARY 10 7 8 1000 10000 123 $THREADS > /tmp/larson &
+$BINARY 10 56 64 1000 10000 123 $THREADS > /tmp/larson &
 pid=$!
 
 renice -n 19 -p $$ > /dev/null
 
-n=0
-rss=0
 while true ; do
-  rss_sample=$(ps --no-headers -o "rss" $pid)
-  (( n += 1 ))
-  (( rss += rss_sample ))
   sleep 0.1
   while read line; do
     if [[ $line == *"Throughput"* ]]; then
@@ -33,7 +28,6 @@ while true ; do
     fi
   done < /tmp/larson
 done
-(( rss = rss / n ))
 
-echo "{ \"threads\": $THREADS , \"ops\":  $ops , \"rss\": $rss }"
-echo "$THREADS, $ops, $rss" >> larson.csv
+echo "{ \"threads\": $THREADS , \"ops\":  $ops}"
+echo "$THREADS, $ops" >> larson.csv

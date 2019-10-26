@@ -18,25 +18,16 @@ $BINARY $THREADS 10000 100000 0 8 > /tmp/threadtest &
 pid=$!
 
 renice -n 19 -p $$ > /dev/null
-
-n=0
-rss=0
 while true ; do
-  rss_sample=$(ps --no-headers -o "rss" $pid)
-  #echo "$rss_sample"
-  (( n += 1 ))
-  (( rss += rss_sample ))
   sleep 0.1
   while read line; do
     if [[ $line == *"Time elapsed"* ]]; then
       exec_time=$(echo $line | awk '{print $4}')
-      break 2
+      break
     fi
   done < /tmp/threadtest
 done
-(( rss = rss / n ))
 
-exec_time=$(echo $line | awk '{print $4}')
-echo "{ \"threads\": $THREADS , \"time\":  $exec_time , \"rss\": $rss }"
+echo "{ \"threads\": $THREADS , \"time\":  $exec_time }"
 
-echo "$THREADS, $exec_time, $rss" >> threadtest.csv
+echo "$THREADS, $exec_time" >> threadtest.csv

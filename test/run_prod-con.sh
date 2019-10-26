@@ -11,10 +11,10 @@ echo $ARGS
 make clean
 make prod-con_test ${ARGS}
 rm -rf prod-con.csv
-echo "thread, exec_time, rss, allocator" >> prod-con.csv
+echo "thread, exec_time, allocator" >> prod-con.csv
 for i in {1..3}
 do
-	for threads in 2 4 8 12 16 24 32 40 48
+	for threads in 2 4 6 8 10 12 16 20 24 32
 	do
 		rm -rf /mnt/pmem/*
 		./prod-con-single.sh $threads

@@ -10,10 +10,10 @@ echo $ARGS
 make clean
 make threadtest_test ${ARGS}
 rm -rf threadtest.csv
-echo "thread, exec_time, rss, allocator" >> threadtest.csv
+echo "thread, exec_time, allocator" >> threadtest.csv
 for i in {1..3}
 do
-	for threads in 1 2 4 8 12 16 24 32 40 48 
+	for threads in 1 2 4 6 8 10 12 16 20 24 32
 	do
 		rm -rf /mnt/pmem/*
 		./threadtest-single.sh $threads
