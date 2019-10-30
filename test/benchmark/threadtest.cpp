@@ -84,19 +84,11 @@ extern "C" void * worker (void *)
   int i, j;
   Foo ** a;
   a = new Foo * [nobjects / nthreads];
-#ifndef PMDK
-  FLUSH(&a);
-  FLUSHFENCE;
-#endif
   for (j = 0; j < niterations; j++) {
 
     // printf ("%d\n", j);
     for (i = 0; i < (nobjects / nthreads); i ++) {
       a[i] = new Foo[sz];
-#ifndef PMDK
-      FLUSH(&a[i]);
-      FLUSHFENCE;
-#endif
       for (volatile int d = 0; d < work; d++) {
 	volatile int f = 1;
 	f = f + f;

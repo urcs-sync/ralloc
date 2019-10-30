@@ -14,7 +14,7 @@ rm -rf shbench.csv
 echo "thread, exec_time, allocator" >> shbench.csv
 for i in {1..3}
 do
-	for threads in 20
+	for threads in 1 2 6 10 16 20 24 32 40 48 60 72 80 84 88
 	do
 		rm -rf /mnt/pmem/*
 		sleep 1
