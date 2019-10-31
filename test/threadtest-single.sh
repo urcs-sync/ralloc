@@ -23,7 +23,7 @@ while true ; do
   while read line; do
     if [[ $line == *"Time elapsed"* ]]; then
       exec_time=$(echo $line | awk '{print $4}')
-      break
+      break 2
     fi
   done < /tmp/threadtest
 done
