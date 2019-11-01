@@ -142,7 +142,7 @@ inline bool operator!=(const CrossPtr<T,idx>& lhs, const std::nullptr_t& rhs){
 template<class T, RegionIndex idx>
 class AtomicCrossPtrCnt {
 public:
-	std::atomic<char*> off;
+	std::atomic<char*> off; // higher 42 bits: counter, lower 24 bits: offset
 	AtomicCrossPtrCnt(T* real_ptr = nullptr, uint64_t counter = 0) noexcept;
 	ptr_cnt<T> load(std::memory_order order = std::memory_order_seq_cst) const noexcept;
 	void store(ptr_cnt<T> desired, 

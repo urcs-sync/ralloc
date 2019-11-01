@@ -31,10 +31,12 @@ T* CrossPtr<T,idx>::operator->(){
 template<class T, RegionIndex idx>
 AtomicCrossPtrCnt<T,idx>::AtomicCrossPtrCnt(T* real_ptr, uint64_t counter)noexcept{
 	char* res;
+	uint64_t cnt_prefix = counter << MAX_DESC_OFFSET_BITS;
 	if(real_ptr == nullptr) {
-		res = reinterpret_cast<char*>(counter & CACHELINE_MASK);
+		res = reinterpret_cast<char*>(cnt_prefix);
 	} else {
-		res = _rgs->untranslate(idx, reinterpret_cast<char*>(reinterpret_cast<uint64_t>(real_ptr) | (counter & CACHELINE_MASK)));
+		res = _rgs->untranslate(idx, reinterpret_cast<char*>(real_ptr));
+		res = reinterpret_cast<char*>(reinterpret_cast<uint64_t>(res) | cnt_prefix);
 	}
 	off.store(res);
 }
@@ -43,8 +45,10 @@ template<class T, RegionIndex idx>
 inline ptr_cnt<T> AtomicCrossPtrCnt<T,idx>::load(memory_order order)const noexcept{
 	char* cur_off = off.load(order);
 	ptr_cnt<T> ret;
-	if((uint64_t)cur_off < CACHELINE_SIZE){
-		ret.ptr = (T*)cur_off;
+	ret.cnt = reinterpret_cast<uint64_t>(cur_off) >> MAX_DESC_OFFSET_BITS;
+	cur_off = reinterpret_cast<char*>(reinterpret_cast<uint64_t>(cur_off) & MAX_DESC_OFFSET_MASK);
+	if(cur_off == nullptr){
+		ret.ptr = nullptr;
 	} else{
 		ret.ptr = (T*)(_rgs->translate(idx, cur_off));
 	}
@@ -54,10 +58,12 @@ inline ptr_cnt<T> AtomicCrossPtrCnt<T,idx>::load(memory_order order)const noexce
 template<class T, RegionIndex idx>
 inline void AtomicCrossPtrCnt<T,idx>::store(ptr_cnt<T> desired, memory_order order)noexcept{
 	char* new_off;
+	uint64_t cnt_prefix = desired.cnt << MAX_DESC_OFFSET_BITS;
 	if(desired.get_ptr() == nullptr){
-		new_off = reinterpret_cast<char*>(desired.ptr);
+		new_off = reinterpret_cast<char*>(cnt_prefix);
 	} else{
 		new_off = _rgs->untranslate(idx, reinterpret_cast<char*>(desired.ptr));
+		new_off = reinterpret_cast<char*>(reinterpret_cast<uint64_t>(new_off) | cnt_prefix);
 	}
 	off.store(new_off, order);
 }
@@ -66,22 +72,28 @@ template<class T, RegionIndex idx>
 inline bool AtomicCrossPtrCnt<T,idx>::compare_exchange_weak(ptr_cnt<T>& expected, ptr_cnt<T> desired, memory_order order)noexcept{
 	char* old_off;
 	char* new_off;
+	uint64_t old_cnt_prefix = expected.cnt << MAX_DESC_OFFSET_BITS;
+	uint64_t new_cnt_prefix = desired.cnt << MAX_DESC_OFFSET_BITS;
 	if(expected.get_ptr() == nullptr){
-		old_off = reinterpret_cast<char*>(expected.ptr);
+		old_off = reinterpret_cast<char*>(old_cnt_prefix);
 	} else {
-	 	old_off = _rgs->untranslate(idx, reinterpret_cast<char*>(expected.ptr));
+		old_off = _rgs->untranslate(idx, reinterpret_cast<char*>(expected.ptr));
+		old_off = reinterpret_cast<char*>(reinterpret_cast<uint64_t>(old_off) | old_cnt_prefix);
 	}
 	if(desired.get_ptr() == nullptr){
-		new_off = reinterpret_cast<char*>(desired.ptr);
+		new_off = reinterpret_cast<char*>(new_cnt_prefix);
 	} else {
 	 	new_off = _rgs->untranslate(idx, reinterpret_cast<char*>(desired.ptr));
+		new_off = reinterpret_cast<char*>(reinterpret_cast<uint64_t>(new_off) | new_cnt_prefix);
 	}
 	bool ret = off.compare_exchange_weak(old_off, new_off, order);
 	if(!ret){
-		if((uint64_t)old_off < CACHELINE_SIZE){
-			expected.ptr = reinterpret_cast<T*>(old_off);
+		expected.cnt = reinterpret_cast<uint64_t>(old_off) >> MAX_DESC_OFFSET_BITS;
+		old_off = reinterpret_cast<char*>(reinterpret_cast<uint64_t>(old_off) & MAX_DESC_OFFSET_MASK);
+		if(old_off == nullptr){
+			expected.ptr = nullptr;
 		} else{
-			expected.ptr = reinterpret_cast<T*>(_rgs->translate(idx, reinterpret_cast<char*>(old_off)));
+			expected.ptr = (T*)(_rgs->translate(idx, old_off));
 		}
 	}
 	return ret;
@@ -91,22 +103,28 @@ template<class T, RegionIndex idx>
 inline bool AtomicCrossPtrCnt<T,idx>::compare_exchange_strong(ptr_cnt<T>& expected, ptr_cnt<T> desired, memory_order order)noexcept{
 	char* old_off;
 	char* new_off;
+	uint64_t old_cnt_prefix = expected.cnt << MAX_DESC_OFFSET_BITS;
+	uint64_t new_cnt_prefix = desired.cnt << MAX_DESC_OFFSET_BITS;
 	if(expected.get_ptr() == nullptr){
-		old_off = reinterpret_cast<char*>(expected.ptr);
+		old_off = reinterpret_cast<char*>(old_cnt_prefix);
 	} else {
-	 	old_off = _rgs->untranslate(idx, reinterpret_cast<char*>(expected.ptr));
+		old_off = _rgs->untranslate(idx, reinterpret_cast<char*>(expected.ptr));
+		old_off = reinterpret_cast<char*>(reinterpret_cast<uint64_t>(old_off) | old_cnt_prefix);
 	}
 	if(desired.get_ptr() == nullptr){
-		new_off = reinterpret_cast<char*>(desired.ptr);
+		new_off = reinterpret_cast<char*>(new_cnt_prefix);
 	} else {
 	 	new_off = _rgs->untranslate(idx, reinterpret_cast<char*>(desired.ptr));
+		new_off = reinterpret_cast<char*>(reinterpret_cast<uint64_t>(new_off) | new_cnt_prefix);
 	}
 	bool ret = off.compare_exchange_strong(old_off, new_off, order);
 	if(!ret){
-		if((uint64_t)old_off < CACHELINE_SIZE){
-			expected.ptr = reinterpret_cast<T*>(old_off);
+		expected.cnt = reinterpret_cast<uint64_t>(old_off) >> MAX_DESC_OFFSET_BITS;
+		old_off = reinterpret_cast<char*>(reinterpret_cast<uint64_t>(old_off) & MAX_DESC_OFFSET_MASK);
+		if(old_off == nullptr){
+			expected.ptr = nullptr;
 		} else{
-			expected.ptr = reinterpret_cast<T*>(_rgs->translate(idx, reinterpret_cast<char*>(old_off)));
+			expected.ptr = (T*)(_rgs->translate(idx, old_off));
 		}
 	}
 	return ret;

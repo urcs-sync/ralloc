@@ -71,8 +71,11 @@ const int SB_SHIFT = 16; // assume size of a superblock is 64K
 const int DESC_SHIFT = 6; // assume size of a descriptor is 64B
 
 /* Customizable Values */
-const uint64_t MAX_SB_AMOUNT = 16*1024*1024ULL; // maximum of superblocks in region
-const uint64_t MAX_DESC_AMOUNT = MAX_SB_AMOUNT;
+const uint64_t MAX_DESC_AMOUNT_BITS = 24;
+const uint64_t MAX_DESC_AMOUNT = 1ULL<<MAX_DESC_AMOUNT_BITS; // maximum of superblocks in region
+const uint64_t MAX_DESC_OFFSET_BITS = MAX_DESC_AMOUNT_BITS + 6;// plus 2^6(64)Byte descriptor
+const uint64_t MAX_DESC_OFFSET_MASK = (1ULL<<MAX_DESC_OFFSET_BITS) - 1;
+const uint64_t MAX_SB_AMOUNT = MAX_DESC_AMOUNT;
 const uint64_t MIN_SB_REGION_SIZE = 1*1024*1024*1024ULL; // min sb region size
 const int64_t MAX_SB_REGION_SIZE = SBSIZE*MAX_SB_AMOUNT; // max possible sb region size to call RP_init. Currently it's 1TB which must be sufficient
 const uint64_t MAX_DESC_REGION_SIZE = DESCSIZE*MAX_DESC_AMOUNT;
