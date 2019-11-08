@@ -130,7 +130,7 @@ bool BaseMeta::is_dirty(){
 		return false;
 	case EBUSY:
 	case EAGAIN:
-		return true;
+		return false;
 	case EINVAL:
 		pthread_mutex_destroy(&dirty_mtx);
 		pthread_mutex_init(&dirty_mtx, &dirty_attr);
