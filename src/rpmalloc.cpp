@@ -115,6 +115,7 @@ size_t RP_malloc_size(void* ptr){
 }
 
 void* RP_realloc(void* ptr, size_t new_size){
+	if(ptr == nullptr) return RP_malloc(new_size);
 	if(!_rgs->in_range(SB_IDX, ptr)) return nullptr;
 	size_t old_size = RP_malloc_size(ptr);
 	if(old_size == new_size) {
