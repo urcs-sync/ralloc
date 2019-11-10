@@ -227,17 +227,18 @@ template <class T>
 class ptr_cnt{
 public:
 	T* ptr;//ptr with least 6 bits as counter
-	ptr_cnt(T* p=nullptr, uint64_t cnt = 0) noexcept:
-		ptr((T*)((uint64_t)p | (cnt & CACHELINE_MASK))){};
-	void set(T* p, uint64_t cnt){
-		assert(((uint64_t)p & CACHELINE_MASK) == 0);
-		ptr = (T*)((uint64_t)p | (cnt & CACHELINE_MASK));
+	uint64_t cnt;
+	ptr_cnt(T* p=nullptr, uint64_t c = 0) noexcept:
+		ptr(p), cnt(c){};
+	void set(T* p, uint64_t c){
+		ptr = p;
+		cnt = c;
 	}
 	T* get_ptr() const{
-		return (T*)((uint64_t)ptr & ~CACHELINE_MASK);
+		return ptr;
 	}
 	uint64_t get_counter() const{
-		return (uint64_t)((uint64_t)ptr & CACHELINE_MASK);
+		return cnt;
 	}
 };
 #endif

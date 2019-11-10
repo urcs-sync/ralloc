@@ -1,34 +1,28 @@
 #!/bin/bash
+if [[ $# -ne 1 ]]; then
+  ALLOC="r"
+else
+  ALLOC=$1
+fi
+ARGS="ALLOC="
+ARGS=${ARGS}${ALLOC}
+echo $ARGS
 
 make clean
-make larson_test
+make larson_test ${ARGS}
 rm -rf larson.csv
-echo "thread, ops, rss" >> larson.csv
+echo "thread, ops, allocator" >> larson.csv
 for i in {1..3}
 do
-	rm -rf /dev/shm/*
-	./larson-single.sh 1
-	rm -rf /dev/shm/*
-	./larson-single.sh 2
-	rm -rf /dev/shm/*
-	./larson-single.sh 4
-	rm -rf /dev/shm/*
-	./larson-single.sh 8
-	rm -rf /dev/shm/*
-	./larson-single.sh 16
-	rm -rf /dev/shm/*
-	./larson-single.sh 24
-	rm -rf /dev/shm/*
-	./larson-single.sh 32
-	rm -rf /dev/shm/*
-	./larson-single.sh 40
-	rm -rf /dev/shm/*
-	./larson-single.sh 48
-	rm -rf /dev/shm/*
-	./larson-single.sh 64
-	rm -rf /dev/shm/*
-	./larson-single.sh 72
-	rm -rf /dev/shm/*
-	./larson-single.sh 80 
+	for threads in 1 2 6 10 16 20 24 32 40 48 60 72 80 84 88
+	do
+		rm -rf /mnt/pmem/*
+		./larson-single.sh $threads
+	done
 done
-cp larson.csv ../data/larson.csv
+SEDARGS="2,\$s/$/"
+SEDARGS=${SEDARGS}","${ALLOC}"/"
+echo $SEDARGS
+sed ${SEDARGS} -i larson.csv
+NAME="../data/larson/larson_"${ALLOC}".csv"
+cp larson.csv ${NAME}

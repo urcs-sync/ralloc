@@ -5,7 +5,6 @@
 #include <sys/resource.h>
 #include <sys/time.h>
 #include <pthread.h>
-
 typedef void * LPVOID;
 typedef long long LONGLONG;
 typedef long DWORD;

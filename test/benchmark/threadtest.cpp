@@ -84,7 +84,6 @@ extern "C" void * worker (void *)
   int i, j;
   Foo ** a;
   a = new Foo * [nobjects / nthreads];
-
   for (j = 0; j < niterations; j++) {
 
     // printf ("%d\n", j);

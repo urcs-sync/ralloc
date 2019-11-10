@@ -81,13 +81,13 @@ MAK_EXTERN void* MAK_fl_aflush_table[FL_AFLUSH_TABLE_SZ];
      #define MFENCE \
      { \
          MAK_INCREMENT_MFENCE_COUNT(); \
-         __asm__ __volatile__ ("mfence" ::: "memory");  \
+         __asm__ __volatile__ ("sfence" ::: "memory");  \
      }
 
      #define CLFLUSH(addr) \
      { \
          __asm__ __volatile__ (   \
-         "clflush %0 \n" : "+m" (*(char*)(addr))  \
+         "clwb %0 \n" : "+m" (*(char*)(addr))  \
          ); \
          MAK_INCREMENT_CLFLUSH_COUNT(); \
      }

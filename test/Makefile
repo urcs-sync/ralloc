@@ -7,12 +7,37 @@ WARNING_FLAGS:=-ftrapv -Wreturn-type -W -Wall \
 FLAGS = -O3 -g -fpermissive $(WARNING_FLAGS) -DMEM_CONSUME_TEST -DDESTROY -fno-omit-frame-pointer
 PMMALLOC_FLAGS = $(FLAGS) -DPMMALLOC -L.
 MAKALU_FLAGS = $(FLAGS) -I../ext/makalu_alloc/include -DMAKALU -L../ext/makalu_alloc/lib -lmakalu 
-CXXFLAGS = $(PMMALLOC_FLAGS) -ljemalloc 
-# CXXFLAGS = $(MAKALU_FLAGS) -ljemalloc 
-# CXXFLAGS = $(FLAGS) -ljemalloc
-# CXXFLAGS = $(FLAGS) -L../../lrmalloc -l:lrmalloc.a -ldl# for built-in malloc
-LIBS = -pthread -lstdc++ -latomic -fPIC 
+PMDK_FLAGS = $(FLAGS) -DPMDK -lpmemobj 
 
+R_CXXFLAGS = $(PMMALLOC_FLAGS) -ljemalloc -L. -lrpmalloc 
+MAK_CXXFLAGS = $(MAKALU_FLAGS) -ljemalloc 
+JE_CXXFLAGS = $(FLAGS) -ljemalloc
+LR_CXXFLAGS = $(FLAGS) -L../../lrmalloc -l:lrmalloc.a -ldl# for built-in malloc
+PMDK_CXXFLAGS = $(PMDK_FLAGS) -ljemalloc
+
+# Ralloc by default
+CXXFLAGS = $(R_CXXFLAGS)
+ifeq ($(ALLOC),r)
+	CXXFLAGS = $(R_CXXFLAGS)
+endif
+
+ifeq ($(ALLOC),mak)
+	CXXFLAGS = $(MAK_CXXFLAGS)
+endif
+
+ifeq ($(ALLOC),je)
+	CXXFLAGS = $(JE_CXXFLAGS)
+endif
+
+ifeq ($(ALLOC),lr)
+	CXXFLAGS = $(LR_CXXFLAGS)
+endif
+
+ifeq ($(ALLOC),pmdk)
+	CXXFLAGS = $(PMDK_CXXFLAGS)
+endif
+
+LIBS = -pthread -lstdc++ -latomic -fPIC 
 
 all: benchmark_pm
 
@@ -46,13 +71,13 @@ arrayqueue_test: arrayqueue_test.cpp librpmalloc.a
 benchmark_pm: threadtest_test sh6bench_test larson_test prod-con_test #cache-scratch_test cache-thrash_test
 
 threadtest_test: ./benchmark/threadtest.cpp librpmalloc.a
-	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
+	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) 
 
 sh6bench_test: ./benchmark/sh6bench.cpp librpmalloc.a
-	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
+	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) 
 
 larson_test: ./benchmark/larson.cpp librpmalloc.a
-	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
+	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) 
 
 # # Active false sharing
 # cache-thrash_test: ./benchmark/cache-thrash.cpp librpmalloc.a
@@ -63,7 +88,7 @@ larson_test: ./benchmark/larson.cpp librpmalloc.a
 # 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
 
 prod-con_test: ./benchmark/prod-con.cpp librpmalloc.a
-	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
+	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) 
 
 librpmalloc.a:../obj/SizeClass.o ../obj/RegionManager.o ../obj/TCache.o ../obj/BaseMeta.o ../obj/rpmalloc.o
 	ar -rcs $@ $^
@@ -72,4 +97,4 @@ clean:
 	rm -f *_test
 	rm -rf ../obj/*
 	rm -f librpmalloc.a
-	rm -rf /dev/shm/*
+	rm -rf /mnt/pmem/*

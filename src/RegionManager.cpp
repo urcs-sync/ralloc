@@ -63,7 +63,7 @@ void RegionManager::__map_persistent_region(){
 	assert(result != -1);
 
 	void * addr =
-		mmap(0, FILESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+		mmap(0, FILESIZE, PROT_READ | PROT_WRITE, 0x80003/*MAP_SHARED_VALIDATE | MAP_SYNC*/, fd, 0);
 	assert(addr != MAP_FAILED);
 
 	base_addr = (char*) addr;
@@ -98,7 +98,7 @@ void RegionManager::__remap_persistent_region(){
 	assert (offt == 0);
 
 	void * addr =
-		mmap(0, FILESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+		mmap(0, FILESIZE, PROT_READ | PROT_WRITE, 0x80003/*MAP_SHARED_VALIDATE | MAP_SYNC*/, fd, 0);
 	assert(addr != MAP_FAILED);
 
 	base_addr = (char*) addr;
@@ -237,7 +237,7 @@ bool RegionManager::__nvm_region_allocator(void** memptr, size_t alignment, size
 		res = new_curr_addr;
 		next = new_curr_addr + size;
 		if (next > base_addr + FILESIZE){
-			printf("\n----Region Manager: out of space in mmaped file-----\n");
+			printf("\n----Region Manager: out of space in mmaped file-----\nCurr:%p\nBase:%p\n",res,base_addr);
 			return false;
 		}
 		new_curr_addr = next;
