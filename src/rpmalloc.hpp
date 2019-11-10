@@ -30,16 +30,14 @@ namespace rpmalloc{
 	extern BaseMeta* base_md;
 };
 template<class T>
-void* RP_set_root(T* ptr, uint64_t i){
-	if(rpmalloc::initialized==false){
-		RP_init("no_explicit_init");
-	}
-	return rpmalloc::base_md->set_root(ptr,i);
+T* RP_get_root(uint64_t i){
+	assert(rpmalloc::initialized);
+	return rpmalloc::base_md->get_root<T>(i);
 }
 extern "C"{
 #else
 // This is a version for pure c only
-void* RP_set_root_c(void* ptr, uint64_t i);
+void* RP_get_root_c(uint64_t i);
 int RP_init(const char* _id, uint64_t size);
 #endif
 
@@ -47,7 +45,7 @@ int RP_init(const char* _id, uint64_t size);
 void RP_close();
 void* RP_malloc(size_t sz);
 void RP_free(void* ptr);
-void* RP_get_root(uint64_t i);
+void* RP_set_root(void* ptr, uint64_t i);
 size_t RP_malloc_size(void* ptr);
 void* RP_calloc(size_t num, size_t size);
 void* RP_realloc(void* ptr, size_t new_size);

@@ -97,14 +97,15 @@ void RP_free(void* ptr){
 	base_md->do_free(ptr);
 }
 
-void* RP_set_root_c(void* ptr, uint64_t i){
-	return base_md->set_root(ptr,i);
-}
-void* RP_get_root(uint64_t i){
-	if(UNLIKELY(initialized==false)){
+void* RP_set_root(void* ptr, uint64_t i){
+	if(rpmalloc::initialized==false){
 		RP_init("no_explicit_init");
 	}
-	return base_md->get_root(i);
+	return base_md->set_root(ptr,i);
+}
+void* RP_get_root_c(uint64_t i){
+	assert(initialized);
+	return (void*)base_md->get_root<char>(i);
 }
 
 // return the size of ptr in byte.
