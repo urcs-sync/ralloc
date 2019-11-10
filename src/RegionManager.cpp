@@ -63,7 +63,7 @@ void RegionManager::__map_persistent_region(){
 	assert(result != -1);
 
 	void * addr =
-		mmap(0, FILESIZE, PROT_READ | PROT_WRITE, 0x80003/*MAP_SHARED_VALIDATE | MAP_SYNC*/, fd, 0);
+		mmap(0, FILESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	assert(addr != MAP_FAILED);
 
 	base_addr = (char*) addr;
@@ -98,7 +98,7 @@ void RegionManager::__remap_persistent_region(){
 	assert (offt == 0);
 
 	void * addr =
-		mmap(0, FILESIZE, PROT_READ | PROT_WRITE, 0x80003/*MAP_SHARED_VALIDATE | MAP_SYNC*/, fd, 0);
+		mmap(0, FILESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	assert(addr != MAP_FAILED);
 
 	base_addr = (char*) addr;

@@ -43,7 +43,7 @@ enum RegionIndex : int {
 #endif
 
 /* user customized macros */
-#define HEAPFILE_PREFIX "/mnt/pmem/"
+#define HEAPFILE_PREFIX "/dev/shm/"
 #define ENABLE_FILTER_FUNC 1
 // #define DEBUG 1
 

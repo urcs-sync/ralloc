@@ -17,7 +17,7 @@
   #define MAKALU_FILESIZE (5*1024*1024*1024ULL + 24)
   inline void* pm_malloc(size_t s) { return MAK_malloc(s); }
   inline void pm_free(void* p) { MAK_free(p);}
-  #define HEAPFILE "/mnt/pmem/gc_heap_wcai6"
+  #define HEAPFILE "/dev/shm/gc_heap_wcai6"
 
   char *base_addr = NULL;
   static char *curr_addr = NULL;
@@ -82,7 +82,7 @@
 
   // No longer support PMDK since it's too slow
   #include <libpmemobj.h>
-  #define HEAPFILE "/mnt/pmem/pmdk_heap_wcai6"
+  #define HEAPFILE "/dev/shm/pmdk_heap_wcai6"
   #define PMDK_FILESIZE (5*1024*1024*1024ULL + 24)
   thread_local PMEMoid temp_ptr;
   PMEMobjpool* pop = nullptr;
