@@ -303,7 +303,8 @@ public:
 	template<class T>
 	inline T* get_root(uint64_t i){
 		//this is sequential
-		assert(i<MAX_ROOTS && roots[i]!=nullptr);
+		// assert(i<MAX_ROOTS && roots[i]!=nullptr); // we allow roots[i] to be null
+		assert(i<MAX_ROOTS);
 		roots_filter_func[i] = [](const CrossPtr<char, SB_IDX>& cptr, GarbageCollection& gc){
 			// this new statement is intentionally designed to use transient allocator since it's offline
 			gc.mark_func(static_cast<T*>(cptr));
