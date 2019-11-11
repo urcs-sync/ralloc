@@ -42,6 +42,7 @@ int RP_init(const char* _id, uint64_t size);
 #endif
 
 /* return 1 if it's a restart, otherwise 0. */
+void RP_recover();
 void RP_close();
 void* RP_malloc(size_t sz);
 void RP_free(void* ptr);

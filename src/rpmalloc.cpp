@@ -66,11 +66,17 @@ int RP_init(const char* _id, uint64_t size){
 		break;
 	} // switch
 	}
-	if(restart) {
-		base_md->restart();
+	if(restart){
+		initialized = false;
+	} else {
+		initialized = true;
 	}
-	initialized = true;
 	return (int)restart;
+}
+
+void RP_recover(){
+	base_md->restart();
+	initialized = true;
 }
 
 // we assume RP_close is called by the last exiting thread.
