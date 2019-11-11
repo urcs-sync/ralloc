@@ -686,7 +686,7 @@ void GarbageCollection::operator() () {
 	// First mark all root nodes
 	for(int i = 0; i < MAX_ROOTS; i++) {
 		if(base_md->roots[i]!=nullptr) {
-			base_md->roots_filter_func[i](base_md->roots[i], *this);
+			rpmalloc::roots_filter_func[i](base_md->roots[i], *this);
 		}
 	}
 	while(!to_filter_node.empty()) {

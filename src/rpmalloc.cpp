@@ -18,6 +18,7 @@
 #include "rpmalloc.hpp"
 
 #include <string>
+#include <functional>
 #include <atomic>
 #include <vector>
 #include <algorithm>
@@ -33,6 +34,7 @@ namespace rpmalloc{
 	/* persistent metadata and their layout */
 	BaseMeta* base_md;
 	Regions* _rgs;
+	std::function<void(const CrossPtr<char, SB_IDX>&, GarbageCollection&)> roots_filter_func[MAX_ROOTS];
 };
 using namespace rpmalloc;
 extern void public_flush_cache();

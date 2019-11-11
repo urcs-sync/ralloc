@@ -28,6 +28,7 @@ namespace rpmalloc{
 	extern bool initialized;
 	/* persistent metadata and their layout */
 	extern BaseMeta* base_md;
+	extern std::function<void(const CrossPtr<char, SB_IDX>&, GarbageCollection&)> roots_filter_func[MAX_ROOTS];
 };
 template<class T>
 T* RP_get_root(uint64_t i){

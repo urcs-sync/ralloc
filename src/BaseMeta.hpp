@@ -86,7 +86,6 @@ namespace rpmalloc{
 	extern bool initialized;
 	extern BaseMeta* base_md;
 	extern void public_flush_cache();
-	//GC
 };
 
 template<class T, RegionIndex idx>
@@ -257,6 +256,11 @@ public:
 	inline void filter_func(T* ptr);
 };
 
+namespace rpmalloc{
+	//GC
+	extern std::function<void(const CrossPtr<char, SB_IDX>&, GarbageCollection&)> roots_filter_func[MAX_ROOTS];
+}
+
 class BaseMeta {
 public:
 	// unused small sb
@@ -266,7 +270,6 @@ public:
 
 	RP_PERSIST ProcHeap heaps[MAX_SZ_IDX];
 	RP_PERSIST CrossPtr<char, SB_IDX> roots[MAX_ROOTS];
-	RP_PERSIST std::function<void(const CrossPtr<char, SB_IDX>&, GarbageCollection&)> roots_filter_func[MAX_ROOTS];
 	friend class GarbageCollection;
 	BaseMeta() noexcept;
 	~BaseMeta(){
@@ -305,7 +308,7 @@ public:
 		//this is sequential
 		// assert(i<MAX_ROOTS && roots[i]!=nullptr); // we allow roots[i] to be null
 		assert(i<MAX_ROOTS);
-		roots_filter_func[i] = [](const CrossPtr<char, SB_IDX>& cptr, GarbageCollection& gc){
+		rpmalloc::roots_filter_func[i] = [](const CrossPtr<char, SB_IDX>& cptr, GarbageCollection& gc){
 			// this new statement is intentionally designed to use transient allocator since it's offline
 			gc.mark_func(static_cast<T*>(cptr));
 		};
