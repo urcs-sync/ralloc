@@ -34,4 +34,4 @@ while read line; do
 done < /tmp/prod-con
 
 echo "{ \"threads\": $THREADS , \"time\":  $exec_time , \"allocator\": $ALLOC}"
-echo "$THREADS, $exec_time, $ALLOC" >> prod-con.csv
+echo "$THREADS,$exec_time,$ALLOC" >> prod-con.csv

@@ -34,4 +34,4 @@ while read line; do
 done < /tmp/larson
 
 echo "{ \"threads\": $THREADS , \"ops\":  $ops , \"allocator\": $ALLOC}"
-echo "$THREADS, $ops, $ALLOC" >> larson.csv
+echo "$THREADS,$ops,$ALLOC" >> larson.csv

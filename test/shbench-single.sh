@@ -35,9 +35,9 @@ $BINARY < $PARAMS  > /tmp/shbench
 while read line; do
   if [[ $line == *"rdtsc time"* ]]; then
     exec_time=$(echo $line | awk '{print $3}')
-    break 2
+    break
   fi
 done < /tmp/shbench
 
 echo "{ \"threads\": $THREADS , \"time\":  $exec_time , \"allocator\": $ALLOC }"
-echo "$THREADS, $exec_time, $ALLOC" >> shbench.csv
+echo "$THREADS,$exec_time,$ALLOC" >> shbench.csv

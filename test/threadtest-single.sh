@@ -24,14 +24,14 @@ fi
 THREADS=$1
 
 rm /tmp/threadtest
-$BINARY $THREADS 10000 100000 0 8 > /tmp/threadtest &
+$BINARY $THREADS 10000 100000 0 8 > /tmp/threadtest
 
 while read line; do
   if [[ $line == *"Time elapsed"* ]]; then
     exec_time=$(echo $line | awk '{print $4}')
-    break 2
+    break
   fi
 done < /tmp/threadtest
 
 echo "{ \"threads\": $THREADS , \"time\":  $exec_time , \"allocator\": $ALLOC}"
-echo "$THREADS, $exec_time, $ALLOC" >> threadtest.csv
+echo "$THREADS,$exec_time,$ALLOC" >> threadtest.csv
