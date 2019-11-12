@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [[ $# -ne 1 ]]; then
+if [[ $# -lt 1 ]]; then
   echo "usage: larson-single.sh <num threads>"
   echo ""
   echo "wraps a single run of larson with rss sampling"
@@ -10,24 +10,28 @@ if [[ $# -ne 1 ]]; then
   exit 1
 fi
 
+if [[ $# -ne 2 ]]; then
+  ALLOC="r"
+else
+  ALLOC=$2
+fi
+
 BINARY=./larson_test
+if [ "$ALLOC" == "je" ] || [ "$ALLOC" == "lr" ]; then
+  BINARY="numactl --membind=2,3 "${BINARY}
+fi
+
 THREADS=$1
 
 rm -f /tmp/larson
-$BINARY 10 56 64 1000 10000 123 $THREADS > /tmp/larson &
-pid=$!
+$BINARY 10 56 64 1000 10000 123 $THREADS > /tmp/larson
 
-renice -n 19 -p $$ > /dev/null
+while read line; do
+  if [[ $line == *"Throughput"* ]]; then
+    ops=$(echo $line | awk '{print $3}')
+    break
+  fi
+done < /tmp/larson
 
-while true ; do
-  sleep 0.1
-  while read line; do
-    if [[ $line == *"Throughput"* ]]; then
-      ops=$(echo $line | awk '{print $3}')
-      break 2
-    fi
-  done < /tmp/larson
-done
-
-echo "{ \"threads\": $THREADS , \"ops\":  $ops}"
-echo "$THREADS, $ops" >> larson.csv
+echo "{ \"threads\": $THREADS , \"ops\":  $ops , \"allocator\": $ALLOC}"
+echo "$THREADS, $ops, $ALLOC" >> larson.csv
