@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
 
 
 	unsigned i;
-	void *threadArg = NULL;
+	int *threadArg = malloc(uThreadCount*sizeof(int));
 	ThreadID *tids;
 
 	uThreadCount = (int)promptAndRead("threads", GetNumProcessors(), 'u');
@@ -156,12 +156,14 @@ int main(int argc, char *argv[])
 		startCPU = clock();
 		startTime = time(NULL);
 		start_ = rdtsc();
-		for (i = 0;  i < uThreadCount;  i++)
+		for (i = 0;  i < uThreadCount;  i++){
+			threadArg[i] = i;
 			if (THREAD_EQ(tids[i] = 
-				RunThread(doBench, threadArg),THREAD_NULL)){
+				RunThread(doBench, &threadArg[i]),THREAD_NULL)){
 				fprintf(fout, "\nfailed to start thread #%d", i);
 				break;
 			}
+		}
 		WaitForThreads(tids, uThreadCount);
 		free(tids);
 	}
@@ -191,6 +193,32 @@ int main(int argc, char *argv[])
 
 void doBench(void *arg)
 { 
+#ifdef THREAD_PINNING
+    int task_id;
+    int core_id;
+    cpu_set_t cpuset;
+    int set_result;
+    int get_result;
+    CPU_ZERO(&cpuset);
+    task_id = *(int*)arg;
+    core_id = PINNING_MAP[task_id%80];
+    CPU_SET(core_id, &cpuset);
+    set_result = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    if (set_result != 0){
+    	fprintf(stderr, "setaffinity failed for thread %d to cpu %d\n", task_id, core_id);
+	exit(1);
+    }
+    get_result = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    if (set_result != 0){
+    	fprintf(stderr, "getaffinity failed for thread %d to cpu %d\n", task_id, core_id);
+	exit(1);
+    }
+    if (!CPU_ISSET(core_id, &cpuset)){
+   	fprintf(stderr, "WARNING: thread aiming for cpu %d is pinned elsewhere.\n", core_id);	 
+    } else {
+    	// fprintf(stderr, "thread pinning on cpu %d succeeded.\n", core_id);
+    }
+#endif
 	char **memory = pm_malloc(ulCallCount * sizeof(void *));
 	int	size_base, size, iterations;
 	int	repeat = ulCallCount;

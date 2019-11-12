@@ -79,8 +79,34 @@ public:
 
 
 
-extern "C" void * worker (void *)
+extern "C" void * worker (void * arg)
 {
+#ifdef THREAD_PINNING
+    int task_id;
+    int core_id;
+    cpu_set_t cpuset;
+    int set_result;
+    int get_result;
+    CPU_ZERO(&cpuset);
+    task_id = *(int*)arg;
+    core_id = PINNING_MAP[task_id%80];
+    CPU_SET(core_id, &cpuset);
+    set_result = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    if (set_result != 0){
+    	fprintf(stderr, "setaffinity failed for thread %d to cpu %d\n", task_id, core_id);
+	exit(1);
+    }
+    get_result = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    if (set_result != 0){
+    	fprintf(stderr, "getaffinity failed for thread %d to cpu %d\n", task_id, core_id);
+	exit(1);
+    }
+    if (!CPU_ISSET(core_id, &cpuset)){
+   	fprintf(stderr, "WARNING: thread aiming for cpu %d is pinned elsewhere.\n", core_id);	 
+    } else {
+    	// fprintf(stderr, "thread pinning on cpu %d succeeded.\n", core_id);
+    }
+#endif
   int i, j;
   Foo ** a;
   a = new Foo * [nobjects / nthreads];
@@ -158,8 +184,10 @@ int main (int argc, char * argv[])
   t.start ();
 
   int i;
+  int *threadArg = malloc(nthreads*sizeof(int));
   for (i = 0; i < nthreads; i++) {
-    threads[i].create (worker, NULL);
+    threadArg[i] = i;
+    threads[i].create (worker, &threadArg[i]);
   }
 
   for (i = 0; i < nthreads; i++) {
