@@ -146,7 +146,7 @@ int RP_in_prange(void* ptr){
 }
 
 int RP_region_range(int idx, void** start_addr, void** end_addr){
-	if(start_addr == nullptr || end_addr == nullptr || idx>=_rgs->regions.size()){
+	if(start_addr == nullptr || end_addr == nullptr || idx>=_rgs->cur_idx){
 		return 1;
 	}
 	*start_addr = (void*)_rgs->regions_address[idx];
