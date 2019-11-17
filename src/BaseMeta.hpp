@@ -202,7 +202,10 @@ struct Descriptor {
 		superblock(),
 		heap(),
 		block_size(),
-		maxcount(){};
+		maxcount(){
+			FLUSH(this);
+			FLUSHFENCE;
+		};
 }__attribute__((aligned(CACHELINE_SIZE)));
 static_assert(sizeof(Descriptor) == CACHELINE_SIZE, "Invalid Descriptor size");
 
