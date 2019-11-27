@@ -18,7 +18,7 @@ fi
 
 BINARY=./larson_test
 if [ "$ALLOC" == "je" ] || [ "$ALLOC" == "lr" ]; then
-  BINARY="numactl --membind=2,3 "${BINARY}
+  BINARY="numactl --membind=2 "${BINARY}
 fi
 
 THREADS=$1
@@ -34,4 +34,4 @@ while read line; do
 done < /tmp/larson
 
 echo "{ \"threads\": $THREADS , \"ops\":  $ops , \"allocator\": $ALLOC}"
-echo "$THREADS, $ops, $ALLOC" >> larson.csv
+echo "$THREADS,$ops,$ALLOC" >> larson.csv

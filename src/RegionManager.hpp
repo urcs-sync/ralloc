@@ -144,17 +144,23 @@ public:
 
 class Regions{
 public:
-	std::vector<RegionManager*> regions;
-	std::vector<char*> regions_address; // base address of each region
-	Regions():
-		regions(),
-		regions_address(){
-			regions_address.reserve(8);// a cache line
-		};
+	RegionManager* regions[LAST_IDX];
+	char* regions_address[LAST_IDX]; // base address of each region
+	int cur_idx;
+	Regions(){
+		cur_idx=0;
+		for(int i=0;i<LAST_IDX; i++){
+			regions[i]=nullptr;
+			regions_address[i]=nullptr;
+		}
+	}
 	~Regions(){
-		for(auto it:regions) delete(it);
-		regions.clear();
-		regions_address.clear();
+		for(int i=0;i<cur_idx; i++){
+			delete(regions[i]);
+			regions[i]=nullptr;
+			regions_address[i]=nullptr;
+		}
+		cur_idx = 0;
 	}
 
 	inline static bool exists_test (const std::string& name){
@@ -163,35 +169,37 @@ public:
 	}
 
 	void destroy(){
-		for(auto it:regions) delete(it);
-		regions.clear();
-		regions_address.clear();
+		for(int i=0;i<cur_idx; i++){
+			delete(regions[i]);
+			regions[i]=nullptr;
+			regions_address[i]=nullptr;
+		}
+		cur_idx = 0;
 	}
 
 	void create(const std::string& file_path, uint64_t size, bool p = true, bool imm_expand = true){
-		assert(regions.size() == regions_address.size());
 		bool restart = exists_test(file_path);
 		RegionManager* new_mgr = new RegionManager(file_path,size,p,imm_expand);
-		regions.push_back(new_mgr);
+		regions[cur_idx] = new_mgr;
 		if(imm_expand || restart)
-			regions_address.push_back((char*)new_mgr->__fetch_heap_start());
+			regions_address[cur_idx] = (char*)new_mgr->__fetch_heap_start();
 		else
-			regions_address.push_back(nullptr);
+			regions_address[cur_idx] = nullptr;
+		cur_idx++;
 		return;
 	}
 
 	template<class T>
 	T* create_for(const std::string& file_path, uint64_t size, bool p = true){
-		assert(regions.size() == regions_address.size());
-
 		bool restart = exists_test(file_path);
 		RegionManager* new_mgr = new RegionManager(file_path,size,p,true);
-		regions.push_back(new_mgr);
+		regions[cur_idx] = new_mgr;
 		T* t = (T*) new_mgr->__fetch_heap_start();
 		if(!restart){
 			new (t) T();
 		}
-		regions_address.push_back((char*)t);
+		regions_address[cur_idx] = (char*)t;
+		cur_idx++;
 		return t;
 	}
 

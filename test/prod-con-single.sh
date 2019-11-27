@@ -18,7 +18,7 @@ fi
 
 BINARY=./prod-con_test
 if [ "$ALLOC" == "je" ] || [ "$ALLOC" == "lr" ]; then
-  BINARY="numactl --membind=2,3 "${BINARY}
+  BINARY="numactl --membind=2 "${BINARY}
 fi
 
 THREADS=$1
@@ -34,4 +34,4 @@ while read line; do
 done < /tmp/prod-con
 
 echo "{ \"threads\": $THREADS , \"time\":  $exec_time , \"allocator\": $ALLOC}"
-echo "$THREADS, $exec_time, $ALLOC" >> prod-con.csv
+echo "$THREADS,$exec_time,$ALLOC" >> prod-con.csv

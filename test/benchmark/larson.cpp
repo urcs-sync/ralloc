@@ -401,11 +401,41 @@ static void * exercise_heap( void *pinput)
   int           victim ;
   long          blk_size ;
   int           range ;
+  int           threadno ;
+#ifdef THREAD_PINNING
+    int task_id;
+    int core_id;
+    cpu_set_t cpuset;
+    int set_result;
+    int get_result;
+#endif
 
 restart:
   if( stopflag ) return 0;
 
   pdea = (thread_data *)pinput ;
+  threadno = pdea->threadno;
+#ifdef THREAD_PINNING
+    CPU_ZERO(&cpuset);
+    task_id = threadno;
+    core_id = PINNING_MAP[task_id%80];
+    CPU_SET(core_id, &cpuset);
+    set_result = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    if (set_result != 0){
+    	fprintf(stderr, "setaffinity failed for thread %d to cpu %d\n", task_id, core_id);
+	exit(1);
+    }
+    get_result = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    if (set_result != 0){
+    	fprintf(stderr, "getaffinity failed for thread %d to cpu %d\n", task_id, core_id);
+	exit(1);
+    }
+    if (!CPU_ISSET(core_id, &cpuset)){
+   	fprintf(stderr, "WARNING: thread aiming for cpu %d is pinned elsewhere.\n", core_id);	 
+    } else {
+    	// fprintf(stderr, "thread pinning on cpu %d succeeded.\n", core_id);
+    }
+#endif
   pdea->finished = FALSE ;
   pdea->cThreads++ ;
   range = pdea->max_size - pdea->min_size ;

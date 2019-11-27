@@ -25,21 +25,50 @@ public:
 
   workerArg() {}
 
-  workerArg (MichaelScottQueue<char*>* _msq, int _objNum, int _objSize)
+  workerArg (MichaelScottQueue<char*>* _msq, int _objNum, int _objSize, int _pairIdx)
     : msq (_msq),
       objNum (_objNum),
-      objSize (_objSize)
+      objSize (_objSize),
+      pairIdx (_pairIdx)
   {}
 
   MichaelScottQueue<char*>* msq;
   int objNum;
   int objSize;
+  int pairIdx;
 };
 pthread_barrier_t barrier;
 void * producer (void * arg)
 {
-	// Producer: allocate objNum of objects in size of ObjSize, push each to msq
 	workerArg& w1 = *(workerArg *) arg;
+#ifdef THREAD_PINNING
+    int task_id;
+    int core_id;
+    cpu_set_t cpuset;
+    int set_result;
+    int get_result;
+    CPU_ZERO(&cpuset);
+    task_id = w1.pairIdx*2;
+    core_id = PINNING_MAP[task_id%80];
+    CPU_SET(core_id, &cpuset);
+    set_result = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    if (set_result != 0){
+    	fprintf(stderr, "setaffinity failed for thread %d to cpu %d\n", task_id, core_id);
+	exit(1);
+    }
+    get_result = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    if (set_result != 0){
+    	fprintf(stderr, "getaffinity failed for thread %d to cpu %d\n", task_id, core_id);
+	exit(1);
+    }
+    if (!CPU_ISSET(core_id, &cpuset)){
+   	fprintf(stderr, "WARNING: thread aiming for cpu %d is pinned elsewhere.\n", core_id);	 
+    } else {
+    	// fprintf(stderr, "thread pinning on cpu %d succeeded.\n", core_id);
+    }
+#endif
+
+	// Producer: allocate objNum of objects in size of ObjSize, push each to msq
 	pthread_barrier_wait(&barrier);
 	for (int i = 0; i < w1.objNum; i++) {
 		// Allocate the object.
@@ -60,6 +89,32 @@ void * consumer (void * arg)
 {
 	// Consumer: pop objects from msq, deallocate objNum of objects
 	workerArg& w1 = *(workerArg *) arg;
+#ifdef THREAD_PINNING
+    int task_id;
+    int core_id;
+    cpu_set_t cpuset;
+    int set_result;
+    int get_result;
+    CPU_ZERO(&cpuset);
+    task_id = w1.pairIdx*2+1;
+    core_id = PINNING_MAP[task_id%80];
+    CPU_SET(core_id, &cpuset);
+    set_result = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    if (set_result != 0){
+    	fprintf(stderr, "setaffinity failed for thread %d to cpu %d\n", task_id, core_id);
+	exit(1);
+    }
+    get_result = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    if (set_result != 0){
+    	fprintf(stderr, "getaffinity failed for thread %d to cpu %d\n", task_id, core_id);
+	exit(1);
+    }
+    if (!CPU_ISSET(core_id, &cpuset)){
+   	fprintf(stderr, "WARNING: thread aiming for cpu %d is pinned elsewhere.\n", core_id);	 
+    } else {
+    	// fprintf(stderr, "thread pinning on cpu %d succeeded.\n", core_id);
+    }
+#endif
 	int i = 0;
 	pthread_barrier_wait(&barrier);
 	while(i < w1.objNum) {
@@ -99,8 +154,8 @@ int main (int argc, char * argv[]){
 	int i;
 	for (i = 0; i < nthreads/2; i++) {
 		msqs.emplace_back(new MichaelScottQueue<char*>(2));
-		wArg.emplace_back(msqs[i], objNum*2/nthreads, objSize);
-		wArg.emplace_back(msqs[i], objNum*2/nthreads, objSize);
+		wArg.emplace_back(msqs[i], objNum*2/nthreads, objSize, i);
+		wArg.emplace_back(msqs[i], objNum*2/nthreads, objSize, i);
 	}
 
 	pm_init();

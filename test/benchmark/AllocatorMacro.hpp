@@ -1,6 +1,43 @@
 #ifndef ALLOCATOR_MACRO
 #define ALLOCATOR_MACRO
 #include "pfence_util.h"
+
+
+#ifndef THREAD_PINNING
+#define THREAD_PINNING
+#endif
+
+#ifdef THREAD_PINNING
+// current pinning map.
+#define PINNING_MAP pinning_map_2x20a_1
+// thread pinning strategy for 2x20a:
+// 1 thread per core on one socket -> hyperthreads on the same socket -> cross socket.
+static int pinning_map_2x20a_1[] = {
+ 	0,2,4,6,8,10,12,14,16,18,
+ 	20,22,24,26,28,30,32,34,36,38,
+ 	40,42,44,46,48,50,52,54,56,58,
+ 	60,62,64,66,68,70,72,74,76,78,
+ 	1,3,5,7,9,11,13,15,17,19,
+ 	21,23,25,27,29,31,33,35,37,39,
+ 	41,43,45,47,49,51,53,55,57,59,
+ 	61,63,65,67,69,71,73,75,77,79};
+
+// thread pinning strategy for 2x20a:
+// 5 cores on one socket -> 5 cores on the other ----> hyperthreads
+static int pinning_map_2x20a_2[] = {
+	0,2,4,6,8,1,3,5,7,9,
+	10,12,14,16,18,11,13,15,17,19,
+	20,22,24,26,28,21,23,25,27,29,
+	30,32,34,36,38,31,33,35,37,39,
+	40,42,44,46,48,41,43,45,47,49,
+	50,52,54,56,58,51,53,55,57,59,
+	60,62,64,66,68,61,63,65,67,69,
+	70,72,74,76,78,71,73,75,77,79};
+
+#endif
+volatile static int init_count = 0;
+
+
 #ifdef PMMALLOC
 
   #include "rpmalloc.hpp"
@@ -34,7 +71,7 @@
       assert(result != -1);
 
       void * addr =
-          mmap(0, MAKALU_FILESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); 
+          mmap(0, MAKALU_FILESIZE, PROT_READ | PROT_WRITE, 0x80003/*MAP_SHARED_VALIDATE | MAP_SYNC*/, fd, 0);
       assert(addr != MAP_FAILED);
 
       *((intptr_t*)addr) = (intptr_t) addr;

@@ -226,7 +226,7 @@ bool RegionManager::__nvm_region_allocator(void** memptr, size_t alignment, size
 
 	if (((alignment & (~alignment + 1)) != alignment) ||	//should be multiple of 2
 		(alignment < sizeof(void*))) return false; //should be at least the size of void*
-	char * old_curr_addr = curr_addr_ptr->load(std::memory_order_acquire);
+	char * old_curr_addr = curr_addr_ptr->load();
 	while(true){
 		char * new_curr_addr = old_curr_addr;
 		size_t aln_adj = (size_t) new_curr_addr & (alignment - 1);
@@ -243,7 +243,7 @@ bool RegionManager::__nvm_region_allocator(void** memptr, size_t alignment, size
 		new_curr_addr = next;
 		FLUSH(curr_addr_ptr);
 		FLUSHFENCE;
-		if(curr_addr_ptr->compare_exchange_weak(old_curr_addr, new_curr_addr,std::memory_order_acq_rel))
+		if(curr_addr_ptr->compare_exchange_weak(old_curr_addr, new_curr_addr))
 			break;
 	}
 	// *(((intptr_t*) base_addr) + 1) = (intptr_t) curr_addr;
@@ -262,7 +262,7 @@ int RegionManager::__try_nvm_region_allocator(void** memptr, size_t alignment, s
 
 	if (((alignment & (~alignment + 1)) != alignment) || //should be multiple of 2
 		(alignment < sizeof(void*))) return -1; //should be at least the size of void*
-	char * old_curr_addr = curr_addr_ptr->load(std::memory_order_acquire);
+	char * old_curr_addr = curr_addr_ptr->load();
 	char * new_curr_addr = old_curr_addr;
 	size_t aln_adj = (size_t) new_curr_addr & (alignment - 1);
 
@@ -278,7 +278,7 @@ int RegionManager::__try_nvm_region_allocator(void** memptr, size_t alignment, s
 	new_curr_addr = next;
 	FLUSH(curr_addr_ptr);
 	FLUSHFENCE;
-	if(curr_addr_ptr->compare_exchange_strong(old_curr_addr, new_curr_addr,std::memory_order_acq_rel)) {
+	if(curr_addr_ptr->compare_exchange_strong(old_curr_addr, new_curr_addr)) {
 		FLUSH(curr_addr_ptr);
 		FLUSHFENCE;
 		*memptr = res;
