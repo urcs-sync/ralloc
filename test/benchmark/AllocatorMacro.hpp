@@ -71,7 +71,7 @@ volatile static int init_count = 0;
       assert(result != -1);
 
       void * addr =
-          mmap(0, MAKALU_FILESIZE, PROT_READ | PROT_WRITE, 0x80003/*MAP_SHARED_VALIDATE | MAP_SYNC*/, fd, 0);
+          mmap(0, MAKALU_FILESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
       assert(addr != MAP_FAILED);
 
       *((intptr_t*)addr) = (intptr_t) addr;
