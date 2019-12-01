@@ -1631,7 +1631,7 @@ void initServerConfig(void) {
     server.always_show_logo = CONFIG_DEFAULT_ALWAYS_SHOW_LOGO;
     server.lua_time_limit = LUA_SCRIPT_TIME_LIMIT;
 
-#ifdef USE_RPMALLOC
+#ifdef USE_RALLOC
     server.pm_dir_path = "/localdisk/hwen5/";
     server.pm_file_size = 10240;
 #else
@@ -4027,7 +4027,7 @@ int main(int argc, char **argv) {
 
     printf("hello from main.\n");
 
-#if defined(USE_RPMALLOC)
+#if defined(USE_RALLOC)
     if (!server.sentinel_mode) {
         zmalloc_init_pmem("hwen5_redis", 17179869184);
     }
@@ -4232,7 +4232,7 @@ int main(int argc, char **argv) {
     aeSetAfterSleepProc(server.el,afterSleep);
     aeMain(server.el);
     aeDeleteEventLoop(server.el);
-#if defined(USE_MEMKIND) || defined(USE_RPMALLOC)
+#if defined(USE_MEMKIND) || defined(USE_RALLOC)
     zmalloc_destroy_pmem();
 #endif
     return 0;

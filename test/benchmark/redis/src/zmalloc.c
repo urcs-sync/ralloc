@@ -74,7 +74,7 @@ void zlibc_free(void *ptr) {
 #define calloc(count,size) memkind_calloc(MEMKIND_DEFAULT,count,size)
 #define realloc(ptr,size) memkind_realloc(NULL,ptr,size)
 #define free(ptr) memkind_free(NULL,ptr)
-#elif defined(USE_RPMALLOC)
+#elif defined(USE_RALLOC)
 #define malloc(size) RP_malloc(size)
 #define free(ptr) RP_free(ptr)
 #define calloc(count,size) RP_calloc(count,size)
@@ -122,7 +122,7 @@ void zmalloc_destroy_pmem() {
 }
 #endif
 
-#ifdef USE_RPMALLOC
+#ifdef USE_RALLOC
 void zmalloc_init_pmem(const char* pm_dir_path, size_t pm_file_size) {
     RP_init(pm_dir_path, pm_file_size);
 }

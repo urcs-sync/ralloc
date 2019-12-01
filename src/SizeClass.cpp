@@ -14,7 +14,7 @@
 	SIZE_CLASS_bin_##bin(((1U << lg_grp) + (ndelta << lg_delta)), pgs)
 
 // this is reconstructed in every execution
-SizeClass rpmalloc::sizeclass;
+SizeClass ralloc::sizeclass;
 
 SizeClass::SizeClass():
 	sizeclasses{

@@ -316,7 +316,7 @@ ThreadID RunThread(void (*fn)(void *), void *arg)
 	
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
-#ifdef PMMALLOC
+#ifdef RALLOC
 	if (pthread_create(&result, &attr, (void *(*)(void *))fn, arg) == -1)
 #elif defined (MAKALU)
 	if (MAK_pthread_create(&result, &attr, (void *(*)(void *))fn, arg) == -1)

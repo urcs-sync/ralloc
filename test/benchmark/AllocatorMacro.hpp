@@ -38,15 +38,15 @@ static int pinning_map_2x20a_2[] = {
 volatile static int init_count = 0;
 
 
-#ifdef PMMALLOC
+#ifdef RALLOC
 
-  #include "rpmalloc.hpp"
+  #include "ralloc.hpp"
   inline void* pm_malloc(size_t s) { return RP_malloc(s); }
   inline void pm_free(void* p) { RP_free(p); }
   inline int pm_init() { return RP_init("test", 5*1024*1024*1024ULL + 24); }
   inline void pm_close() { RP_close(); }
 
-#elif defined(MAKALU) // PMMALLOC ends
+#elif defined(MAKALU) // RALLOC ends
 
   #include "makalu.h"
   #include <fcntl.h>

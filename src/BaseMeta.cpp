@@ -7,7 +7,7 @@
 #include "BaseMeta.hpp"
 
 using namespace std;
-using namespace rpmalloc;
+using namespace ralloc;
 using namespace std::chrono;
 template<class T, RegionIndex idx>
 CrossPtr<T,idx>::CrossPtr(T* real_ptr) noexcept{
@@ -660,7 +660,7 @@ void BaseMeta::do_free(void* ptr){
 
 
 // this can be called by TCaches
-void rpmalloc::public_flush_cache(){
+void ralloc::public_flush_cache(){
 	if(initialized) {
 		for(int i=1;i<MAX_SZ_IDX;i++){// sc 0 is reserved.
 			base_md->flush_cache(i, &t_caches.t_cache[i]);
@@ -686,7 +686,7 @@ void GarbageCollection::operator() () {
 	// First mark all root nodes
 	for(int i = 0; i < MAX_ROOTS; i++) {
 		if(base_md->roots[i]!=nullptr) {
-			rpmalloc::roots_filter_func[i](base_md->roots[i], *this);
+			ralloc::roots_filter_func[i](base_md->roots[i], *this);
 		}
 	}
 	while(!to_filter_node.empty()) {

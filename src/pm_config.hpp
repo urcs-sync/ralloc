@@ -7,9 +7,9 @@
 #include "pfence_util.h"
 
 /* prefixing indicator */
-// persistent data in rpmalloc
+// persistent data in ralloc
 #define RP_PERSIST
-// transient data in rpmalloc
+// transient data in ralloc
 #define RP_TRANSIENT
 
 // region index

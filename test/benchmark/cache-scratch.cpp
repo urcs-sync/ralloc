@@ -41,13 +41,13 @@
 #include "cpuinfo.h"
 #include "timer.h"
 
-#ifdef PMMALLOC
+#ifdef RALLOC
 
-  #include "rpmalloc.hpp"
+  #include "ralloc.hpp"
   #define pm_malloc(s) RP_malloc(s)
   #define pm_free(p) RP_free(p)
 
-#elif defined(MAKALU) // PMMALLOC ends
+#elif defined(MAKALU) // RALLOC ends
 
   #include "makalu.h"
   #include <fcntl.h>
@@ -187,7 +187,7 @@ int main (int argc, char * argv[])
   HL::Fred::setConcurrency (HL::CPUInfo::getNumProcessors());
 
   int i;
-#ifdef PMMALLOC
+#ifdef RALLOC
   RP_init("test");
   // tid = thread_count.fetch_add(1);
 #elif defined (MAKALU)
@@ -218,7 +218,7 @@ int main (int argc, char * argv[])
 
   printf ("Time elapsed = %f seconds.\n", (double) t);
 
-#ifdef PMMALLOC
+#ifdef RALLOC
   RP_close();
 #elif defined (MAKALU)
   MAK_close();

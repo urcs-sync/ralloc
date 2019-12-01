@@ -42,13 +42,13 @@ using namespace std;
 #include "fred.h"
 #include "timer.h"
 
-#ifdef PMMALLOC
+#ifdef RALLOC
 
-  #include "rpmalloc.hpp"
+  #include "ralloc.hpp"
   #define pm_malloc(s) RP_malloc(s)
   #define pm_free(p) RP_free(p)
 
-#elif defined(MAKALU) // PMMALLOC ends
+#elif defined(MAKALU) // RALLOC ends
 
   #include "makalu.h"
   #include <fcntl.h>
@@ -189,7 +189,7 @@ int main (int argc, char * argv[])
   HL::Fred::setConcurrency (HL::CPUInfo::getNumProcessors());
 
   int i;
-#ifdef PMMALLOC
+#ifdef RALLOC
   RP_init("test");
 #elif defined (MAKALU)
   __map_persistent_region();
@@ -208,7 +208,7 @@ int main (int argc, char * argv[])
   t.stop();
 
   cout << "Time elapsed = " << (double) t << " seconds." << endl;
-#ifdef PMMALLOC
+#ifdef RALLOC
   RP_close();
 #elif defined (MAKALU)
   MAK_close();

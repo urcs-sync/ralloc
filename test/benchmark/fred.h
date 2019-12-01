@@ -7,8 +7,8 @@
 
 #include <pthread.h>
 #include <unistd.h>
-#ifdef PMMALLOC
-  #include "rpmalloc.hpp"
+#ifdef RALLOC
+  #include "ralloc.hpp"
 #elif defined (MAKALU)
   #include "makalu.h"
 #endif
@@ -30,7 +30,7 @@ public:
   }
 
   void create (ThreadFunctionType function, void * arg) {
-#ifdef PMMALLOC
+#ifdef RALLOC
     pthread_create (&t, &attr, function, arg);
 #elif defined (MAKALU)
     MAK_pthread_create (&t, &attr, function, arg);

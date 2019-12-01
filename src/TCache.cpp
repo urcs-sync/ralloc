@@ -1,7 +1,7 @@
 #include "TCache.hpp"
 
-using namespace rpmalloc;
-thread_local TCaches rpmalloc::t_caches;
+using namespace ralloc;
+thread_local TCaches ralloc::t_caches;
 
 void TCacheBin::push_block(char* block)
 {

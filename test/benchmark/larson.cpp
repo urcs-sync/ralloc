@@ -69,7 +69,7 @@ void _beginthread (VoidFunction x, int, void * z)
 #endif
 
   //  printf ("creating a thread.\n");
-#ifdef PMMALLOC
+#ifdef RALLOC
   int v = pthread_create(&pt, &pa, x, z);
 #elif defined (MAKALU)
   int v = MAK_pthread_create(&pt, &pa, x, z);

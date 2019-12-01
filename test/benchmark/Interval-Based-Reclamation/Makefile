@@ -66,7 +66,7 @@ ODIR:=./obj
 LDIRS:=./ext/parharness ../../
 # libraries to link against (are expected to be in the above directories,
 # or they are system default)
-LIBS :=-l:libjemalloc.so.2 -lparharness -lpthread -lhwloc -lm -lrt -l:librpmalloc.a
+LIBS :=-l:libjemalloc.so.2 -lparharness -lpthread -lhwloc -lm -lrt -l:libralloc.a
 # directories that should be built first using recursive make.
 # You should avoid this in general, but it's useful for building
 # external libraries which we depend on

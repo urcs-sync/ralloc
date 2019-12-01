@@ -5,11 +5,11 @@ WARNING_FLAGS:=-ftrapv -Wreturn-type -W -Wall \
 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-parameter
 
 FLAGS = -O3 -g -fpermissive $(WARNING_FLAGS) -fno-omit-frame-pointer #-DDESTROY -DMEM_CONSUME_TEST
-PMMALLOC_FLAGS = $(FLAGS) -DPMMALLOC -L.
+RALLOC_FLAGS = $(FLAGS) -DRALLOC -L.
 MAKALU_FLAGS = $(FLAGS) -I../ext/makalu_alloc/include -DMAKALU -L../ext/makalu_alloc/lib -lmakalu 
 PMDK_FLAGS = $(FLAGS) -DPMDK -lpmemobj 
 
-R_CXXFLAGS = $(PMMALLOC_FLAGS) -ljemalloc -L. -lrpmalloc 
+R_CXXFLAGS = $(RALLOC_FLAGS) -ljemalloc -L. -lralloc 
 MAK_CXXFLAGS = $(MAKALU_FLAGS) -ljemalloc 
 JE_CXXFLAGS = $(FLAGS) -ljemalloc
 LR_CXXFLAGS = $(FLAGS) -L../../lrmalloc -l:lrmalloc.a -ldl# for built-in malloc
@@ -50,51 +50,51 @@ msqueue_test: msqueue_test.cpp
 region_manager_test: ../obj/RegionManager.o region_manager_test.cpp
 	$(CXX) -I $(SRC) -o $@ $^ $(CXXFLAGS) $(LIBS)
 
-base_meta_test: base_meta_test.cpp librpmalloc.a
-	$(CXX) -I $(SRC) -o $@ $^ $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
+base_meta_test: base_meta_test.cpp libralloc.a
+	$(CXX) -I $(SRC) -o $@ $^ $(CXXFLAGS) $(LIBS) -L. -lralloc
 
-rpmalloc_test: rpmalloc_test.cpp librpmalloc.a
-	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
+ralloc_test: ralloc_test.cpp libralloc.a
+	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lralloc
 
-pptr_test: pptr_test.cpp librpmalloc.a
-	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
+pptr_test: pptr_test.cpp libralloc.a
+	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lralloc
 
-arraystack_test: arraystack_test.cpp librpmalloc.a
-	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
+arraystack_test: arraystack_test.cpp libralloc.a
+	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lralloc
 
-arrayqueue_test: arrayqueue_test.cpp librpmalloc.a
-	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
+arrayqueue_test: arrayqueue_test.cpp libralloc.a
+	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lralloc
 
 ../obj/%.o: ../src/%.cpp
 	$(CXX) -I $(SRC) -o $@ -c $^ $(CXXFLAGS)
 
 benchmark_pm: threadtest_test sh6bench_test larson_test prod-con_test #cache-scratch_test cache-thrash_test
 
-threadtest_test: ./benchmark/threadtest.cpp librpmalloc.a
+threadtest_test: ./benchmark/threadtest.cpp libralloc.a
 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) 
 
-sh6bench_test: ./benchmark/sh6bench.cpp librpmalloc.a
+sh6bench_test: ./benchmark/sh6bench.cpp libralloc.a
 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) 
 
-larson_test: ./benchmark/larson.cpp librpmalloc.a
+larson_test: ./benchmark/larson.cpp libralloc.a
 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) 
 
 # # Active false sharing
-# cache-thrash_test: ./benchmark/cache-thrash.cpp librpmalloc.a
-# 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
+# cache-thrash_test: ./benchmark/cache-thrash.cpp libralloc.a
+# 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lralloc
 
 # # Passive false sharing
-# cache-scratch_test: ./benchmark/cache-scratch.cpp librpmalloc.a
-# 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lrpmalloc
+# cache-scratch_test: ./benchmark/cache-scratch.cpp libralloc.a
+# 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lralloc
 
-prod-con_test: ./benchmark/prod-con.cpp librpmalloc.a
+prod-con_test: ./benchmark/prod-con.cpp libralloc.a
 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) 
 
-librpmalloc.a:../obj/SizeClass.o ../obj/RegionManager.o ../obj/TCache.o ../obj/BaseMeta.o ../obj/rpmalloc.o
+libralloc.a:../obj/SizeClass.o ../obj/RegionManager.o ../obj/TCache.o ../obj/BaseMeta.o ../obj/ralloc.o
 	ar -rcs $@ $^
 
 clean:
 	rm -f *_test
 	rm -rf ../obj/*
-	rm -f librpmalloc.a
+	rm -f libralloc.a
 	rm -rf /mnt/pmem/*

@@ -61,9 +61,9 @@
 #define HAVE_MALLOC_SIZE 1
 #define zmalloc_size(p) memkind_malloc_usable_size(NULL,p)
 
-#elif defined(USE_RPMALLOC)
-#define ZMALLOC_LIB "rpmalloc"
-#include <rpmalloc.hpp>
+#elif defined(USE_RALLOC)
+#define ZMALLOC_LIB "ralloc"
+#include <ralloc.hpp>
 #define HAVE_MALLOC_SIZE 1
 extern size_t RP_malloc_size(void *ptr);
 #define zmalloc_size(p) RP_malloc_size(p)

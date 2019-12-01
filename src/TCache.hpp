@@ -50,7 +50,7 @@ public:
 	// slow operations like fill/flush handled in cache user
 };
 
-namespace rpmalloc{
+namespace ralloc{
 	extern void public_flush_cache();
 }
 struct TCaches
@@ -58,12 +58,12 @@ struct TCaches
 	TCacheBin t_cache[MAX_SZ_IDX];
 	TCaches():t_cache(){};
 	~TCaches(){
-		rpmalloc::public_flush_cache();
+		ralloc::public_flush_cache();
 	}
 };
 
 /* thread-local cache */
-namespace rpmalloc{
+namespace ralloc{
 	extern thread_local TCaches t_caches;
 }
 #endif // __TCACHE_H_

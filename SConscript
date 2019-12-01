@@ -16,10 +16,10 @@ C_SRC = Split("""
               src/RegionManager.cpp
               src/TCache.cpp
               src/BaseMeta.cpp
-              src/rpmalloc.cpp
+              src/ralloc.cpp
               """)
 
 SRC = C_SRC
 
-rpmallocLibrary = buildEnv.StaticLibrary('rpmalloc', SRC)
-Return('rpmallocLibrary')
+rallocLibrary = buildEnv.StaticLibrary('ralloc', SRC)
+Return('rallocLibrary')

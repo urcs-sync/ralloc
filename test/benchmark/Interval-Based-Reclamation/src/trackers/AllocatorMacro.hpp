@@ -1,7 +1,7 @@
 #ifndef ALLOCATOR_MACRO
 #define ALLOCATOR_MACRO
 
-#include "rpmalloc.hpp"
+#include "ralloc.hpp"
 #define PM_start(id) RP_init(id)
 #define PM_close() RP_close()
 #define PM_malloc(sz) RP_malloc(sz)

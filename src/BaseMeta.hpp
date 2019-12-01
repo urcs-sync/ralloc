@@ -20,7 +20,7 @@
 
 /********class BaseMeta********
  * This is the file where meta data structures of
- * rpmalloc are defined.
+ * ralloc are defined.
  *
  * The logic is: 
  * 	1. 	Use RegionManager to allocate a persistent 
@@ -36,7 +36,7 @@
  *			BaseMeta. It traces and recovers free lists.
  *		void BaseMeta::writeback():
  *			Do writeback before program exits.
- *			It flushes free lists and marks as clean.
+ *			It flushes free lists and caches and marks as clean.
  *		void set_mgr(RegionManager* m):
  *			Set mgr pointer to m.
  *			It should be called after data is remapped in
@@ -63,8 +63,8 @@
  * 		base_md->set_mgr(mgr);
  * 		base_md->restart();
  *
- * By default free_sb is mapped to $(HEAPFILE_PREFIX)_stack_rpmalloc_freesb,
- * free_desc to $(HEAPFILE_PREFIX)_queue_rpmalloc_freedesc, 
+ * By default free_sb is mapped to $(HEAPFILE_PREFIX)_stack_ralloc_freesb,
+ * free_desc to $(HEAPFILE_PREFIX)_queue_ralloc_freedesc, 
  * and partial_desc of each sizeclass with block size sz to 
  * $(HEAPFILE_PREFIX)_queue_scpartial$(sz).
  *
@@ -80,9 +80,9 @@
 // relative address stored in CrossPtr is the offset 
 // from the start of that region to the block.
 class BaseMeta;
-namespace rpmalloc{
+namespace ralloc{
 	/* manager to map, remap, and unmap the heap */
-	extern Regions* _rgs;//initialized when rpmalloc constructs
+	extern Regions* _rgs;//initialized when ralloc constructs
 	extern bool initialized;
 	extern BaseMeta* base_md;
 	extern void public_flush_cache();
@@ -100,7 +100,7 @@ public:
 		if(UNLIKELY(is_null())){
 			return nullptr;
 		} else{
-			return reinterpret_cast<F*>(rpmalloc::_rgs->translate(idx, off));
+			return reinterpret_cast<F*>(ralloc::_rgs->translate(idx, off));
 		}
 	} 
 	T& operator* ();
@@ -112,7 +112,7 @@ public:
 	template<class F>
 	inline CrossPtr& operator= (const F* p){
 		uint64_t tmp = reinterpret_cast<uint64_t>(p);//get rid of const
-		off = rpmalloc::_rgs->untranslate(idx, reinterpret_cast<char*>(tmp));
+		off = ralloc::_rgs->untranslate(idx, reinterpret_cast<char*>(tmp));
 		return *this;
 	}
 	inline CrossPtr& operator= (const std::nullptr_t& p){
@@ -240,7 +240,7 @@ public:
 	inline void mark_func(T* ptr){
 		void* addr = reinterpret_cast<void*>(ptr);
 		// Step 1: check if it's a valid pptr
-		if(UNLIKELY(!rpmalloc::_rgs->in_range(SB_IDX, addr))) 
+		if(UNLIKELY(!ralloc::_rgs->in_range(SB_IDX, addr))) 
 			return; // return if not in range
 		auto res = marked_blk.find(reinterpret_cast<char*>(addr));
 		if(res == marked_blk.end()){
@@ -259,7 +259,7 @@ public:
 	inline void filter_func(T* ptr);
 };
 
-namespace rpmalloc{
+namespace ralloc{
 	//GC
 	extern std::function<void(const CrossPtr<char, SB_IDX>&, GarbageCollection&)> roots_filter_func[MAX_ROOTS];
 }
@@ -311,7 +311,7 @@ public:
 		//this is sequential
 		// assert(i<MAX_ROOTS && roots[i]!=nullptr); // we allow roots[i] to be null
 		assert(i<MAX_ROOTS);
-		rpmalloc::roots_filter_func[i] = [](const CrossPtr<char, SB_IDX>& cptr, GarbageCollection& gc){
+		ralloc::roots_filter_func[i] = [](const CrossPtr<char, SB_IDX>& cptr, GarbageCollection& gc){
 			// this new statement is intentionally designed to use transient allocator since it's offline
 			gc.mark_func(static_cast<T*>(cptr));
 		};
@@ -332,7 +332,7 @@ public:
 	void writeback(){
 		// Give back tcached blocks
 		// Should be called during normal exit
-		rpmalloc::public_flush_cache();
+		ralloc::public_flush_cache();
 		char* addr = reinterpret_cast<char*>(this);
 		// flush values in BaseMeta, including avail_sb and partial lists
 		for(size_t i = 0; i < sizeof(BaseMeta); i += CACHELINE_SIZE) {
@@ -407,7 +407,7 @@ private:
 template<class T>
 inline void GarbageCollection::filter_func(T* ptr){
 	char* curr = reinterpret_cast<char*>(ptr);
-	Descriptor* desc = rpmalloc::base_md->desc_lookup((char*)ptr);
+	Descriptor* desc = ralloc::base_md->desc_lookup((char*)ptr);
 	size_t sz = desc->block_size;
 	for(size_t i=0;i<sz;i++){
 		char* curr_content = static_cast<char*>(*(reinterpret_cast<pptr<char>*>(curr)));

@@ -3,13 +3,13 @@
 #include <pthread.h>
 #include <atomic>
 
-#include "rpmalloc.hpp"
+#include "ralloc.hpp"
 // #include "thread_util.hpp"
 
 using namespace std;
 
 const int THREAD_NUM = 4;
-// rpmalloc* alloc;
+// ralloc* alloc;
 atomic<bool> start{false};
 
 void *malloc_free_loop(void *args) {
