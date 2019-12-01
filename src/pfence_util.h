@@ -7,12 +7,19 @@
 // Uncomment to enable durable linearizability
 #define DUR_LIN
 
-#define PWB_IS_CLFLUSH
+#ifdef SHM_SIMULATING
+  #define PWB_IS_CLFLUSH
+#else
+  #define PWB_IS_CLWB
+#endif
 
 #ifdef DUR_LIN
   #ifdef PWB_IS_CLFLUSH
     #define FLUSH(addr) asm volatile ("clflush (%0)" :: "r"(addr))
     #define FLUSHFENCE 
+  #elif defined(PWB_IS_CLWB)
+    #define FLUSH(addr) asm volatile ("clwb (%0)" :: "r"(addr))
+    #define FLUSHFENCE asm volatile ("sfence" ::: "memory")
   #elif defined(PWB_IS_PCM)
     #define FLUSH(addr) emulate_latency_ns(340)
     #define FLUSHFENCE emulate_latency_ns(500)

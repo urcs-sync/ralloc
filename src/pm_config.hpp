@@ -43,8 +43,13 @@ enum RegionIndex : int {
 #endif
 
 /* user customized macros */
-#define HEAPFILE_PREFIX "/dev/shm/"
-#define ENABLE_FILTER_FUNC 1
+#ifdef SHM_SIMULATING
+  #define HEAPFILE_PREFIX "/dev/shm/"
+  #define MMAP_FLAG MAP_SHARED
+#else
+  #define HEAPFILE_PREFIX "/mnt/pmem/"
+  #define MMAP_FLAG 0x80003/*MAP_SHARED_VALIDATE | MAP_SYNC*/
+#endif
 // #define DEBUG 1
 
 /* System Macros */
