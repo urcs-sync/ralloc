@@ -6,6 +6,10 @@
 
 #include "BaseMeta.hpp"
 
+/*
+ * BaseMeta.cpp contains implementation of most types and functions declared in
+ * BaseMeta.hpp, please find description of their functionality in BaseMeta.hpp.
+ */
 using namespace std;
 using namespace ralloc;
 using namespace std::chrono;
@@ -41,6 +45,7 @@ AtomicCrossPtrCnt<T,idx>::AtomicCrossPtrCnt(T* real_ptr, uint64_t counter)noexce
 	off.store(res);
 }
 
+// wrapped-up atomic ops for AtomicCrossPtrCnt
 template<class T, RegionIndex idx>
 inline ptr_cnt<T> AtomicCrossPtrCnt<T,idx>::load(memory_order order)const noexcept{
 	char* cur_off = off.load(order);
@@ -190,7 +195,7 @@ BaseMeta::BaseMeta() noexcept
 		FLUSH(&roots[i]);
 	}
 
-	// warm up small sb space 
+	// warm up small sb space, expanding sb region by SB_REGION_EXPAND_SIZE
 	void* tmp_sec_start = nullptr;
 	bool res = _rgs->expand(SB_IDX,&tmp_sec_start,SBSIZE, SB_REGION_EXPAND_SIZE);
 	if(!res) assert(0&&"warmup sb allocation fails!");
@@ -668,6 +673,13 @@ void ralloc::public_flush_cache(){
 	}
 }
 
+/*
+ * function GarbageCollection::operator()
+ * 
+ * Description:
+ *  Sequential stop-the-world garbage collection routine for Ralloc when dirty
+ *  segment exists.
+ */
 void GarbageCollection::operator() () {
 	printf("Start garbage collection...\n");
 	auto start = high_resolution_clock::now(); 
