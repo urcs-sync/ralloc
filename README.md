@@ -8,9 +8,9 @@ Scott
 * src: Ralloc's Source files.
 * ext: External library.
     * makalu_alloc: the Makalu source code from [Atlas
-      repo](https://github.com/HewlettPackard/Atlas/tree/makalu) in GitHub.
+      repo](https://github.com/HewlettPackard/Atlas/tree/makalu) on GitHub.
     * lrmalloc: the LRMalloc source code from [lrmalloc
-      repo](https://github.com/ricleite/lrmalloc) in GitHub, with some minor bug
+      repo](https://github.com/ricleite/lrmalloc) on GitHub, with some minor bug
       fix and retweak. 
       WARNING: Due to the small counter used in LRMalloc to avoid ABA
       problem, it has been encountered that a hazard counter overflow will
@@ -30,7 +30,7 @@ Scott
 
 ## Dependencies
 
-#### Must-have
+#### Necessary
 gcc with C++11 support
 libjemalloc
 
