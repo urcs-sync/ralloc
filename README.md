@@ -1,7 +1,9 @@
 # Ralloc - Recoverable Lock-free Allocator
 
-By Wentao Cai, Haosen Wen, H. Alan Beadle, Mohammad Hedayati and Michael L.
-Scott
+Ralloc is an allocator introduced in *Understanding and Optimizing Persistent
+Memory Allocation* by Wentao Cai, Haosen Wen, H. Alan Beadle, Mohammad Hedayati
+and Michael L. Scott. The brief announcement version of the paper is to appear
+in PPoPP'2020.
 
 ## Layout
 
