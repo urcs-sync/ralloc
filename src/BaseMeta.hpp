@@ -66,7 +66,6 @@ namespace ralloc{
     extern void public_flush_cache();
 };
 
-
 /* 
  * class CrossPtr<T, idx>
  *  
@@ -128,6 +127,37 @@ template <class T, RegionIndex idx>
 inline bool operator!=(const CrossPtr<T,idx>& lhs, const std::nullptr_t& rhs){
     return !lhs.is_null();
 }
+
+/* 
+ * class ptr_cnt<T>
+ * 
+ * Description:
+ * This is a wrapper for plain pointer, rather than pptr.
+ * Given that we don't use this in atomic (i.e., no atomic<ptr_cnt<T>>), we
+ * don't bother fit both pointer and counter into 64 bits.
+ * 
+ * This class is to store the intermediate value of operations on 
+ * AtomicCrossPtrCnt<T>, including atomic load, store, 
+ * and CAS.
+ */
+template <class T>
+class ptr_cnt{
+public:
+	T* ptr;//ptr with least 6 bits as counter
+	uint64_t cnt;
+	ptr_cnt(T* p=nullptr, uint64_t c = 0) noexcept:
+		ptr(p), cnt(c){};
+	void set(T* p, uint64_t c){
+		ptr = p;
+		cnt = c;
+	}
+	T* get_ptr() const{
+		return ptr;
+	}
+	uint64_t get_counter() const{
+		return cnt;
+	}
+};
 
 /* 
  * class AtomicCrossPtrCnt<T, idx>

@@ -1,8 +1,23 @@
-
 #ifndef PFENCE_UTIL_H
 #define PFENCE_UTIL_H
 
 #include <stdint.h>
+
+/*
+ * This file contains 3 versions of flush and fence macros:
+ * 1. PWB_IS_CLFLUSH
+ *    This uses clflush as flush, and noop as fence since (sequential) clflush
+ *    doesn't need explicit fence to order.
+ * 2. PWB_IS_CLWB
+ *    This uses clwb as flush and sfence as fence.
+ * 3. PWB_IS_PCM
+ *    This only emulates the latency of persistent memory and has no effect on
+ *    writeback behavior.
+ * 
+ * To be compatible on machines with no clwb (which usually aren't equipped by
+ * real persistent memory), we use macro SHM_SIMULATING to switch between
+ * clflush and clwb.
+ */
 
 // Uncomment to enable durable linearizability
 #define DUR_LIN

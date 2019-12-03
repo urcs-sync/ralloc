@@ -6,6 +6,11 @@
 
 #include "pfence_util.h"
 
+/*
+ * This file contains macros and consts for Ralloc, some of which are
+ * customizable. However, we highly suggest no modification.
+ */
+
 /* prefixing indicator */
 // persistent data in ralloc
 #define RP_PERSIST
@@ -14,10 +19,10 @@
 
 // region index
 enum RegionIndex : int {
-	DESC_IDX = 0,
-	SB_IDX = 1,
-	META_IDX = 2,
-	LAST_IDX // dummy index as the last
+    DESC_IDX = 0,
+    SB_IDX = 1,
+    META_IDX = 2,
+    LAST_IDX // dummy index as the last
 };
 
 #define LIKELY(x) __builtin_expect((x), 1)
@@ -42,7 +47,7 @@ enum RegionIndex : int {
   #define DBG_PRINT(msg, ...)
 #endif
 
-/* user customized macros */
+/* SHM_SIMULATING switches to compatible mode for machines without real persistent memory. */
 #ifdef SHM_SIMULATING
   #define HEAPFILE_PREFIX "/dev/shm/"
   #define MMAP_FLAG MAP_SHARED
@@ -51,6 +56,12 @@ enum RegionIndex : int {
   #define MMAP_FLAG 0x80003/*MAP_SHARED_VALIDATE | MAP_SYNC*/
 #endif
 // #define DEBUG 1
+
+/* Customizable Values */
+const uint64_t MAX_DESC_AMOUNT_BITS = 24;
+const uint64_t MIN_SB_REGION_SIZE = 1*1024*1024*1024ULL; // min sb region size
+const uint64_t SB_REGION_EXPAND_SIZE = MIN_SB_REGION_SIZE;
+const int MAX_ROOTS = 1024;
 
 /* System Macros */
 const int TYPE_SIZE = 4;
@@ -75,22 +86,20 @@ const uint64_t DESCSIZE = CACHELINE_SIZE;
 const int SB_SHIFT = 16; // assume size of a superblock is 64K
 const int DESC_SHIFT = 6; // assume size of a descriptor is 64B
 
-/* Customizable Values */
-const uint64_t MAX_DESC_AMOUNT_BITS = 24;
+
+/* Consts Determined by Customizable Values */
 const uint64_t MAX_DESC_AMOUNT = 1ULL<<MAX_DESC_AMOUNT_BITS; // maximum of superblocks in region
 const uint64_t MAX_DESC_OFFSET_BITS = MAX_DESC_AMOUNT_BITS + 6;// plus 2^6(64)Byte descriptor
 const uint64_t MAX_DESC_OFFSET_MASK = (1ULL<<MAX_DESC_OFFSET_BITS) - 1;
 const uint64_t MAX_SB_AMOUNT = MAX_DESC_AMOUNT;
-const uint64_t MIN_SB_REGION_SIZE = 1*1024*1024*1024ULL; // min sb region size
 const int64_t MAX_SB_REGION_SIZE = SBSIZE*MAX_SB_AMOUNT; // max possible sb region size to call RP_init. Currently it's 1TB which must be sufficient
 const uint64_t MAX_DESC_REGION_SIZE = DESCSIZE*MAX_DESC_AMOUNT;
-const int MAX_ROOTS = 1024;
-const uint64_t SB_REGION_EXPAND_SIZE = MIN_SB_REGION_SIZE;
+
 /*
  * Dig 16 least significant bits inside pptr and atomic_pptr to create unique 
  * bits pattern. The least bit is sign bit.
  * Note: here we assume addresses on x86-64 don't use most significant 16 bits
- * and thus we are same to shift an offset left by 16 bits.
+ * and thus we are safe to shift an offset left by 16 bits.
  */
 const uint64_t PPTR_PATTERN_POS = 0x52b0;
 const uint64_t PPTR_PATTERN_NEG = 0x52b1;
