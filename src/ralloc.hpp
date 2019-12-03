@@ -1,20 +1,3 @@
-/*
- * Copyright (C) 2007  Scott Schneider, Christos Antonopoulos
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- */
 #ifndef _RALLOC_HPP_
 #define _RALLOC_HPP_
 
@@ -25,15 +8,15 @@
 extern "C" int RP_init(const char* _id, uint64_t size = 5*1024*1024*1024ULL);
 #include "BaseMeta.hpp"
 namespace ralloc{
-	extern bool initialized;
-	/* persistent metadata and their layout */
-	extern BaseMeta* base_md;
-	extern std::function<void(const CrossPtr<char, SB_IDX>&, GarbageCollection&)> roots_filter_func[MAX_ROOTS];
+    extern bool initialized;
+    /* persistent metadata and their layout */
+    extern BaseMeta* base_md;
+    extern std::function<void(const CrossPtr<char, SB_IDX>&, GarbageCollection&)> roots_filter_func[MAX_ROOTS];
 };
 template<class T>
 T* RP_get_root(uint64_t i){
-	assert(ralloc::initialized);
-	return ralloc::base_md->get_root<T>(i);
+    assert(ralloc::initialized);
+    return ralloc::base_md->get_root<T>(i);
 }
 extern "C"{
 #else

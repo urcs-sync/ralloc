@@ -12,7 +12,7 @@ PMDK_FLAGS = $(FLAGS) -DPMDK -lpmemobj
 R_CXXFLAGS = $(RALLOC_FLAGS) -ljemalloc -L. -lralloc 
 MAK_CXXFLAGS = $(MAKALU_FLAGS) -ljemalloc 
 JE_CXXFLAGS = $(FLAGS) -ljemalloc
-LR_CXXFLAGS = $(FLAGS) -L../../lrmalloc -l:lrmalloc.a -ldl# for built-in malloc
+LR_CXXFLAGS = $(FLAGS) -L../ext/lrmalloc -l:lrmalloc.a -ldl# for built-in malloc
 PMDK_CXXFLAGS = $(PMDK_FLAGS) -ljemalloc
 
 # Ralloc by default

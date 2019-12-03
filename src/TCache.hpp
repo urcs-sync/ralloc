@@ -1,4 +1,3 @@
-
 #ifndef __TCACHE_H_
 #define __TCACHE_H_
 
@@ -12,17 +11,16 @@
  * This is from LRMALLOC:
  * https://github.com/ricleite/lrmalloc
  * 
- * This defines thread-local cache, and is reconstructible.
- * As a result, no need to flush at all.
- * During the exit, all cached blocks will be given back to superblocks.
+ * This defines thread-local cache, using C++ TLS.
+ * During normal exit, all cached blocks will be given back to superblocks.
  * 
  * The head (_block) of each cache list uses absolute address while
  * the list itself is linked by pptr since block free list is linked by pptr.
  *
  * In the destructor of TCacheBin, all blocks will be flushed back to their 
- * superblock as long as initialized is true.
+ * superblock as long as ralloc::initialized is true.
  * 
- * Note by Wentao Cai (wcai6@cs.rochester.edu)
+ * Wentao Cai (wcai6@cs.rochester.edu)
  */
 
 struct TCaches;

@@ -12,13 +12,13 @@
  * 
  * This defines size classes with (kinda) constant parameters.
  * In other words, this data never gets changed in any run.
- * As a result, we don't have to persist it.
+ * As a result, we don't persist it.
  *
- * The API is in the class SizeClass, it contains constructor
+ * The interface is in the class SizeClass, including constructor
  * and get_sizeclass. To use, just instantiate SizeClass and call 
- * get_sizeclass(size). Safe to instantiate multiple times.
+ * get_sizeclass(size). SizeClass is safe to have multiple instances.
  *
- * Note by Wentao Cai (wcai6@cs.rochester.edu)
+ * Wentao Cai (wcai6@cs.rochester.edu)
  */
 
 // contains size classes
