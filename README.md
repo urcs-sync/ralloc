@@ -53,6 +53,15 @@ To compile specific target :
 $ cd test
 $ make <libralloc.a|threadtest_test|sh6bench_test|larson_test|prod-con_test> ALLOC=<r|mak|je|lr|pmdk>
 
+To use ralloc in other projects :
+$ cd test
+$ make <libralloc.a>
+And then 
+1. add `#include "ralloc.hpp"` to files that use Ralloc's functions.
+2. append `-I<path_to_ralloc>/src` to your compile command.
+3. link libralloc.a to your project by appending
+`-L<path_to_ralloc>/test -lralloc.a` to your link command.
+
 ### Execution
 
 To run all benchmarks with all allocators, do :
