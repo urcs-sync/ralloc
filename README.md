@@ -113,5 +113,5 @@ by default.
 ## License
 
 This project is licensed under the MIT license. You may find a copy
-of the license in the [LICENSE](https://github.com/qtcwt/ralloc/LICENSE) file
+of the license in the [LICENSE](https://github.com/qtcwt/ralloc/blob/master/LICENSE) file
 included in the Ralloc source distribution.
