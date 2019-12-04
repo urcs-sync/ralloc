@@ -3,3 +3,4 @@ sc/
 *.a
 *.o
 *.swp
+*.vscode

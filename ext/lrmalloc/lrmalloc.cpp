@@ -154,9 +154,9 @@ void ListPushPartial(Descriptor* desc)
 
     DescriptorNode oldHead = list.load();
     DescriptorNode newHead;
-    newHead.Set(desc, oldHead.GetCounter() + 1);
     do
     {
+        newHead.Set(desc, oldHead.GetCounter() + 1);
         ASSERT(oldHead.GetDesc() != newHead.GetDesc());
         newHead.GetDesc()->nextPartial.store(oldHead); 
     }
