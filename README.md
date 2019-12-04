@@ -42,7 +42,22 @@ PMDK if you want to run benchmarks with it
 ## Usage
 NOTE: all following commands assume that you are in the root directory of this
 repo.
-### Compilation
+
+### Use Ralloc in your projects
+
+To use ralloc in other projects :
+
+`$ cd test`
+
+`$ make libralloc.a`
+
+And then 
+1. add `#include "ralloc.hpp"` to files that use Ralloc's functions.
+2. append `-I<path_to_ralloc>/src` to your compile command.
+3. link libralloc.a to your project by appending
+`-L<path_to_ralloc>/test -lralloc.a` to your link command.
+
+### Benchmarks
 
 To compile libralloc.a and all benchmarks :
 
@@ -58,28 +73,22 @@ To compile specific target :
 
 `$ make <libralloc.a|threadtest_test|sh6bench_test|larson_test|prod-con_test> ALLOC=<r|mak|je|lr|pmdk>`
 
-To use ralloc in other projects :
-
-`$ cd test`
-
-`$ make libralloc.a`
-
-And then 
-1. add `#include "ralloc.hpp"` to files that use Ralloc's functions.
-2. append `-I<path_to_ralloc>/src` to your compile command.
-3. link libralloc.a to your project by appending
-`-L<path_to_ralloc>/test -lralloc.a` to your link command.
-
 ### Execution
 
 To run all benchmarks with all allocators, do :
-$ cd test
-$ ./run_all.sh
+
+`$ cd test`
+
+`$ ./run_all.sh`
+
 The results will be written in csv files stored in ./data.
 
 To run a specific benchmark with a particular allocator, do :
-$ cd test
-$ ./run_<larson|prod-con|shbench|threadtest>.sh <r|mak|je|lr|pmdk>
+
+`$ cd test`
+
+`$ ./run_<larson|prod-con|shbench|threadtest>.sh <r|mak|je|lr|pmdk>`
+
 The results will be written in csv files stored in ./data/$0/$0_$1.csv.
 ($0 can be larson, prod-con, shbench, or threadtest; $1 can be r, mak, je, lr,
 or pmdk.)
@@ -91,8 +100,9 @@ data/genfigs.R
 
 Running:
 
-$ cd data
-$ Rscript ./genfigs.R
+`$ cd data`
+
+`$ Rscript ./genfigs.R`
 
 Will plot out the data located in:
 
@@ -102,7 +112,7 @@ by default.
 
 ## License
 
-This project is licensed under Apache License, Version 2.0. You may find a copy
-of the license in the [COPYING][1] file included in the Ralloc source
+This project is licensed under the MIT license. You may find a copy
+of the license in the [LICENSE][1] file included in the Ralloc source
 distribution.
-[1]: https://github.com/qtcwt/ralloc/COPYING
+[1]: https://github.com/qtcwt/ralloc/LICENSE
