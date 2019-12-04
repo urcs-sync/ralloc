@@ -62,7 +62,7 @@ To use ralloc in other projects :
 
 `$ cd test`
 
-`$ make <libralloc.a>`
+`$ make libralloc.a`
 
 And then 
 1. add `#include "ralloc.hpp"` to files that use Ralloc's functions.
