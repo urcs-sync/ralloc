@@ -14,7 +14,33 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. 
 
-*/ 
+*/
+
+/*
+
+MIT License
+
+Copyright (c) 2018 Ricardo Leite
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
 
 #ifndef _BASE_META_HPP_
 #define _BASE_META_HPP_
@@ -29,7 +55,6 @@ limitations under the License.
 #include <pthread.h>
 
 #include "pm_config.hpp"
-// #include "thread_util.hpp"
 
 #include "RegionManager.hpp"
 #include "SizeClass.hpp"
@@ -62,7 +87,7 @@ limitations under the License.
  *          Return persistent root i, or nullptr if there isn't.
  *          Type T is recorded as the type of root i and will be used in GC.
  *
- * Most of functions related to malloc and free share large portion of 
+ * Most of functions related to malloc and free share some portion of 
  * code with the open source project https://github.com/ricleite/lrmalloc
  * Some modifications were applied for bug fixing or functionality adjustment.
  *
