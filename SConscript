@@ -5,11 +5,11 @@ sys.path.append('%s/library' % (Dir('#').abspath))
 Import('mainEnv')
 buildEnv = mainEnv.Clone()
 
-buildEnv.Append(CCFLAGS = ' -O3 -g -DMEM_CONSUME_TEST -DDESTROY -fPIC')
+buildEnv.Append(CCFLAGS = ' -O3 -g -DRALLOC -DDESTROY -fPIC')
 
 buildEnv.Append(CPPPATH = ['src'])
 
-buildEnv.Append(CCFLAGS='-DPWB_IS_CLFLUSH')
+# buildEnv.Append(CCFLAGS='-DPWB_IS_CLFLUSH')
 
 C_SRC = Split("""
               src/SizeClass.cpp
