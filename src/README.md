@@ -8,7 +8,11 @@ might be useful for benchmarking.
 ## SHM_SIMULATING
 
 This macro switches Ralloc to compatible mode for machines with no real
-persistent memory. In this mode, ramdisk located in /dev/shm will be used.
+persistent memory. In this mode, ramdisk located in `/dev/shm` will be used.
+
+When this macro is not defined, allocations go to `/mnt/pmem`. If your 
+mounting point of the persistent memory is different, then simply replace
+`/mnt/pmem/` by yours in `src/pm_config.hpp`.
 
 ## Test with different allocator
 
