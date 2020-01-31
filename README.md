@@ -5,6 +5,10 @@ Memory Allocation* by Wentao Cai, Haosen Wen, H. Alan Beadle, Mohammad Hedayati
 and Michael L. Scott. The brief announcement version of the paper is to appear
 in PPoPP'2020.
 
+## Warning
+
+Current implementation doesn't support filter functions for pure C code!
+
 ## Layout
 
 * src: Ralloc's Source files.

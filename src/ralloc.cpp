@@ -14,6 +14,7 @@
 #include <cstring>
 
 #include "RegionManager.hpp"
+#include "SizeClass.hpp"
 #include "pm_config.hpp"
 
 using namespace std;
@@ -24,6 +25,7 @@ namespace ralloc{
     BaseMeta* base_md;
     Regions* _rgs;
     std::function<void(const CrossPtr<char, SB_IDX>&, GarbageCollection&)> roots_filter_func[MAX_ROOTS];
+    extern SizeClass sizeclass;
 };
 using namespace ralloc;
 extern void public_flush_cache();
@@ -38,6 +40,10 @@ int RP_init(const char* _id, uint64_t size){
     string filepath;
     string id(_id);
     // thread_num = thd_num;
+
+    // reinitialize global variables in case they haven't
+    new (&sizeclass) SizeClass();
+
     filepath = HEAPFILE_PREFIX + id;
     assert(sizeof(Descriptor) == DESCSIZE); // check desc size
     assert(size < MAX_SB_REGION_SIZE && size >= MIN_SB_REGION_SIZE); // ensure user input is >=MAX_SB_REGION_SIZE
