@@ -155,7 +155,7 @@ inline bool operator!=(const CrossPtr<T,idx>& lhs, const std::nullptr_t& rhs){
 template <class T>
 class ptr_cnt{
 public:
-	T* ptr;//ptr with least 6 bits as counter
+	T* ptr;//ptr
 	uint64_t cnt;
 	ptr_cnt(T* p=nullptr, uint64_t c = 0) noexcept:
 		ptr(p), cnt(c){};
@@ -175,7 +175,7 @@ public:
  * class AtomicCrossPtrCnt<T, idx>
  *  
  * Description: 
- *  Atomic version of CrossPtr, where higher 42 bits is a counter to avoid ABA.
+ *  Atomic version of CrossPtr, where higher 34 bits is a counter to avoid ABA.
  * 
  * Usage:
  *  T: the type of the pointer
@@ -184,7 +184,7 @@ public:
 template<class T, RegionIndex idx>
 class AtomicCrossPtrCnt {
 public:
-    std::atomic<char*> off; // higher 42 bits: counter, lower 24 bits: offset
+    std::atomic<char*> off; // higher 34 bits: counter, lower 30 bits: offset
     AtomicCrossPtrCnt(T* real_ptr = nullptr, uint64_t counter = 0) noexcept;
     ptr_cnt<T> load(std::memory_order order = std::memory_order_seq_cst) const noexcept;
     void store(ptr_cnt<T> desired, 
