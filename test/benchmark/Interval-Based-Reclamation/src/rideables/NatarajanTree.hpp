@@ -190,14 +190,25 @@ public:
 template <class K, class V> 
 class NatarajanTreeFactory : public RideableFactory{
 	NatarajanTree<K,V>* build(GlobalTestConfig* gtc){
-		if(gtc->restart && get_root(3) != nullptr){
-			NatarajanTree<K,V>* ret = reinterpret_cast<NatarajanTree<K,V>*>(get_root(3));
-			ret->restart(gtc);
-			return ret;
-		} else {
+		if(get_root(3) == nullptr){
+			if(gtc->restart){
+				//dirty exit
+				PM_recover();
+			}
 			NatarajanTree<K,V>* ret = new NatarajanTree<K,V>(gtc);
 			set_root(ret, 3);
 			return ret;
+		} else {
+			if(gtc->restart){
+				//dirty exit
+				NatarajanTree<K,V>* ret = reinterpret_cast<NatarajanTree<K,V>*>(get_root(3));
+				PM_recover();
+				ret->restart(gtc);
+				return ret;
+			} else {
+				NatarajanTree<K,V>* ret = reinterpret_cast<NatarajanTree<K,V>*>(get_root(3));
+				return ret;
+			}
 		}
 	}
 };

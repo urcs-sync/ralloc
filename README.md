@@ -9,6 +9,8 @@ in PPoPP'2020.
 
 Current implementation doesn't support filter functions for pure C code!
 
+Interval-Based-Reclamation benchmark isn't ready.
+
 ## Layout
 
 * src: Ralloc's Source files.
@@ -121,14 +123,14 @@ of the license in the
 [LICENSE](https://github.com/qtcwt/ralloc/blob/master/LICENSE) file 
 included in the Ralloc source distribution.
 
-# macros
+## macros
 
-## DESTROY
+### DESTROY
 
 This macro enables the option to destroy all mapping files during the exit. This
 might be useful for benchmarking.
 
-## SHM_SIMULATING
+### SHM_SIMULATING
 
 This macro switches Ralloc to compatible mode for machines with no real
 persistent memory. In this mode, ramdisk located in `/dev/shm` will be used.
