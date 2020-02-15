@@ -67,8 +67,8 @@ int RP_init(const char* _id, uint64_t size){
     return (int)restart;
 }
 
-void RP_recover(){
-    base_md->restart();
+int RP_recover(){
+    return (int) base_md->restart();
 }
 
 // we assume RP_close is called by the last exiting thread.

@@ -402,10 +402,11 @@ public:
         };
         return static_cast<T*>(roots[i]);
     }
-    void restart(){
+    bool restart(){
         // Restart, setting values and flags to normal
         // Should be called during restart
-        if(is_dirty()) {
+        bool ret = is_dirty();
+        if(ret) {
             GarbageCollection gc;
             gc();
         }
@@ -413,6 +414,7 @@ public:
         // here restart is done, and "dirty" should be set to true until
         // writeback() is called so that crash will result in a true dirty.
         set_dirty();
+        return ret;
     }
     void writeback(){
         // Give back tcached blocks
