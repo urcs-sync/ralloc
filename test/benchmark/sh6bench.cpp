@@ -115,6 +115,8 @@ const int64_t kCPUSpeed = 2000000000;
 
 void doBench(void *);
 
+pthread_barrier_t barrier;
+
 int main(int argc, char *argv[])
 {
 	clock_t startCPU;
@@ -145,6 +147,7 @@ int main(int argc, char *argv[])
 	ThreadID *tids;
 
 	uThreadCount = (int)promptAndRead("threads", GetNumProcessors(), 'u');
+	pthread_barrier_init(&barrier,NULL,uThreadCount);
 	pm_init();
 
 	printf("\nparams: call count: %u, min size: %u, max size: %u, threads: %u\n", ulCallCount, uMinBlockSize, uMaxBlockSize, uThreadCount);
@@ -218,6 +221,8 @@ void doBench(void *arg)
     } else {
     	// fprintf(stderr, "thread pinning on cpu %d succeeded.\n", core_id);
     }
+	pthread_barrier_wait(&barrier);
+
 #endif
 	char **memory = pm_malloc(ulCallCount * sizeof(void *));
 	int	size_base, size, iterations;
@@ -231,7 +236,7 @@ void doBench(void *arg)
 	for (size_base = uMinBlockSize;
 		 size_base < uMaxBlockSize;
 		 size_base = size_base * 3 / 2 + 1){
-		for (size = size_base; size; size /= 2){
+		for (size = size_base; size >= uMinBlockSize; size /= 2){
 			/* allocate smaller blocks more often than large */
 			iterations = 1;
 
@@ -245,10 +250,11 @@ void doBench(void *arg)
 				iterations *= 5;
 
 			while (iterations--){ 
-				if (!memory || !(*mp ++ = (char *)pm_malloc(size))){
+				if (!memory || !(*mp = (char *)pm_malloc(size))){
 					printf("Out of memory\n");
 					_exit (1);
 				}
+				mp++;
 		/* while allocating skip over that portion of the buffer that still
 		 * holds pointers from the previous cycle
 		 */
@@ -267,11 +273,20 @@ void doBench(void *arg)
 			 * The bottom part is freed in the order of allocation.
 			 * The top part is free in reverse order of allocation.
 			 */
-					while (mp < save_start)
-						pm_free (*mp ++);
+					while (mp < save_start){
+						pm_free (*mp);
+						mp++;
+					}
 					mp = mpe;
-					while (mp > save_end) pm_free (*--mp);
-					mp = memory;
+					while (mp > save_end) {
+						mp--;
+						pm_free (*mp);
+					}
+					if(save_start == memory){
+						mp = save_end;
+					} else{
+						mp = memory;
+					}
 				}
 			}
 		}
@@ -281,8 +296,10 @@ void doBench(void *arg)
 	mpe = mp;
 	mp = memory;
 
-	while (mp < mpe)
-		pm_free (*mp ++);
+	while (mp < mpe){
+		pm_free (*mp);
+		mp++;
+	}
 
 	pm_free(memory);
 }
