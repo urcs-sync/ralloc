@@ -36,7 +36,8 @@ ifeq ($(ALLOC),je)
 endif
 
 ifeq ($(ALLOC),lr)
-	CXXFLAGS = $(LR_CXXFLAGS)
+	# Ralloc without flush and fence is effectively LRMalloc, with optimization
+	CXXFLAGS = $(R_CXXFLAGS) -DPWB_IS_NOOP
 endif
 
 ifeq ($(ALLOC),pmdk)

@@ -17,7 +17,7 @@ else
 fi
 
 BINARY=./larson_test
-if [ "$ALLOC" == "je" ] || [ "$ALLOC" == "lr" ]; then
+if [ "$ALLOC" == "je" ]; then
   BINARY="numactl --membind=2 "${BINARY}
 fi
 

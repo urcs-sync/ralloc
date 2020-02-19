@@ -35,7 +35,10 @@
 #endif
 
 #ifdef DUR_LIN
-  #ifdef PWB_IS_CLFLUSH
+  #ifdef PWB_IS_NOOP
+    #define FLUSH(addr)
+    #define FLUSHFENCE 
+  #elif defined(PWB_IS_CLFLUSH)
     #define FLUSH(addr) asm volatile ("clflush (%0)" :: "r"(addr))
     #define FLUSHFENCE 
   #elif defined(PWB_IS_CLWB)

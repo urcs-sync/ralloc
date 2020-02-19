@@ -132,10 +132,10 @@ public:
     //retrieve heap root from offset from base
     void* __fetch_heap_start();
 
-    /* return true if succeeds, otherwise false
+    /* return 1 if succeeds, 0 if CAS failed, -1 if expansion is illegal (e.g., space runs out)
      * ret should be flushed after the call as a return value if needed
      */
-    bool __nvm_region_allocator(void** /*ret */, size_t /* alignment */, size_t /*size */);
+    int __nvm_region_allocator(void** /*ret */, size_t /* alignment */, size_t /*size */);
 
     /* try to expand the region.
      *  0: succeed
@@ -252,7 +252,8 @@ public:
     }
 
     /* expand the region $index$ by $size$ */
-    inline bool expand(int index, void** memptr, size_t alignment, size_t size){
+    /* return 1 if succeeds, 0 if CAS failed, -1 if expansion is illegal (e.g., space runs out) */
+    inline int expand(int index, void** memptr, size_t alignment, size_t size){
         void* tmp;
         if(memptr == nullptr) memptr = &tmp;
         return regions[index]->__nvm_region_allocator(memptr, alignment, size);

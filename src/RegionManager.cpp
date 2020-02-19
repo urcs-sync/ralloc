@@ -220,40 +220,39 @@ void* RegionManager::__fetch_heap_start(){
     return (void*) (*(((intptr_t*) base_addr) + 1) + (intptr_t) base_addr);
 }
 
-bool RegionManager::__nvm_region_allocator(void** memptr, size_t alignment, size_t size){
+int RegionManager::__nvm_region_allocator(void** memptr, size_t alignment, size_t size){
     char* next;
     char* res;
-    if (size <= 0) return false;
+    if (size <= 0) return -1;
 
     if (((alignment & (~alignment + 1)) != alignment) ||	//should be multiple of 2
-        (alignment < sizeof(void*))) return false; //should be at least the size of void*
+        (alignment < sizeof(void*))) return -1; //should be at least the size of void*
     char * old_curr_addr = curr_addr_ptr->load();
-    while(true){
-        char * new_curr_addr = old_curr_addr;
-        size_t aln_adj = (size_t) new_curr_addr & (alignment - 1);
+    
+    char * new_curr_addr = old_curr_addr;
+    size_t aln_adj = (size_t) new_curr_addr & (alignment - 1);
 
-        if (aln_adj != 0)
-            new_curr_addr += (alignment - aln_adj);
+    if (aln_adj != 0)
+        new_curr_addr += (alignment - aln_adj);
 
-        res = new_curr_addr;
-        next = new_curr_addr + size;
-        if (next > base_addr + FILESIZE){
-            printf("\n----Region Manager: out of space in mmaped file-----\nCurr:%p\nBase:%p\n",res,base_addr);
-            return false;
-        }
-        new_curr_addr = next;
-        FLUSH(curr_addr_ptr);
-        FLUSHFENCE;
-        if(curr_addr_ptr->compare_exchange_weak(old_curr_addr, new_curr_addr))
-            break;
+    res = new_curr_addr;
+    next = new_curr_addr + size;
+    if (next > base_addr + FILESIZE){
+        printf("\n----Region Manager: out of space in mmaped file-----\nCurr:%p\nBase:%p\n",res,base_addr);
+        return -1;
     }
-    // *(((intptr_t*) base_addr) + 1) = (intptr_t) curr_addr;
-    // FLUSH( (((intptr_t*) base_addr) + 1)); 
+    new_curr_addr = next;
     FLUSH(curr_addr_ptr);
     FLUSHFENCE;
-    *memptr = res;
-
-    return true;
+    if(curr_addr_ptr->compare_exchange_strong(old_curr_addr, new_curr_addr)){
+        FLUSH(curr_addr_ptr);
+        FLUSHFENCE;
+        *memptr = res;
+        return 1;
+    }
+    return 0;
+    // *(((intptr_t*) base_addr) + 1) = (intptr_t) curr_addr;
+    // FLUSH( (((intptr_t*) base_addr) + 1)); 
 }
 
 int RegionManager::__try_nvm_region_allocator(void** memptr, size_t alignment, size_t size){

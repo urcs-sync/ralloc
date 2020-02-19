@@ -17,7 +17,7 @@ else
 fi
 
 BINARY=./threadtest_test
-if [ "$ALLOC" == "je" ] || [ "$ALLOC" == "lr" ]; then
+if [ "$ALLOC" == "je" ]; then
   BINARY="numactl --membind=2 "${BINARY}
 fi
 

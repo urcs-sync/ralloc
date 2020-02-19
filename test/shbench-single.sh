@@ -17,7 +17,7 @@ else
 fi
 
 BINARY=./sh6bench_test
-if [ "$ALLOC" == "je" ] || [ "$ALLOC" == "lr" ]; then
+if [ "$ALLOC" == "je" ]; then
   BINARY="numactl --membind=2 "${BINARY}
 fi
 
@@ -25,8 +25,8 @@ THREADS=$1
 
 PARAMS=/tmp/shbench_params
 echo "100000" > $PARAMS
-echo "1" >> $PARAMS
 echo "64" >> $PARAMS
+echo "14366" >> $PARAMS
 echo "$THREADS" >> $PARAMS
 
 rm -f /tmp/shbench

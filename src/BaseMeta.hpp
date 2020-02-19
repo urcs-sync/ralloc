@@ -431,9 +431,9 @@ public:
     }
 
 private:
-    void* expand_sb(size_t sz);
-    void expand_small_sb();
-    void* expand_get_small_sb();
+    // void* expand_sb(size_t sz);
+    // void expand_small_sb();
+    // void* expand_get_small_sb();
     void* expand_get_large_sb(size_t sz);
 
     // func on size class

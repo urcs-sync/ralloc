@@ -210,8 +210,11 @@ BaseMeta::BaseMeta() noexcept
 
     // warm up small sb space, expanding sb region by SB_REGION_EXPAND_SIZE
     void* tmp_sec_start = nullptr;
-    bool res = _rgs->expand(SB_IDX,&tmp_sec_start,SBSIZE, SB_REGION_EXPAND_SIZE);
-    if(!res) assert(0&&"warmup sb allocation fails!");
+    int res = 0;
+    while (res == 0){
+        res = _rgs->expand(SB_IDX,&tmp_sec_start,SBSIZE, SB_REGION_EXPAND_SIZE);
+        assert(res != -1 && "warmup sb allocation fails!");
+    }
     DBG_PRINT("expand sb space for small sb allocation\n");
     _rgs->regions[SB_IDX]->__store_heap_start(tmp_sec_start);
     _rgs->regions_address[SB_IDX] = (char*)tmp_sec_start;
@@ -221,27 +224,38 @@ BaseMeta::BaseMeta() noexcept
     FLUSHFENCE;
 }
 
-inline void* BaseMeta::expand_sb(size_t sz){
-    void* tmp_sec_start = nullptr;
-    bool res = _rgs->expand(SB_IDX,&tmp_sec_start,PAGESIZE, sz);
-    if(!res) assert(0&&"region allocation fails!");
-    return tmp_sec_start;
-}
+// inline void* BaseMeta::expand_sb(size_t sz){
+//     void* tmp_sec_start = nullptr;
+//     bool res = _rgs->expand(SB_IDX,&tmp_sec_start,PAGESIZE, sz);
+//     if(!res) assert(0&&"region allocation fails!");
+//     return tmp_sec_start;
+// }
 
 //desc of returned sb is constructed
-inline void* BaseMeta::expand_get_small_sb(){
-    void* tmp_sec_start = expand_sb(SB_REGION_EXPAND_SIZE);
-    DBG_PRINT("expand sb space for small sb allocation\n");
-    organize_sb_list((char*)((uint64_t)tmp_sec_start+SBSIZE), SB_REGION_EXPAND_SIZE/SBSIZE-1);
-    Descriptor* desc = desc_lookup(tmp_sec_start);
-    new (desc) Descriptor();
-    return tmp_sec_start;
-}
+// inline void* BaseMeta::expand_get_small_sb(){
+//     void* tmp_sec_start = nullptr;
+//     int res = 0;
+//     while(res == 0) {
+//         res = _rgs->expand(SB_IDX,&tmp_sec_start,PAGESIZE, SB_REGION_EXPAND_SIZE);
+//         assert(res != -1 && "space runs out!");
+//     }
+//     DBG_PRINT("expand sb space for small sb allocation\n");
+//     organize_sb_list((char*)((uint64_t)tmp_sec_start+SBSIZE), SB_REGION_EXPAND_SIZE/SBSIZE-1);
+//     Descriptor* desc = desc_lookup(tmp_sec_start);
+//     new (desc) Descriptor();
+//     return tmp_sec_start;
+// }
 
 //desc of returned sb is constructed
 inline void* BaseMeta::expand_get_large_sb(size_t sz){
-    void* ret = expand_sb(sz);
+    void* ret = nullptr;
+    int res = 0;
+    while(res == 0) {
+        res = _rgs->expand(SB_IDX,&ret,PAGESIZE, sz);
+        assert(res != -1 && "space runs out!");
+    }
     DBG_PRINT("expand sb space for large sb allocation\n");
+    
     Descriptor* desc = desc_lookup(ret);
     new (desc) Descriptor();
     return ret;
@@ -575,7 +589,37 @@ void* BaseMeta::small_sb_alloc(size_t size){
             }
         }
         else{
-            return expand_get_small_sb();
+            // below is effectively _rgs->regions[SB_IDX](&tmp_sec_start,PAGESIZE, SB_REGION_EXPAND_SIZE);
+            char* next;
+            char* res = nullptr;
+            char * old_curr_addr = _rgs->regions[SB_IDX]->curr_addr_ptr->load();
+            char * new_curr_addr = old_curr_addr;
+            size_t aln_adj = (size_t) new_curr_addr & (PAGESIZE - 1);
+            if(aln_adj != 0)
+                new_curr_addr += (PAGESIZE - aln_adj);
+            res = new_curr_addr;
+            next = new_curr_addr + SB_REGION_EXPAND_SIZE;
+            if (avail_sb.load().get_ptr() != nullptr){
+                // ensure this expansion is necessary
+                continue;
+            }
+            if (next > _rgs->regions[SB_IDX]->base_addr + _rgs->regions[SB_IDX]->FILESIZE){
+                printf("\n----Region Manager: out of space in mmaped file-----\nCurr:%p\nBase:%p\n",res,_rgs->regions[SB_IDX]->base_addr);
+                assert(0);
+            }
+            new_curr_addr = next;
+            FLUSH(_rgs->regions[SB_IDX]->curr_addr_ptr);
+            FLUSHFENCE;
+            if(_rgs->regions[SB_IDX]->curr_addr_ptr->compare_exchange_strong(old_curr_addr, new_curr_addr)){
+                FLUSH(_rgs->regions[SB_IDX]->curr_addr_ptr);
+                FLUSHFENCE;
+                DBG_PRINT("expand sb space for small sb allocation\n");
+                organize_sb_list((char*)((uint64_t)res+SBSIZE), SB_REGION_EXPAND_SIZE/SBSIZE-1);
+                Descriptor* desc = desc_lookup(res);
+                new (desc) Descriptor();
+                return (void*)res;
+            }
+            // CAS fails. Try to get a sb from free list again.
         }
     }
 }
