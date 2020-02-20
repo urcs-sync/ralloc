@@ -231,7 +231,7 @@ void runloops(long sleep_cnt, int num_chunks )
   _int64        ticks ;
   double        duration ;
   double        reqd_space ;
-  ULONG         used_space ;
+  ULONG         used_space = 0;
   int           sum_allocs=0 ;
 
   QueryPerformanceFrequency( &ticks_per_sec ) ;
@@ -410,7 +410,6 @@ static void * exercise_heap( void *pinput)
     int get_result;
 #endif
 
-restart:
   if( stopflag ) return 0;
 
   pdea = (thread_data *)pinput ;

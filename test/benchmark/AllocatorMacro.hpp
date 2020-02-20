@@ -43,7 +43,7 @@ static int pinning_map_2x20a_2[] = {
 #endif
 volatile static int init_count = 0;
 
-#define REGION_SIZE (6*1024*1024*1024ULL + 24)
+#define REGION_SIZE (32*1024*1024*1024ULL + 24)
 
 #ifdef RALLOC
 
@@ -135,9 +135,10 @@ volatile static int init_count = 0;
     #define HEAPFILE "/mnt/pmem/pmdk_heap_wcai6"
   #endif
   PMEMobjpool* pop = nullptr;
+  int dummy_construct(PMEMobjpool *pop, void *ptr, void *arg){return 0;}
   inline void* pm_malloc(size_t s) {
     PMEMoid temp_ptr;
-    int ret=pmemobj_alloc(pop, &temp_ptr, s, 0, nullptr,nullptr);
+    int ret=pmemobj_alloc(pop, &temp_ptr, s, dummy_construct, nullptr,nullptr);
     if(ret==-1)return nullptr;
     return pmemobj_direct(temp_ptr);
   }

@@ -24,7 +24,7 @@ fi
 THREADS=$1
 
 rm -f /tmp/larson
-$BINARY 10 56 64 1000 10000 123 $THREADS > /tmp/larson
+$BINARY 30 64 10240 1000 10000 123 $THREADS > /tmp/larson
 
 while read line; do
   if [[ $line == *"Throughput"* ]]; then
