@@ -43,13 +43,14 @@ static int pinning_map_2x20a_2[] = {
 #endif
 volatile static int init_count = 0;
 
+#define REGION_SIZE (32*1024*1024*1024ULL + 24)
 
 #ifdef RALLOC
 
   #include "ralloc.hpp"
   inline void* pm_malloc(size_t s) { return RP_malloc(s); }
   inline void pm_free(void* p) { RP_free(p); }
-  inline int pm_init() { return RP_init("test", 5*1024*1024*1024ULL + 24); }
+  inline int pm_init() { return RP_init("test", REGION_SIZE); }
   inline void pm_close() { RP_close(); }
 
 #elif defined(MAKALU) // RALLOC ends
@@ -57,7 +58,6 @@ volatile static int init_count = 0;
   #include "makalu.h"
   #include <fcntl.h>
   #include <sys/mman.h>
-  #define MAKALU_FILESIZE (5*1024*1024*1024ULL + 24)
   inline void* pm_malloc(size_t s) { return MAK_malloc(s); }
   inline void pm_free(void* p) { MAK_free(p);}
   #ifdef SHM_SIMULATING
@@ -74,14 +74,14 @@ volatile static int init_count = 0;
       fd  = open(HEAPFILE, O_RDWR | O_CREAT | O_TRUNC,
                     S_IRUSR | S_IWUSR);
 
-      off_t offt = lseek(fd, MAKALU_FILESIZE-1, SEEK_SET);
+      off_t offt = lseek(fd, REGION_SIZE-1, SEEK_SET);
       assert(offt != -1);
 
       int result = write(fd, "", 1); 
       assert(result != -1);
 
       void * addr =
-          mmap(0, MAKALU_FILESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+          mmap(0, REGION_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
       assert(addr != MAP_FAILED);
 
       *((intptr_t*)addr) = (intptr_t) addr;
@@ -107,7 +107,7 @@ volatile static int init_count = 0;
       
       res = curr_addr; 
       next = curr_addr + size;
-      if (next > base_addr + MAKALU_FILESIZE){
+      if (next > base_addr + REGION_SIZE){
           printf("\n----Ran out of space in mmaped file-----\n");
           return 1;
       }
@@ -134,22 +134,23 @@ volatile static int init_count = 0;
   #else
     #define HEAPFILE "/mnt/pmem/pmdk_heap_wcai6"
   #endif
-  #define PMDK_FILESIZE (5*1024*1024*1024ULL + 24)
-  thread_local PMEMoid temp_ptr;
   PMEMobjpool* pop = nullptr;
+  int dummy_construct(PMEMobjpool *pop, void *ptr, void *arg){return 0;}
   inline void* pm_malloc(size_t s) {
-    int ret=pmemobj_alloc(pop, &temp_ptr, s, 0, nullptr,nullptr);
+    PMEMoid temp_ptr;
+    int ret=pmemobj_alloc(pop, &temp_ptr, s, dummy_construct, nullptr,nullptr);
     if(ret==-1)return nullptr;
     return pmemobj_direct(temp_ptr);
   }
   inline void pm_free(void* p) {
     if(p==nullptr) return;
+    PMEMoid temp_ptr;
     temp_ptr = pmemobj_oid(p);
     pmemobj_free(&temp_ptr);
   }
 
   inline int pm_init() {
-    pop = pmemobj_create(HEAPFILE, "test", PMDK_FILESIZE, 0666);
+    pop = pmemobj_create(HEAPFILE, "test", REGION_SIZE, 0666);
     if (pop == nullptr) {
       perror("pmemobj_create");
       return 1;
