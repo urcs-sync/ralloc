@@ -18,7 +18,7 @@
 #define PINNING_MAP pinning_map_2x20a_1
 // thread pinning strategy for 2x20a:
 // 1 thread per core on one socket -> hyperthreads on the same socket -> cross socket.
-static int pinning_map_2x20a_1[] = {
+static const int pinning_map_2x20a_1[] = {
  	0,2,4,6,8,10,12,14,16,18,
  	20,22,24,26,28,30,32,34,36,38,
  	40,42,44,46,48,50,52,54,56,58,
@@ -30,7 +30,7 @@ static int pinning_map_2x20a_1[] = {
 
 // thread pinning strategy for 2x20a:
 // 5 cores on one socket -> 5 cores on the other ----> hyperthreads
-static int pinning_map_2x20a_2[] = {
+static const int pinning_map_2x20a_2[] = {
 	0,2,4,6,8,1,3,5,7,9,
 	10,12,14,16,18,11,13,15,17,19,
 	20,22,24,26,28,21,23,25,27,29,
