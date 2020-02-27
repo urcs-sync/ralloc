@@ -46,6 +46,7 @@ MAK_API void MAK_CALL MAK_close(void);
 
 MAK_API void* MAK_CALL MAK_malloc(size_t /*size in bytes */);
 MAK_API void MAK_CALL MAK_free(void * /*pointer */);
+MAK_API size_t MAK_CALL MAK_get_size(void * /*pointer */);
 
 /* pthread */
 # define MAK_PTHREAD_CREATE_CONST const
