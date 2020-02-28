@@ -297,4 +297,22 @@ MAK_API void MAK_CALL MAK_free(void *p){
     }
 }
 
+MAK_API size_t MAK_CALL MAK_get_size(void *p){
+    if (!MAK_is_initialized)
+        ABORT("Makalu not properly initialized!\n");
+
+    hdr *hhdr;
+    size_t sz; /* In bytes */
+    
+    if (p == 0) return 0;
+    /* Required by ANSI.  It's not my fault ...     */
+    
+    void* r = MAK_hc_base_with_hdr(p, (my_tlfs) -> hc,
+                  (unsigned int) LOCAL_HDR_CACHE_SZ, &hhdr);
+    if (r == 0) return 0;
+
+    sz = hhdr -> hb_sz;
+    return sz;
+}
+
 #endif // MAK_THREADS
