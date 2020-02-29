@@ -8,6 +8,7 @@
 #define ALLOCATOR_MACRO
 #include "pfence_util.h"
 
+#include <assert.h>
 
 #ifndef THREAD_PINNING
 #define THREAD_PINNING
@@ -45,6 +46,7 @@ volatile static int init_count = 0;
 
 #define REGION_SIZE (6*1024*1024*1024ULL + 24)
 
+
 #ifdef RALLOC
 
   #include "ralloc.hpp"
@@ -69,7 +71,6 @@ volatile static int init_count = 0;
   #include <sys/types.h>
   #include <unistd.h>
   #include <string.h>
-  #include <assert.h>
   inline void* pm_malloc(size_t s) { return MAK_malloc(s); }
   inline void pm_free(void* p) { MAK_free(p);}
   #ifdef SHM_SIMULATING
@@ -174,8 +175,8 @@ volatile static int init_count = 0;
   #else
     #define HEAP_FILE "/mnt/pmem/pmdk_heap_wcai6"
   #endif
-  PMEMobjpool* pop = nullptr;
-  PMEMoid root;
+  extern PMEMobjpool* pop;
+  extern PMEMoid root;
   struct PMDK_roots{
     void* roots[1024];
   }
@@ -236,15 +237,17 @@ volatile static int init_count = 0;
 
 #else // MAKALU ends
 
-  void* roots[1024];
+  extern void* roots[1024];
   inline void* pm_malloc(size_t s) { return malloc(s); }
   inline void pm_free(void* p) { free(p);}
+  inline void* pm_realloc(void* ptr, size_t new_size) { return realloc(ptr, new_size); }
+  inline void* pm_calloc(size_t num, size_t size) { return calloc(num, size); }
   inline int pm_init() { return 0; }
   inline void pm_close() { return; }
   inline void pm_recover() { assert(0 && "not implemented"); }
   template<class T>
   inline T* pm_get_root(unsigned int i){
-    return roots[i];
+    return (T*)roots[i];
   }
   inline void pm_set_root(void* ptr, unsigned int i) { roots[i] = ptr; }
 

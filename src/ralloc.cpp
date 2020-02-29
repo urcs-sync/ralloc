@@ -14,6 +14,7 @@
 #include <cstring>
 
 #include "RegionManager.hpp"
+#include "BaseMeta.hpp"
 #include "SizeClass.hpp"
 #include "pm_config.hpp"
 
