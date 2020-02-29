@@ -179,11 +179,11 @@ volatile static int init_count = 0;
   extern PMEMoid root;
   struct PMDK_roots{
     void* roots[1024];
-  }
-  int dummy_construct(PMEMobjpool *pop, void *ptr, void *arg){return 0;}
+  };
+  static int dummy_construct(PMEMobjpool *pop, void *ptr, void *arg){return 0;}
   inline void* pm_malloc(size_t s) {
     PMEMoid temp_ptr;
-    int ret=pmemobj_alloc(pop, &temp_ptr, s, dummy_construct, nullptr,nullptr);
+    int ret=pmemobj_alloc(pop, &temp_ptr, s, 0, dummy_construct,nullptr);
     if(ret==-1)return nullptr;
     return pmemobj_direct(temp_ptr);
   }
@@ -195,14 +195,11 @@ volatile static int init_count = 0;
   }
 
   inline void* pm_realloc(void* ptr, size_t new_size) { 
-    if(ptr == nullptr) return pm_malloc(new_size);
-    void* new_ptr = pm_malloc(new_size);
-    if(new_ptr == nullptr) return nullptr;
-    memcpy(new_ptr, ptr, old_size);
-    FLUSH(new_ptr);
-    FLUSHFENCE;
-    pm_free(ptr);
-    return new_ptr;
+    if(ptr==nullptr) return pm_malloc(new_size);
+    PMEMoid temp_ptr;
+    temp_ptr = pmemobj_oid(ptr);
+    pmemobj_realloc(pop, &temp_ptr, new_size, 0);
+    return pmemobj_direct(temp_ptr);
   }
 
   inline void* pm_calloc(size_t num, size_t size) { 
@@ -215,9 +212,9 @@ volatile static int init_count = 0;
   }
 
   inline int pm_init() {
-    pop = pmemobj_open(HEAP_FILE, "test");
+    pop = pmemobj_create(HEAP_FILE, "test", REGION_SIZE, 0666);
     if (pop == nullptr) {
-      perror("pmemobj_open");
+      perror("pmemobj_create");
       return 1;
     }
     else {
@@ -231,9 +228,9 @@ volatile static int init_count = 0;
   inline void pm_recover() { assert(0 && "not implemented"); }
   template<class T>
   inline T* pm_get_root(unsigned int i){
-    return root.roots[i];
+    return (T*)((PMDK_roots*)pmemobj_direct(root))->roots[i];
   }
-  inline void pm_set_root(void* ptr, unsigned int i) { root.roots[i] = ptr; }
+  inline void pm_set_root(void* ptr, unsigned int i) { ((PMDK_roots*)pmemobj_direct(root))->roots[i] = ptr; }
 
 #else // MAKALU ends
 
