@@ -41,6 +41,14 @@ static const int pinning_map_2x20a_2[] = {
 	60,62,64,66,68,61,63,65,67,69,
 	70,72,74,76,78,71,73,75,77,79};
 
+// thread pinning strategy for 2x10c:
+// 1 thread per core on one socket -> hyperthreads on the same socket -> cross socket.
+static const int pinning_map_2x10c[] = {
+ 	0,2,4,6,8,10,12,14,16,18,
+ 	20,22,24,26,28,30,32,34,36,38,
+ 	1,3,5,7,9,11,13,15,17,19,
+ 	21,23,25,27,29,31,33,35,37,39};
+
 #endif
 volatile static int init_count = 0;
 
