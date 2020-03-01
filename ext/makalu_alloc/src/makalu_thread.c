@@ -190,6 +190,9 @@ STATIC void* MAK_start_routine(void* arg)
     return result; 
 }
 
+MAK_API void MAK_init_thread(){
+    MAK_set_my_thread_local();
+}
 
 MAK_API int WRAP_FUNC(pthread_create)(pthread_t *new_thread,
                      MAK_PTHREAD_CREATE_CONST pthread_attr_t *attr,

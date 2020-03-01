@@ -59,6 +59,7 @@ MAK_API int MAK_pthread_join(pthread_t, void ** /* retval */);
 MAK_API int MAK_pthread_detach(pthread_t);
 MAK_API int MAK_pthread_cancel(pthread_t);
 MAK_API void MAK_pthread_exit(void *) MAK_PTHREAD_EXIT_ATTRIBUTE;
+MAK_API void MAK_init_thread();
 
 typedef void (MAK_CALLBACK * MAK_fas_free_callback)(pthread_t, void*);
 MAK_API void MAK_CALL MAK_set_defer_free_fn(MAK_fas_free_callback);
