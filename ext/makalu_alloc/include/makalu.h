@@ -46,6 +46,7 @@ MAK_API void MAK_CALL MAK_close(void);
 
 MAK_API void* MAK_CALL MAK_malloc(size_t /*size in bytes */);
 MAK_API void MAK_CALL MAK_free(void * /*pointer */);
+MAK_API size_t MAK_CALL MAK_get_size(void * /*pointer */);
 
 /* pthread */
 # define MAK_PTHREAD_CREATE_CONST const
@@ -58,6 +59,7 @@ MAK_API int MAK_pthread_join(pthread_t, void ** /* retval */);
 MAK_API int MAK_pthread_detach(pthread_t);
 MAK_API int MAK_pthread_cancel(pthread_t);
 MAK_API void MAK_pthread_exit(void *) MAK_PTHREAD_EXIT_ATTRIBUTE;
+MAK_API void MAK_init_thread();
 
 typedef void (MAK_CALLBACK * MAK_fas_free_callback)(pthread_t, void*);
 MAK_API void MAK_CALL MAK_set_defer_free_fn(MAK_fas_free_callback);
