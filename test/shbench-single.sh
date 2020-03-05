@@ -24,9 +24,9 @@ fi
 THREADS=$1
 
 PARAMS=/tmp/shbench_params
-echo "10000" > $PARAMS
+echo "100000" > $PARAMS
 echo "64" >> $PARAMS
-echo "1024" >> $PARAMS
+echo "400" >> $PARAMS
 echo "$THREADS" >> $PARAMS
 
 rm -f /tmp/shbench
