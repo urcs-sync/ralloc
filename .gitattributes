@@ -1,0 +1,2 @@
+ext/* linguist-vendored
+test/benchmark/redis/* linguist-vendored
