@@ -1,2 +1,2 @@
-ext/ linguist-detectable=false
-test/benchmark/ linguist-detectable=false
+ext/* linguist-detectable=false
+test/benchmark/* linguist-detectable=false
