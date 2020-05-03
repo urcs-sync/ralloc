@@ -54,7 +54,7 @@ names(line_key) <- levels(lindata$allocator)
 #### Begin charts for Time Consumption ####
 ###########################################
 
-# legend_pos=c(0.5,0.92)
+# legend_pos=c(0.52,0.95)
 y_range_down = 0.1
 
 if (f=="threadtest"){
@@ -68,7 +68,7 @@ if (f=="threadtest"){
 }
 
 # Benchmark-specific plot formatting
-legend_pos=c(0.5,0.92)
+legend_pos=c(0.52,0.95)
 
 
 # Generate the plots
@@ -88,12 +88,12 @@ linchart<-ggplot(data=lindata,
   theme(plot.margin = unit(c(.2,0,.2,0), "cm"))+
   theme(legend.position=legend_pos,
      legend.direction="horizontal")+
-  theme(text = element_text(size = 30))+
+  theme(text = element_text(size = 27))+
   theme(axis.title.y = element_text(margin = margin(t = 0, r = 15, b = 0, l = 10)))+
   theme(axis.title.x = element_text(margin = margin(t = 15, r = 0, b = 10, l = 0)))
 
 # Save all four plots to separate PDFs
-ggsave(filename = paste("./",f,"_linchart.pdf",sep=""),linchart,width=8, height = 5.5, units = "in", dpi=300, title = paste("./",f,"_linchart.pdf",sep=""))
+ggsave(filename = paste("./",f,"_linchart.pdf",sep=""),linchart,width=8, height = 5.5, units = "in", dpi=300, title = paste("",f,"_linchart.pdf",sep=""))
 }
 
 # for larson
@@ -124,12 +124,12 @@ names(line_key) <- levels(lindata$allocator)
 #### Begin charts for Throughput ####
 #####################################
 
-# legend_pos=c(0.5,0.92)
+# legend_pos=c(0.52,0.95)
 # y_range_down = 0
 # y_range_up = 2000
 
 # Benchmark-specific plot formatting
-legend_pos=c(0.5,0.92)
+legend_pos=c(0.52,0.95)
 y_range_up=1500
 y_name="Throughput (M ops/sec)"
 
@@ -152,12 +152,12 @@ linchart<-ggplot(data=lindata,
   theme(plot.margin = unit(c(.2,0,.2,0), "cm"))+
   theme(legend.position=legend_pos,
      legend.direction="horizontal")+
-  theme(text = element_text(size = 30))+
+  theme(text = element_text(size = 27))+
   theme(axis.title.y = element_text(margin = margin(t = 0, r = 15, b = 0, l = 10)))+
   theme(axis.title.x = element_text(margin = margin(t = 15, r = 0, b = 10, l = 0)))
 
 # Save all four plots to separate PDFs
-ggsave(filename = paste("./",f,"_linchart.pdf",sep=""),linchart,width=8, height = 5.5, units = "in", dpi=300, title = paste("./",f,"_linchart.pdf",sep=""))
+ggsave(filename = paste("./",f,"_linchart.pdf",sep=""),linchart,width=8, height = 5.5, units = "in", dpi=300, title = paste("",f,"_linchart.pdf",sep=""))
 
 }
 
@@ -187,13 +187,13 @@ names(line_key) <- levels(lindata$allocator)
 #### Begin charts for Throughput ####
 #####################################
 
-# legend_pos=c(0.5,0.92)
+# legend_pos=c(0.52,0.95)
 # y_range_down = 0
 # y_range_up = 2000
 
 # Benchmark-specific plot formatting
-legend_pos=c(0.5,0.92)
-y_range_up=2000
+legend_pos=c(0.52,0.95)
+y_range_up=2300
 y_name="Throughput (K ops/sec)"
 
 
@@ -209,18 +209,18 @@ linchart<-ggplot(data=lindata,
   scale_color_manual(values=color_key[names(color_key) %in% lindata$allocator])+
   scale_x_continuous(breaks=c(1,10,20,30,40,50,60,70,80,90),
                 minor_breaks=c(5,15,25,35,45,55,65,75,85))+
-  scale_y_continuous(limits=c(500,y_range_up),trans='log2',breaks=c(250,500,750,1000,1500,2000),
+  scale_y_continuous(limits=c(400,y_range_up),trans='log2',breaks=c(250,500,750,1000,1500,2000),
                     minor_breaks=c(200,300,400,500,600,700,800,900))+
 #   coord_cartesian(ylim = c(0, y_range_up))+
   theme(plot.margin = unit(c(.2,0,.2,0), "cm"))+
   theme(legend.position=legend_pos,
      legend.direction="horizontal")+
-  theme(text = element_text(size = 30))+
+  theme(text = element_text(size = 27))+
   theme(axis.title.y = element_text(margin = margin(t = 0, r = 15, b = 0, l = 10)))+
   theme(axis.title.x = element_text(margin = margin(t = 15, r = 0, b = 10, l = 0)))
 
 # Save all four plots to separate PDFs
-ggsave(filename = paste("./ycsbca_linchart.pdf",sep=""),linchart,width=8, height = 5.5, units = "in", dpi=300, title = paste("./ycsbca_linchart.pdf",sep=""))
+ggsave(filename = paste("./ycsbca_linchart.pdf",sep=""),linchart,width=8, height = 5.5, units = "in", dpi=300, title = paste("ycsbca_linchart.pdf",sep=""))
 
 
 # plotting ycsbc-b #
@@ -249,11 +249,11 @@ names(line_key) <- levels(lindata$allocator)
 # #### Begin charts for Throughput ####
 # #####################################
 
-# # legend_pos=c(0.5,0.92)
+# # legend_pos=c(0.52,0.95)
 # # y_range_up = 2000
 
 # # Benchmark-specific plot formatting
-# legend_pos=c(0.5,0.92)
+# legend_pos=c(0.52,0.95)
 # y_range_down = 800
 # y_range_up=2000
 # y_name="Throughput (K ops/sec)"
@@ -277,9 +277,9 @@ names(line_key) <- levels(lindata$allocator)
 #   theme(plot.margin = unit(c(.2,0,.2,0), "cm"))+
 #   theme(legend.position=legend_pos,
 #      legend.direction="horizontal")+
-#   theme(text = element_text(size = 30))+
+#   theme(text = element_text(size = 27))+
 #   theme(axis.title.y = element_text(margin = margin(t = 0, r = 15, b = 0, l = 10)))+
 #   theme(axis.title.x = element_text(margin = margin(t = 15, r = 0, b = 10, l = 0)))
 
 # # Save all four plots to separate PDFs
-# ggsave(filename = paste("./ycsbcb_linchart.pdf",sep=""),linchart,width=8, height = 5.5, units = "in", dpi=300, title = paste("./ycsbcb_linchart.pdf",sep=""))
+# ggsave(filename = paste("./ycsbcb_linchart.pdf",sep=""),linchart,width=8, height = 5.5, units = "in", dpi=300, title = paste("ycsbcb_linchart.pdf",sep=""))
