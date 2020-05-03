@@ -9,8 +9,6 @@ in PPoPP'2020.
 
 Current implementation doesn't support filter functions for pure C code!
 
-Interval-Based-Reclamation benchmark isn't ready.
-
 ## Layout
 
 * src: Ralloc's Source files.
@@ -27,10 +25,6 @@ Interval-Based-Reclamation benchmark isn't ready.
 * test: testing code and Makefile.
     * ./: running scripts and Makefile; executables of benchmarks; libralloc.a
     * benchmark: macros and benchmarks source code.
-    * Interval-Based-Reclamation: source code of interval based reclamation
-      framework, used for testing Ralloc's recovery.
-    * redis: clone from [redis repo](https://github.com/antirez/redis) in
-      GitHub. This is a TODO for benchmarking Ralloc.
 * data: 
     * genfigs.R: plotting script.
     * Others: Generated csv files by testing scripts.
