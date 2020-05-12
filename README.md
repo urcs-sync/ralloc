@@ -3,7 +3,7 @@
 Ralloc is an allocator introduced in *Understanding and Optimizing Persistent
 Memory Allocation* by Wentao Cai, Haosen Wen, H. Alan Beadle, Chris Kjellqvist, 
 Mohammad Hedayati, and Michael L. Scott. The full paper is to appear in ISMM' 20. 
-You can also find the brief announcement version of the paper is in PPoPP' 20.
+You can also find the brief announcement version of the paper in PPoPP' 20.
 
 ## Warning
 
