@@ -31,13 +31,7 @@ namespace ralloc{
 using namespace ralloc;
 extern void public_flush_cache();
 
-/* 
- * mmap the existing heap file corresponding to id. aka restart,
- * 		and if multiple heaps exist, print out and let user select;
- * if such a heap doesn't exist, create one. aka start.
- * id is the distinguishable identity of applications.
- */
-int RP_init(const char* _id, uint64_t size){
+int _RP_init(const char* _id, uint64_t size){
     string filepath;
     string id(_id);
     // thread_num = thd_num;
@@ -68,22 +62,43 @@ int RP_init(const char* _id, uint64_t size){
     return (int)restart;
 }
 
+struct RallocHolder{
+    int init_ret_val;
+    RallocHolder(const char* _id, uint64_t size){
+        init_ret_val = _RP_init(_id,size);
+    }
+    ~RallocHolder(){
+        // #ifndef MEM_CONSUME_TEST
+        // flush_region would affect the memory consumption result (rss) and 
+        // thus is disabled for benchmark testing. To enable, simply comment out
+        // -DMEM_CONSUME_TEST flag in Makefile.
+        _rgs->flush_region(DESC_IDX);
+        _rgs->flush_region(SB_IDX);
+        // #endif
+        base_md->writeback();
+        initialized = false;
+        delete _rgs;
+    }
+};
+
+/* 
+ * mmap the existing heap file corresponding to id. aka restart,
+ * 		and if multiple heaps exist, print out and let user select;
+ * if such a heap doesn't exist, create one. aka start.
+ * id is the distinguishable identity of applications.
+ */
+int RP_init(const char* _id, uint64_t size){
+    static RallocHolder _holder(_id,size);
+    return _holder.init_ret_val;
+}
+
 int RP_recover(){
     return (int) base_md->restart();
 }
 
 // we assume RP_close is called by the last exiting thread.
 void RP_close(){
-// #ifndef MEM_CONSUME_TEST
-    // flush_region would affect the memory consumption result (rss) and 
-    // thus is disabled for benchmark testing. To enable, simply comment out
-    // -DMEM_CONSUME_TEST flag in Makefile.
-    _rgs->flush_region(DESC_IDX);
-    _rgs->flush_region(SB_IDX);
-// #endif
-    base_md->writeback();
-    initialized = false;
-    delete _rgs;
+    // Wentao: this is a noop as the real function body is now i ~RallocHolder
 }
 
 void* RP_malloc(size_t sz){
