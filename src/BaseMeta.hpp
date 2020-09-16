@@ -417,9 +417,9 @@ public:
         return ret;
     }
     void writeback(){
-        // Give back tcached blocks
+        // Give back tcached blocks *Wentao: no actually ~TCache will do this*
         // Should be called during normal exit
-        ralloc::public_flush_cache();
+        // ralloc::public_flush_cache();
         char* addr = reinterpret_cast<char*>(this);
         // flush values in BaseMeta, including avail_sb and partial lists
         for(size_t i = 0; i < sizeof(BaseMeta); i += CACHELINE_SIZE) {
