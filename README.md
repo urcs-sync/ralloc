@@ -8,7 +8,7 @@ You can also find the brief announcement version of the paper in PPoPP' 20.
 
 ## Warning
 
-Current implementation doesn't support filter functions for pure C code!
+Current implementation doesn't support filter functions in pure C code!
 
 ## Layout
 
