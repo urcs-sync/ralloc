@@ -103,7 +103,7 @@ or pmdk.)
 ### Draw plots
 We used R for drawing plots, and a sample plotting script locates in:
 
-data/genfigs.R
+`data/genfigs.R`
 
 Running:
 
@@ -113,9 +113,7 @@ Running:
 
 Will plot out the data located in:
 
-./data/
-
-by default.
+`data/`
 
 ## License
 
@@ -124,7 +122,7 @@ of the license in the
 [LICENSE](https://github.com/qtcwt/ralloc/blob/master/LICENSE) file 
 included in the Ralloc source distribution.
 
-## macros
+## Macros
 
 ### DESTROY
 
@@ -136,14 +134,16 @@ might be useful for benchmarking.
 This macro switches Ralloc to compatible mode for machines with no real
 persistent memory. In this mode, ramdisk located in `/dev/shm` will be used.
 
-When this macro is not defined, allocations go to `/mnt/pmem`. If your 
-mounting point of the persistent memory is different, then simply replace
-`/mnt/pmem/` by yours in `src/pm_config.hpp`.
+When this macro is not defined, allocations go to `/mnt/pmem` by default. 
+If your mounting point of the persistent memory is different, please replace
+`/mnt/pmem/` with yours in `src/pm_config.hpp`.
 
 ## Test with different allocator
 
-This is controlled by following macros, but the user may want to do this by
-passing corresponding `ALLOC` to make (which is written in test/Makefile).
+This is controlled by the following macros, but we recommend the user may to select 
+different allocators by passing corresponding `ALLOC` to `make`. `test/Makefile` will 
+handle `ALLOC` and define the corresponding macro to enable the target allocator, as
+we mentioned in the previous *Benchmarks* section. 
 
 ### RALLOC
 
@@ -158,4 +158,5 @@ Run with Makalu, a lock-based persistent allocator by HP Lab.
 Run with libpmemobj from PMDK, a persistent memory programming toolkit by Intel.
 
 ### otherwise
-directly call malloc and free. jemalloc is used by default
+
+Directly call `malloc` and `free`. jemalloc is used by default
