@@ -42,10 +42,13 @@ libjemalloc
 PMDK if you want to run benchmarks with it
 
 ## Usage
-NOTE: all following commands assume that you are in the root directory of this
+All following commands assume that you are in the root directory of this
 repo.
 
-By default, Ralloc creates files in NVM mounted at `/mnt/pmem/`. If you instead want to emulate using DRAM, i.e., create files in `/dev/shm/`, please define macro `SHM_SIMULATING` while building. More details are provided in the *macros* Section below.
+By default, Ralloc creates files in NVM mounted at `/mnt/pmem/`. If you want
+to instead emulate using DRAM, i.e., create files in `/dev/shm/`, please define 
+macro `SHM_SIMULATING` while building. More details can be found in the 
+*macros* Section below.
 
 ### Use Ralloc in your projects
 
