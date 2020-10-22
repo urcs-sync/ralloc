@@ -87,8 +87,8 @@ volatile static int init_count = 0;
     #define HEAP_FILE "/mnt/pmem/gc_heap_wcai6"
   #endif
 
-  static char *base_addr = NULL;
-  static char *curr_addr = NULL;
+  extern char *base_addr;
+  extern char *curr_addr;
 
   inline void* pm_realloc(void* ptr, size_t new_size) { 
     if(ptr == nullptr) return MAK_malloc(new_size);
@@ -174,9 +174,8 @@ volatile static int init_count = 0;
   }
   inline void pm_set_root(void* ptr, unsigned int i) { return MAK_set_persistent_root(i, ptr); }
 
-#elif defined(PMDK)
+#elif defined(PMDK) // MAKALU ends
 
-  // No longer support PMDK since it's too slow
   #include <libpmemobj.h>
   #ifdef SHM_SIMULATING
     #define HEAP_FILE "/dev/shm/pmdk_heap_wcai6"
@@ -240,7 +239,7 @@ volatile static int init_count = 0;
   }
   inline void pm_set_root(void* ptr, unsigned int i) { ((PMDK_roots*)pmemobj_direct(root))->roots[i] = ptr; }
 
-#else // MAKALU ends
+#else // PMDK ends
 
   extern void* roots[1024];
   inline void* pm_malloc(size_t s) { return malloc(s); }

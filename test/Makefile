@@ -5,6 +5,7 @@
 ##
 
 SRC = ../src
+OBJ = ../obj
 CXX = g++
 
 WARNING_FLAGS:=-ftrapv -Wreturn-type -W -Wall \
@@ -72,32 +73,35 @@ all: benchmark_pm
 # arrayqueue_test: arrayqueue_test.cpp libralloc.a
 # 	$(CXX) -I $(SRC) -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lralloc
 
-../obj/%.o: ../src/%.cpp
+SOURCES := $(wildcard $(SRC)/*.cpp)
+OBJECTS := $(patsubst $(SRC)/%.cpp, $(OBJ)/%.o, $(SOURCES))
+
+$(OBJ)/%.o: $(SRC)/%.cpp
 	$(CXX) -I $(SRC) -o $@ -c $^ $(CXXFLAGS)
 
 benchmark_pm: threadtest_test sh6bench_test larson_test prod-con_test #cache-scratch_test cache-thrash_test
 
 threadtest_test: ./benchmark/threadtest.cpp libralloc.a
-	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) 
+	$(CXX) -I $(SRC) -I ./benchmark -o $@ $^ $(CXXFLAGS) $(LIBS) 
 
 sh6bench_test: ./benchmark/sh6bench.cpp libralloc.a
-	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) 
+	$(CXX) -I $(SRC) -I ./benchmark -o $@ $^ $(CXXFLAGS) $(LIBS) 
 
 larson_test: ./benchmark/larson.cpp libralloc.a
-	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) 
+	$(CXX) -I $(SRC) -I ./benchmark -o $@ $^ $(CXXFLAGS) $(LIBS) 
 
 # # Active false sharing
 # cache-thrash_test: ./benchmark/cache-thrash.cpp libralloc.a
-# 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lralloc
+# 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $^ $(CXXFLAGS) $(LIBS) -L. -lralloc
 
 # # Passive false sharing
 # cache-scratch_test: ./benchmark/cache-scratch.cpp libralloc.a
-# 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) -L. -lralloc
+# 	$(CXX) -I $(SRC) -I ./benchmark -o $@ $^ $(CXXFLAGS) $(LIBS) -L. -lralloc
 
 prod-con_test: ./benchmark/prod-con.cpp libralloc.a
-	$(CXX) -I $(SRC) -I ./benchmark -o $@ $< $(CXXFLAGS) $(LIBS) 
+	$(CXX) -I $(SRC) -I ./benchmark -o $@ $^ $(CXXFLAGS) $(LIBS) 
 
-libralloc.a:../obj/SizeClass.o ../obj/RegionManager.o ../obj/TCache.o ../obj/BaseMeta.o ../obj/ralloc.o
+libralloc.a: $(OBJECTS)
 	ar -rcs $@ $^
 
 clean:
