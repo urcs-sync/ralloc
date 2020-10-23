@@ -8,7 +8,8 @@
 #define ALLOCATOR_MACRO
 #include "pfence_util.h"
 
-#include <assert.h>
+#include <cassert>
+#include <cstdlib>
 
 #ifndef THREAD_PINNING
 #define THREAD_PINNING
